@@ -140,6 +140,19 @@ function splitNumber(raw: string): { integer: string; fraction: string } | null 
 }
 
 /**
+ * Render a fraction at a consistent scale, without changing the amount.
+ *
+ * Platforms serialize money at their storage scale: Magento writes `279.0000` into
+ * `data-price-amount`, and a page that says `£18.5` means £18.50. Padding to two digits and
+ * dropping zeros beyond them makes an unchanged price compare equal as a string, which is
+ * what the duplicate-detection and price-change paths do. Significant digits are never
+ * removed — `1.2345` keeps all four.
+ */
+function normalizeFraction(fraction: string): string {
+  return fraction.replace(/0+$/, '').padEnd(2, '0');
+}
+
+/**
  * Normalize a price found on a page into an exact decimal string.
  *
  * Returns `{ amount: null }` for anything that is not a price, rather than a best guess.
@@ -162,8 +175,7 @@ export function normalizePrice(input: string | number | null | undefined): Norma
   const parts = splitNumber(digitsAndSeparators(text));
   if (!parts) return { amount: null, currency };
 
-  const fraction = parts.fraction.length > 0 ? parts.fraction : '00';
-  return { amount: `${parts.integer}.${fraction}`, currency };
+  return { amount: `${parts.integer}.${normalizeFraction(parts.fraction)}`, currency };
 }
 
 /** Convenience wrapper for callers that only want the amount. */

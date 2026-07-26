@@ -141,12 +141,14 @@ number is an IEEE double — the exact decimal would be approximated on the way 
 
 ## Current state
 
-Phase 4. Accounts, carts, memberships, and row-level security exist and are tested; the
+Phase 5. Accounts, carts, memberships, and row-level security exist and are tested; the
 web app has a protected dashboard listing the user's carts, and the extension side panel
 signs in too. A product page can be captured from the side panel and shows up in the
 dashboard, where it can be searched, filtered, sorted, edited, archived with undo, and
 deleted. A duplicate save refreshes rather than duplicating. Revisiting a saved page
 re-observes it without touching the user's own fields, the observation series is visible in
 the detail drawer, and cards show how the price has moved and how old the last check is.
-Retailer adapters are Phase 5; sharing and comparison are Phase 6; scheduled background
-refresh and alerts are Phase 7. See [STATUS.md](STATUS.md).
+Five commerce-platform adapters run above the generic pipeline and record their version
+with each capture, and `/app/diagnostics` reports extraction health per retailer domain.
+Sharing and comparison are Phase 6; scheduled background refresh and alerts are Phase 7.
+See [STATUS.md](STATUS.md).

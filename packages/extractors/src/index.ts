@@ -75,3 +75,23 @@ export {
   extractSelectedVariantFromUrl,
   mergeVariants,
 } from './generic/variant';
+
+export { adapterDescriptors, adaptersFor, RETAILER_ADAPTERS } from './adapters/registry';
+export type { AdapterDescriptor } from './adapters/registry';
+export {
+  BIGCOMMERCE_ADAPTER_ID,
+  BIGCOMMERCE_ADAPTER_VERSION,
+  bigCommerceAdapter,
+} from './adapters/bigcommerce';
+export { MAGENTO_ADAPTER_ID, MAGENTO_ADAPTER_VERSION, magentoAdapter } from './adapters/magento';
+export {
+  SFCC_ADAPTER_ID,
+  SFCC_ADAPTER_VERSION,
+  salesforceCommerceCloudAdapter,
+} from './adapters/salesforce-commerce-cloud';
+export { SHOPIFY_ADAPTER_ID, SHOPIFY_ADAPTER_VERSION, shopifyAdapter } from './adapters/shopify';
+export {
+  WOOCOMMERCE_ADAPTER_ID,
+  WOOCOMMERCE_ADAPTER_VERSION,
+  wooCommerceAdapter,
+} from './adapters/woocommerce';

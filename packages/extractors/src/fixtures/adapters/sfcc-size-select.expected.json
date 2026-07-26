@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.fieldcraft.example/on/demandware.store/Sites-fc-Site/en_CA/Product-Show?pid=TMS-0091-GRY",
+    "canonicalUrl": "https://fieldcraft.example/on/demandware.store/Sites-fc-Site/en_CA/Product-Show?pid=TMS-0091-GRY",
+    "domain": "fieldcraft.example",
+    "retailerName": "Fieldcraft",
+    "pageTitle": "Trailhead Merino Sock — Fieldcraft"
+  },
+  "product": {
+    "title": "Trailhead Merino Sock",
+    "brand": null,
+    "description": null,
+    "imageUrls": [],
+    "selectedImageUrl": null,
+    "identifiers": {
+      "sku": "TMS-0091-GRY",
+      "productId": "TMS-0091-GRY"
+    }
+  },
+  "offer": {
+    "priceAmount": "24.00",
+    "originalPriceAmount": null,
+    "currency": null,
+    "availability": "out_of_stock"
+  },
+  "selectedVariant": {
+    "Size": "Medium (M)"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": ".product-name",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": ".prices .sales .value[content]",
+      "confidence": 0.94
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": ".availability-msg",
+      "confidence": 0.9
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": ".attribute[data-attr]",
+      "confidence": 0.92
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "h1[class*=\"product\"]",
+      "confidence": 0.55
+    },
+    {
+      "field": "selectedVariant",
+      "source": "dom",
+      "confidence": 0.6
+    }
+  ],
+  "extraction": {
+    "extractorId": "salesforce-commerce-cloud",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.73,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

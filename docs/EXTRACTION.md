@@ -12,7 +12,7 @@ APIs, no network, no `eval`.
 ```text
 ExtractionContext { document, url }
         │
-        ├── retailer adapter    priority 90+   (Phase 5, none yet)
+        ├── retailer adapters   priority 91–95
         ├── JSON-LD             priority 70
         ├── Open Graph / meta   priority 50
         └── generic DOM         priority 10
@@ -89,12 +89,47 @@ with a chosen option, a checked radio with its label, `aria-checked`/`aria-press
 `aria-selected`, and option-like URL parameters. DOM wins over URL, because a client-side
 variant switch updates the DOM before the URL.
 
+### Retailer adapters (`adapters/`)
+
+Adapters target commerce **platforms**, not brands. A platform's markup is the same across
+every storefront running it, so one adapter covers thousands of shops and can be written
+and regression-tested without ever fetching a live retailer page.
+
+| Adapter                     | Priority | Detected by                                               | What it adds over generic extraction                                         |
+| --------------------------- | -------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `shopify`                   | 95       | `cdn.shopify.com` assets, `ProductJson`, `window.Shopify` | The variant in `?variant=`, at its own price and stock status                |
+| `woocommerce`               | 94       | `body.woocommerce`, `form.variations_form`                | The selected variation's price, instead of the "from" range in the heading   |
+| `magento`                   | 93       | `body.catalog-product-view`, `[data-price-amount]`        | The unformatted price, and stock read from the class rather than the words   |
+| `bigcommerce`               | 92       | Stencil `data-product-*` attributes                       | Swatch and dropdown selections, and a disabled add-to-cart as a stock signal |
+| `salesforce-commerce-cloud` | 91       | `.product-detail[data-pid]`, `/on/demandware.*/` paths    | The `content` attribute price, and `data-pid` as the variant identifier      |
+
+Rules every adapter follows:
+
+- Bundled and versioned. **Nothing is downloaded or evaluated at runtime** — page JSON is
+  read with `JSON.parse`, never `eval` or `new Function` (BUILD_PLAN.md §10.7, §17.4).
+- Contributes fields with evidence like any other extractor. An adapter outranks structured
+  data, but it never bypasses the merge.
+- Never the last word: the generic layers always run underneath, so an adapter whose
+  selectors have rotted degrades to the generic result rather than to nothing.
+- A `supports()` or `extract()` that throws is caught and recorded in `extractorFailures`.
+- Two sanitized fixtures with expected captures, in `fixtures/adapters/`.
+
+`extraction.extractorId` and `extractorVersion` record the highest-priority adapter that
+actually contributed a field — the code that will need fixing when the page changes. When
+no adapter matched, or one matched and found nothing, they record the generic pipeline.
+`result.matchedAdapters` distinguishes those two cases: an adapter that matched but
+contributed nothing is the signature of rotted selectors.
+
 ## Normalizers
 
 - **Price** (`normalizers/price.ts`) — string arithmetic only; parsing to a JavaScript
   number and formatting back would silently round money. Decides the decimal separator
   from position and repetition, so `1.299,50`, `1,299.50`, and `1.299` (one thousand two
-  hundred ninety-nine) all come out right. Output is a decimal string.
+  hundred ninety-nine) all come out right. Output is a decimal string, padded to two
+  fraction digits with padding beyond them removed, so Magento's `279.0000` and a page's
+  `£18.5` compare equal as strings to `279.00` and `18.50`. Significant digits are never
+  dropped, and platforms that publish integer minor units (Shopify's `9800`) have the
+  decimal point moved rather than being divided by 100 through a double.
 - **Currency** — an ISO 4217 code, or an unambiguous symbol. `$`, `¥`, and `kr` are
   deliberately **not** mapped: a bare `$` is USD, CAD, AUD, or MXN, and a wrong currency on
   a saved product is worse than no currency.
@@ -142,4 +177,5 @@ decision rather than an accident of hashing.
 capture each must produce. See the README there for the rules. Every production extraction
 bug gets a reduced fixture reproducing it **before** the fix.
 
-Retailer adapters and their fixtures arrive in Phase 5.
+Adapter fixtures live in `fixtures/adapters/`, two per adapter, and are held to the same
+rules.

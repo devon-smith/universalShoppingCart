@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Meridian Wool Runner — Northwind Supply</title>
+    <link rel="canonical" href="https://shop.northwind.example/products/meridian-wool-runner" />
+    <link rel="stylesheet" href="https://cdn.shopify.com/s/files/1/theme.css" />
+    <meta name="shopify-digital-wallet" content="/12345/digital_wallets/dialog" />
+    <meta property="og:title" content="Meridian Wool Runner" />
+    <meta property="product:price:currency" content="USD" />
+
+    <!--
+      The structured data describes the *master* product: Shopify emits the default
+      variant's price here. The shopper is looking at the 41 / Slate, which costs more and
+      is the one the adapter must report.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Meridian Wool Runner",
+        "offers": {
+          "@type": "Offer",
+          "price": "98.00",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+    </script>
+  </head>
+  <body class="template-product">
+    <main>
+      <h1>Meridian Wool Runner</h1>
+
+      <script type="application/json" id="ProductJson-product-template" data-product-json>
+        {
+          "id": 7712340001,
+          "title": "Meridian Wool Runner",
+          "vendor": "Northwind",
+          "featured_image": "https://cdn.shopify.com/s/files/1/meridian-default.jpg",
+          "options": [{ "name": "Size" }, { "name": "Colour" }],
+          "images": [
+            "https://cdn.shopify.com/s/files/1/meridian-default.jpg",
+            "https://cdn.shopify.com/s/files/1/meridian-slate.jpg"
+          ],
+          "variants": [
+            {
+              "id": 4400220001,
+              "option1": "40",
+              "option2": "Natural Black",
+              "price": 9800,
+              "compare_at_price": null,
+              "available": true,
+              "sku": "MWR-40-BLK",
+              "featured_image": { "src": "https://cdn.shopify.com/s/files/1/meridian-default.jpg" }
+            },
+            {
+              "id": 4400220002,
+              "option1": "41",
+              "option2": "Slate",
+              "price": 10800,
+              "compare_at_price": 13000,
+              "available": true,
+              "sku": "MWR-41-SLT",
+              "barcode": "00191234567891",
+              "featured_image": { "src": "https://cdn.shopify.com/s/files/1/meridian-slate.jpg" }
+            }
+          ]
+        }
+      </script>
+    </main>
+  </body>
+</html>

@@ -15,7 +15,7 @@ Rules (BUILD_PLAN.md §18.2):
 - **One per production bug.** When extraction gets something wrong on a real page, add a
   reduced fixture that reproduces it before fixing the extractor.
 
-Retailer-specific adapter fixtures arrive in Phase 5 and live under `adapters/`.
+Retailer-platform adapter fixtures live under `adapters/`, two per adapter.
 
 ## Current fixtures
 
@@ -27,3 +27,22 @@ Retailer-specific adapter fixtures arrive in Phase 5 and live under `adapters/`.
 | `meta-only.html`            | No structured data; Open Graph and product meta tags only           |
 | `dom-only.html`             | No structured data and no meta tags; annotated DOM plus a variant   |
 | `sparse.html`               | Almost nothing extractable — the graceful-degradation case          |
+
+## Adapter fixtures (`adapters/`)
+
+Two per adapter: one exercising the case that justifies the adapter existing, one covering
+a different shape of the same platform. Hosts are synthetic `.example` retailers and the
+markup is the platform's own, reduced to what the adapter reads.
+
+| File                            | What it covers                                                             |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| `shopify-variant-selected.html` | `?variant=` picks a variant whose price differs from the page's JSON-LD    |
+| `shopify-sold-out-default.html` | No variant in the URL and the first one sold out                           |
+| `woocommerce-variable.html`     | Variation matrix matched against the attribute selects; heading is a range |
+| `woocommerce-simple-sale.html`  | Simple product with `<del>`/`<ins>` sale markup                            |
+| `magento-configurable.html`     | Swatches, a European price format, and a non-English stock label           |
+| `magento-out-of-stock.html`     | No options, no sale price, and unavailable                                 |
+| `bigcommerce-swatch.html`       | A checked swatch (name on the label `title`) and a chosen dropdown         |
+| `bigcommerce-unavailable.html`  | Stock only inferable from a disabled add-to-cart button                    |
+| `sfcc-variation-selected.html`  | `.selected-value` attributes and the `content` price attribute             |
+| `sfcc-size-select.html`         | A size dropdown, on a Demandware pipeline URL                              |

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://lumenworks.example/cirrus-floor-lamp/",
+    "canonicalUrl": "https://lumenworks.example/cirrus-floor-lamp",
+    "domain": "lumenworks.example",
+    "retailerName": "Lumenworks",
+    "pageTitle": "Cirrus Floor Lamp — Lumenworks"
+  },
+  "product": {
+    "title": "Cirrus Floor Lamp",
+    "brand": null,
+    "description": null,
+    "imageUrls": [],
+    "selectedImageUrl": null,
+    "identifiers": {
+      "sku": "CIR-FL-WHT",
+      "productId": "4822"
+    }
+  },
+  "offer": {
+    "priceAmount": "310.00",
+    "originalPriceAmount": null,
+    "currency": null,
+    "availability": "out_of_stock"
+  },
+  "selectedVariant": {},
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": ".productView-title",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "[data-product-price-without-tax]",
+      "confidence": 0.93
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": "[disabled]",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "h1[class*=\"product\"]",
+      "confidence": 0.55
+    }
+  ],
+  "extraction": {
+    "extractorId": "bigcommerce",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.71,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

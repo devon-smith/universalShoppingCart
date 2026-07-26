@@ -1,6 +1,7 @@
 import type { ProductCaptureV1 } from '@universal-cart/contracts';
 import { CAPTURE_SCHEMA_VERSION, safeParseProductCaptureV1 } from '@universal-cart/contracts';
 
+import { RETAILER_ADAPTERS } from '../adapters/registry';
 import { domExtractor } from '../generic/dom';
 import { jsonLdExtractor } from '../generic/json-ld';
 import { metaExtractor } from '../generic/meta';
@@ -22,8 +23,13 @@ import type { ExtractionContext, ProductExtractor } from './types';
 export const GENERIC_PIPELINE_ID = 'generic';
 export const GENERIC_PIPELINE_VERSION = '1.0.0';
 
-/** Ordered highest-priority first. Retailer adapters slot in above these in Phase 5. */
+/**
+ * Ordered highest-priority first: retailer adapters, then structured data, then meta tags,
+ * then DOM heuristics. The generic layers always run, so an adapter whose selectors have
+ * rotted degrades to the generic result instead of to nothing.
+ */
 export const DEFAULT_EXTRACTORS: readonly ProductExtractor[] = [
+  ...RETAILER_ADAPTERS,
   jsonLdExtractor,
   metaExtractor,
   domExtractor,
@@ -41,6 +47,11 @@ export interface ExtractionSuccess {
   capture: ProductCaptureV1;
   /** Extractors that claimed at least one field, highest priority first. */
   contributors: string[];
+  /**
+   * Adapters whose `supports()` matched the page, whether or not they then found anything.
+   * A matched adapter that contributed nothing is the signature of rotted selectors.
+   */
+  matchedAdapters: string[];
   /** Empty on a healthy page. A non-empty list means an extractor needs fixing. */
   extractorFailures: ExtractorFailure[];
 }
@@ -50,6 +61,7 @@ export interface ExtractionFailure {
   issues: string[];
   /** The capture as assembled, for diagnostics. Not safe to save. */
   draft: unknown;
+  matchedAdapters: string[];
   extractorFailures: ExtractorFailure[];
 }
 
@@ -70,13 +82,17 @@ export function extractProductCapture(
   );
   const now = options.now ?? (() => new Date());
 
+  const adapterIds = new Set(RETAILER_ADAPTERS.map((adapter) => adapter.id));
   const contributors: string[] = [];
+  const matchedAdapters: string[] = [];
   const extractorFailures: ExtractorFailure[] = [];
 
   const candidates = extractors
     .filter((extractor) => {
       try {
-        return extractor.supports(context);
+        const supported = extractor.supports(context);
+        if (supported && adapterIds.has(extractor.id)) matchedAdapters.push(extractor.id);
+        return supported;
       } catch (error) {
         // A broken extractor must never prevent a capture (BUILD_PLAN.md §24) — but it
         // must also not disappear, or a crash looks exactly like an empty page.
@@ -103,6 +119,19 @@ export function extractProductCapture(
       }
     });
 
+  /**
+   * What to record as the extractor that produced this capture.
+   *
+   * The highest-priority adapter that actually contributed a field, if any — that is the
+   * code whose version needs to appear beside the observation, because it is the code that
+   * will need fixing when the page changes. A page with no adapter, or one whose adapter
+   * found nothing, is a generic-pipeline capture and says so.
+   */
+  const winningAdapter =
+    extractors.find(
+      (extractor) => adapterIds.has(extractor.id) && contributors.includes(extractor.id),
+    ) ?? null;
+
   const { capture: merged, winners } = mergeCaptures(candidates);
 
   const domain = domainFromUrl(context.url);
@@ -111,6 +140,7 @@ export function extractProductCapture(
       ok: false,
       issues: [`Page URL is not an http(s) URL: ${context.url}`],
       draft: merged,
+      matchedAdapters,
       extractorFailures,
     };
   }
@@ -143,8 +173,8 @@ export function extractProductCapture(
     selectedVariant: merged.selectedVariant ?? {},
     evidence: merged.evidence,
     extraction: {
-      extractorId: GENERIC_PIPELINE_ID,
-      extractorVersion: GENERIC_PIPELINE_VERSION,
+      extractorId: winningAdapter?.id ?? GENERIC_PIPELINE_ID,
+      extractorVersion: winningAdapter?.version ?? GENERIC_PIPELINE_VERSION,
       overallConfidence: overallConfidence(winners),
       observedAt: now().toISOString(),
     },
@@ -158,11 +188,12 @@ export function extractProductCapture(
         (issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`,
       ),
       draft,
+      matchedAdapters,
       extractorFailures,
     };
   }
 
-  return { ok: true, capture: parsed.data, contributors, extractorFailures };
+  return { ok: true, capture: parsed.data, contributors, matchedAdapters, extractorFailures };
 }
 
 /**

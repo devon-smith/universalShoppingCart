@@ -6,7 +6,7 @@ This is **not** a universal checkout system. It never stores retailer credential
 
 ## Status
 
-**Phase 4 complete** — a cart that keeps watching. Capture products from the extension side panel; search, filter, sort, edit, and archive them on the web, with undo and live updates across devices. Reopening the panel on a saved product re-observes its price and stock without touching your notes, and the dashboard shows how the price has moved and how old the last check is. Real retailer adapters are next. See [docs/STATUS.md](docs/STATUS.md).
+**Phase 5 complete** — a cart that keeps watching, now with retailer adapters. Capture products from the extension side panel; search, filter, sort, edit, and archive them on the web, with undo and live updates across devices. Reopening the panel on a saved product re-observes its price and stock without touching your notes, and the dashboard shows how the price has moved and how old the last check is. Adapters for five commerce platforms read the variant you actually selected, and an extractor-health page shows which retailers extraction is struggling with. Sharing and comparison are next. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Stack
 
