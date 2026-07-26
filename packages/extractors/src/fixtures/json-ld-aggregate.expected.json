@@ -17,7 +17,7 @@
   },
   "offer": {
     "priceAmount": "34.5",
-    "originalPriceAmount": "59.00",
+    "originalPriceAmount": null,
     "currency": "GBP",
     "availability": "unknown"
   },
@@ -47,11 +47,6 @@
       "field": "offer.priceAmount",
       "source": "json_ld",
       "confidence": 0.9
-    },
-    {
-      "field": "offer.originalPriceAmount",
-      "source": "json_ld",
-      "confidence": 0.8
     },
     {
       "field": "offer.currency",

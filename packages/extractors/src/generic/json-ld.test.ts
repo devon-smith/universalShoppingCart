@@ -332,3 +332,137 @@ describe('jsonLdExtractor — support', () => {
     ).toBe('Survivor');
   });
 });
+
+describe('jsonLdExtractor — pages describing more than one product', () => {
+  function pageWithBlocks(...blocks: object[]): Document {
+    const scripts = blocks
+      .map((block) => `<script type="application/ld+json">${JSON.stringify(block)}</script>`)
+      .join('');
+    return new DOMParser().parseFromString(
+      `<!doctype html><html><head><title>T</title>${scripts}</head><body></body></html>`,
+      'text/html',
+    );
+  }
+
+  it('takes the first Product as the page subject, not a recommended one', () => {
+    // Recommendation carousels ship their own Product blocks. Every template we have seen
+    // writes the page's own product first; picking the cheapest or the last would quietly
+    // capture a "customers also bought" tile instead.
+    const document = pageWithBlocks(
+      {
+        '@type': 'Product',
+        name: 'The product being viewed',
+        offers: { '@type': 'Offer', price: '129.00', priceCurrency: 'USD' },
+      },
+      {
+        '@type': 'Product',
+        name: 'Customers also bought',
+        offers: { '@type': 'Offer', price: '19.99', priceCurrency: 'USD' },
+      },
+    );
+
+    const result = jsonLdExtractor.extract({ document, url: 'https://shop.example/p/1' });
+
+    expect(result.product?.title).toBe('The product being viewed');
+    expect(result.offer?.priceAmount).toBe('129.00');
+  });
+
+  it('ignores a BreadcrumbList and an Organization sharing the page', () => {
+    const document = pageWithBlocks(
+      { '@type': 'Organization', name: 'The shop itself' },
+      { '@type': 'BreadcrumbList', itemListElement: [] },
+      {
+        '@type': 'Product',
+        name: 'The actual product',
+        offers: { '@type': 'Offer', price: '12.00', priceCurrency: 'USD' },
+      },
+    );
+
+    const result = jsonLdExtractor.extract({ document, url: 'https://shop.example/p/1' });
+
+    expect(result.product?.title).toBe('The actual product');
+  });
+});
+
+describe('jsonLdExtractor — price ranges and variant groups', () => {
+  it('does not turn an AggregateOffer range into a discount', () => {
+    // lowPrice/highPrice bound a range across variants. Reporting highPrice as the original
+    // price renders "was $40.00, now $20.00" — a sale the retailer never offered, which is
+    // exactly the kind of invented fact BUILD_PLAN.md §6.2 rules out.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'X',
+        offers: {
+          '@type': 'AggregateOffer',
+          lowPrice: '20.00',
+          highPrice: '40.00',
+          priceCurrency: 'USD',
+        },
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBe('20.00');
+    expect(result.offer?.originalPriceAmount).toBeUndefined();
+  });
+
+  it('still reads a genuine was-price from a plain offer', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'X',
+        offers: { '@type': 'Offer', price: '20.00', listPrice: '40.00', priceCurrency: 'USD' },
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBe('20.00');
+    expect(result.offer?.originalPriceAmount).toBe('40.00');
+  });
+
+  it('reads a ProductGroup as the page subject', () => {
+    // Google's variant markup wraps a family in a ProductGroup. Without it, a page whose
+    // only block is a group extracts nothing at all and falls back to DOM guessing.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Merino crew',
+        brand: { '@type': 'Brand', name: 'Northsea' },
+        offers: { '@type': 'Offer', price: '89.00', priceCurrency: 'USD' },
+      }),
+    );
+
+    expect(result.product?.title).toBe('Merino crew');
+    expect(result.product?.brand).toBe('Northsea');
+    expect(result.offer?.priceAmount).toBe('89.00');
+  });
+
+  it('takes the offer for the selected variant even when other variants are in stock', () => {
+    // The product is generally available; the size on screen is not. Reporting the family's
+    // availability would tell the user something false about what they are looking at.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'Merino crew',
+        sku: 'CREW-BLUE-L',
+        offers: [
+          {
+            '@type': 'Offer',
+            sku: 'CREW-BLUE-M',
+            price: '89.00',
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+          },
+          {
+            '@type': 'Offer',
+            sku: 'CREW-BLUE-L',
+            price: '89.00',
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/OutOfStock',
+          },
+        ],
+      }),
+    );
+
+    expect(result.offer?.availability).toBe('out_of_stock');
+  });
+});

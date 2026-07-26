@@ -66,6 +66,47 @@ const IMAGE_SELECTORS: ReadonlyArray<readonly [selector: string, confidence: num
   ['[class*="product-image"] img', 0.4],
 ];
 
+/**
+ * Attributes that may carry an image URL, most authoritative first.
+ *
+ * Lazy loaders leave a placeholder in `src` — usually a 1x1 data: URI — and keep the real
+ * URL in one of the data attributes, so the reader has to keep looking past an attribute
+ * that exists but resolves to nothing usable.
+ */
+const IMAGE_URL_ATTRIBUTES = [
+  'src',
+  'content',
+  'data-src',
+  'data-original',
+  'data-lazy-src',
+] as const;
+
+/** Take the first candidate from a `srcset`, dropping its width/density descriptor. */
+function firstSrcsetUrl(value: string | null): string | null {
+  const first = value?.split(',')[0]?.trim().split(/\s+/)[0];
+  return first && first.length > 0 ? first : null;
+}
+
+/**
+ * Resolve an element's image to an http(s) URL, trying each source until one works.
+ *
+ * Stopping at the first attribute that merely *exists* loses the image on every
+ * lazy-loading page, because the placeholder in `src` is not a usable URL.
+ */
+function imageUrlFrom(element: Element, baseUrl: string): string | null {
+  for (const attribute of IMAGE_URL_ATTRIBUTES) {
+    const resolved = absoluteHttpUrl(element.getAttribute(attribute), baseUrl);
+    if (resolved) return resolved;
+  }
+
+  for (const attribute of ['srcset', 'data-srcset'] as const) {
+    const resolved = absoluteHttpUrl(firstSrcsetUrl(element.getAttribute(attribute)), baseUrl);
+    if (resolved) return resolved;
+  }
+
+  return null;
+}
+
 /** Read a value from an element, preferring an explicit attribute over visible text. */
 function readValue(element: Element): string | null {
   for (const attribute of [
@@ -173,14 +214,7 @@ export const domExtractor: ProductExtractor = {
     const images = unique(
       IMAGE_SELECTORS.flatMap(([selector]) =>
         Array.from(document.querySelectorAll(selector))
-          .map((element) =>
-            absoluteHttpUrl(
-              element.getAttribute('src') ??
-                element.getAttribute('content') ??
-                element.getAttribute('data-src'),
-              url,
-            ),
-          )
+          .map((element) => imageUrlFrom(element, url))
           .filter((value): value is string => value !== null),
       ),
     );
