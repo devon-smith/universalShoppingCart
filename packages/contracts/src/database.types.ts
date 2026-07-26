@@ -282,7 +282,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      item_price_summary: {
+        Row: {
+          item_id: string | null
+          latest_availability:
+            | Database["public"]["Enums"]["item_availability"]
+            | null
+          latest_currency: string | null
+          latest_observed_at: string | null
+          latest_original_price: number | null
+          latest_price: number | null
+          observation_count: number | null
+          previous_observed_at: string | null
+          previous_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_observations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_edit_cart: { Args: { p_cart_id: string }; Returns: boolean }

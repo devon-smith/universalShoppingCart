@@ -3,6 +3,8 @@ import { fieldsNeedingReview } from '@universal-cart/extractors';
 import { useCallback, useEffect, useState } from 'react';
 
 import { requestCapture } from '@/lib/capture/request';
+import type { RevisitResult } from '@/lib/capture/revisit';
+import { itemLookup, refreshFromPage } from '@/lib/capture/revisit';
 import type { UserFields } from '@/lib/capture/save';
 import { saveCapture } from '@/lib/capture/save';
 import { getSupabase } from '@/lib/supabase/client';
@@ -19,6 +21,7 @@ type Stage =
   | { name: 'preview'; capture: ProductCaptureV1; needsReview: string[] }
   | { name: 'saving'; capture: ProductCaptureV1 }
   | { name: 'saved'; title: string; created: boolean }
+  | { name: 'refreshed'; title: string; changed: boolean }
   | { name: 'error'; message: string };
 
 interface Draft {
@@ -104,40 +107,100 @@ export function CapturePanel({ onSaved }: { onSaved: () => void }) {
     };
   }, []);
 
+  /** Read the page in front of the user, or explain why it could not be read. */
+  const readPage = useCallback(async (): Promise<ProductCaptureV1 | null> => {
+    const tabId = await activeTabId();
+    if (tabId === undefined) throw new Error('No active tab to capture.');
+
+    const result = await requestCapture({
+      scripting: chrome.scripting,
+      tabs: chrome.tabs,
+      tabId,
+    });
+
+    if (!result.ok) throw new Error(result.issues.join('; '));
+    return result.capture;
+  }, []);
+
   const capture = useCallback(async () => {
     setStage({ name: 'extracting' });
 
     try {
-      const tabId = await activeTabId();
-      if (tabId === undefined) {
-        setStage({ name: 'error', message: 'No active tab to capture.' });
-        return;
-      }
+      const page = await readPage();
+      if (!page) return;
 
-      const result = await requestCapture({
-        scripting: chrome.scripting,
-        tabs: chrome.tabs,
-        tabId,
-      });
-
-      if (!result.ok) {
-        setStage({ name: 'error', message: result.issues.join('; ') });
-        return;
-      }
-
-      setDraft(draftFrom(result.capture));
-      setStage({
-        name: 'preview',
-        capture: result.capture,
-        needsReview: fieldsNeedingReview(result.capture),
-      });
+      setDraft(draftFrom(page));
+      setStage({ name: 'preview', capture: page, needsReview: fieldsNeedingReview(page) });
     } catch (error) {
       setStage({
         name: 'error',
         message: error instanceof Error ? error.message : 'Capture failed.',
       });
     }
+  }, [readPage]);
+
+  /**
+   * Re-observe the page if it is already saved (BUILD_PLAN.md §14.1).
+   *
+   * Extraction happens locally; nothing is sent anywhere unless the fingerprint matches
+   * something the user already saved, so opening the panel on an unsaved page leaves no
+   * trace. Returns null when there was nothing to refresh, including when the page could
+   * not be read — the user did not ask for anything, so there is nothing to report.
+   */
+  const observeCurrentPage = useCallback(async (): Promise<RevisitResult | null> => {
+    try {
+      const page = await readPage();
+      if (!page) return null;
+
+      const supabase = getSupabase();
+      return await refreshFromPage({
+        client: supabase,
+        lookup: itemLookup((fingerprint) =>
+          supabase
+            .from('items')
+            .select('id, cart_id, title')
+            .eq('fingerprint', fingerprint)
+            .neq('status', 'archived')
+            .limit(1),
+        ),
+        capture: page,
+      });
+    } catch {
+      return null;
+    }
+  }, [readPage]);
+
+  const showRefreshed = useCallback(
+    (result: RevisitResult) => {
+      setStage({
+        name: 'refreshed',
+        title: result.match.title,
+        changed: result.observationInserted,
+      });
+      onSaved();
+    },
+    [onSaved],
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    void observeCurrentPage().then((result) => {
+      if (!active || !result) return;
+      showRefreshed(result);
+    });
+
+    return () => {
+      active = false;
+    };
+    // Deliberately once per panel open, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function revisit() {
+    const result = await observeCurrentPage();
+    if (result) showRefreshed(result);
+  }
 
   async function save(capturePayload: ProductCaptureV1) {
     setStage({ name: 'saving', capture: capturePayload });
@@ -181,6 +244,14 @@ export function CapturePanel({ onSaved }: { onSaved: () => void }) {
           {stage.created
             ? `Saved “${stage.title}”.`
             : `Already saved — “${stage.title}” refreshed.`}
+        </p>
+      ) : null}
+
+      {stage.name === 'refreshed' ? (
+        <p role="status" className="panel__success">
+          {stage.changed
+            ? `“${stage.title}” is already saved — price and availability updated.`
+            : `“${stage.title}” is already saved — nothing has changed.`}
         </p>
       ) : null}
 
@@ -310,14 +381,21 @@ export function CapturePanel({ onSaved }: { onSaved: () => void }) {
           </button>
         </form>
       ) : (
-        <button
-          type="button"
-          className="panel__button panel__button--primary"
-          disabled={stage.name === 'extracting'}
-          onClick={() => void capture()}
-        >
-          {stage.name === 'extracting' ? 'Reading the page…' : 'Capture this page'}
-        </button>
+        <>
+          <button
+            type="button"
+            className="panel__button panel__button--primary"
+            disabled={stage.name === 'extracting'}
+            onClick={() => void capture()}
+          >
+            {stage.name === 'extracting' ? 'Reading the page…' : 'Capture this page'}
+          </button>
+          {stage.name === 'refreshed' ? (
+            <button type="button" className="panel__button" onClick={() => void revisit()}>
+              Refresh from this page
+            </button>
+          ) : null}
+        </>
       )}
     </section>
   );

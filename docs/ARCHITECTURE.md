@@ -111,6 +111,22 @@ place; the function verifies its shape and scopes it to the cart. A refresh rewr
 retailer-observed columns — note, quantity, priority, desired price, and status are the
 user's.
 
+## Revisit
+
+Opening the side panel extracts the page the same way a capture does, but locally and
+without sending anything. The fingerprint is looked up against non-archived items; only if
+one matches does an ingest happen, with `source = 'revisit'` and **no user fields**, so a
+refresh has nothing to overwrite them with. An unsaved page produces one indexed read and
+no write.
+
+Observations are recorded only when a tracked value changed or the previous observation is
+older than `observation_refresh_interval()`; otherwise `last_observed_at` moves and the
+history stays quiet. That is what keeps a series of visits from becoming a series of
+identical rows.
+
+Nothing fetches a retailer page on a timer — every observation came from a page the user
+was looking at. Scheduled refresh is Phase 7.
+
 ## The dashboard
 
 `/app` is a Server Component that fetches the user's items once and hands them to a client
@@ -125,9 +141,12 @@ number is an IEEE double — the exact decimal would be approximated on the way 
 
 ## Current state
 
-Phase 3. Accounts, carts, memberships, and row-level security exist and are tested; the
+Phase 4. Accounts, carts, memberships, and row-level security exist and are tested; the
 web app has a protected dashboard listing the user's carts, and the extension side panel
 signs in too. A product page can be captured from the side panel and shows up in the
 dashboard, where it can be searched, filtered, sorted, edited, archived with undo, and
-deleted. A duplicate save refreshes rather than duplicating. Price history and revisit
-refresh are Phase 4; sharing and comparison are Phase 6. See [STATUS.md](STATUS.md).
+deleted. A duplicate save refreshes rather than duplicating. Revisiting a saved page
+re-observes it without touching the user's own fields, the observation series is visible in
+the detail drawer, and cards show how the price has moved and how old the last check is.
+Retailer adapters are Phase 5; sharing and comparison are Phase 6; scheduled background
+refresh and alerts are Phase 7. See [STATUS.md](STATUS.md).

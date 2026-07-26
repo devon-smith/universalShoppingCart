@@ -9,12 +9,95 @@ and acceptance criteria.
 | 1 — Authentication and authorization   | Complete    |
 | 2 — Generic capture vertical slice     | Complete    |
 | 3 — Cart dashboard and core UX         | Complete    |
-| 4 — Observations and revisit refresh   | Not started |
+| 4 — Observations and revisit refresh   | Complete    |
 | 5 — Real retailer adapters             | Not started |
 | 6 — Sharing and comparison             | Not started |
 | 7 — Background refresh and alerts      | Not started |
 | 8 — Product matching and AI comparison | Not started |
 | 9 — Release hardening                  | Not started |
+
+## Phase 4 — Observations, revisit refresh, and price history
+
+**Complete.** A saved product is re-observed when the user is standing in front of it
+again, the series of observations is visible, and the app says how old a price is rather
+than implying it is current.
+
+### What works
+
+- **Revisit matching.** Opening the side panel fingerprints the current page and looks for
+  a non-archived item with that fingerprint. The match is by canonical URL _and_ variant,
+  so a different size of a saved shoe is a different item, not a refresh of one.
+- **Refresh on revisit, automatically.** A match is re-observed through
+  `ingest_product_capture` with `p_source = 'revisit'` and **no user fields at all**, so
+  the note, quantity, priority, desired price, and status cannot be overwritten even in
+  principle. `supabase/tests/04_…` asserts all five survive.
+- **Nothing leaves the machine on an unsaved page.** Extraction is local and the
+  fingerprint lookup is a read; the ingest call only happens once something has matched.
+- **A manual "Refresh from this page"** once a page is recognised, for a price that moves
+  while the panel is open.
+- **Observation de-duplication.** An identical revisit records nothing and only moves
+  `last_observed_at`. A change in availability alone _is_ worth recording, and is.
+- **Price history** in the item detail drawer: every observation with its price,
+  availability, timestamp, and source (saved / revisited / edited / background). A list,
+  not a chart — with the handful of points a personal cart accumulates, the dates and
+  sources are the information.
+- **Price-change badges** on the card, comparing the current price against the last
+  observation that _differed_, so a run of identical revisits does not erase the move. The
+  difference is computed on the decimal strings with integer arithmetic; only the
+  percentage uses floating point, and only for display.
+- **Staleness.** Fresh (≤24h), aging, and stale (>7d) are distinguished on the card and in
+  the drawer, with the drawer explaining how to re-check. An item with no observation says
+  "never checked" rather than showing a bare timestamp.
+- **`item_price_summary`**, a `security_invoker` view giving each item its latest price,
+  the last different price, and an observation count in one round trip — RLS still applies,
+  and `supabase/tests/04_…` proves a stranger sees nothing and an anonymous request is
+  refused outright.
+
+### Database changes
+
+- `supabase/migrations/20260726180000_price_summary.sql` — the `item_price_summary` view.
+  No table changes: `item_observations` and the ingestion function already recorded
+  everything this phase needed.
+
+### Verification
+
+| Command          | Result                                        |
+| ---------------- | --------------------------------------------- |
+| `pnpm lint`      | Pass — 7 workspaces                           |
+| `pnpm typecheck` | Pass — 7 workspaces                           |
+| `pnpm test`      | Pass — 37 files, 407 tests                    |
+| `pnpm build`     | Pass                                          |
+| `pnpm test:db`   | Pass — 5 files, 90 pgTAP assertions           |
+| `pnpm test:e2e`  | Pass — 31 web + 12 extension Playwright tests |
+
+The extension end-to-end tests drive the real flow: save a fixture product, reopen the
+panel on the same page and get "already saved — nothing has changed", change the served
+price and get "price and availability updated" with one card at the new price, and get
+silence on a different product page. The fixture server serves the same product at a
+different price on request; because the fixtures declare an absolute `rel=canonical`, the
+query string does not change the fingerprint, which is the case worth testing.
+
+### Deliberately not built yet
+
+- **Scheduled background refresh** — Phase 7. Nothing fetches a retailer page on a timer;
+  every observation in the system came from a page the user was looking at.
+- **Notifications** for a desired-price hit or a return to stock — also Phase 7. The
+  desired-price badge on a card is the whole of it for now.
+- **Refresh-strategy classification** per domain (`public_fetch` / `api` /
+  `browser_required` / `disabled`). Every item is browser-required today, which is why the
+  stale copy says to open the page with the side panel.
+
+### Known limitations
+
+- The revisit runs when the panel mounts. In Chrome the side panel persists across tab
+  switches, so navigating to a saved product with the panel already open does not
+  re-observe it until the panel is reopened. Tab-change-driven refresh needs the `tabs`
+  permission, which the extension deliberately does not request.
+- The price-change badge compares against the last _different_ observation, not against the
+  price at save time. For an item that has bounced, "since you saved it" is loose wording
+  for "since it last changed".
+- The detail drawer loads at most 50 observations, newest first, and does not paginate.
+- Staleness thresholds are fixed at 24 hours and 7 days rather than per-user or per-domain.
 
 ## Phase 3 — Cart dashboard and daily UX
 

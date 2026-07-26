@@ -121,6 +121,29 @@ Index: `(item_id, observed_at desc)`.
 `authenticated` holds **select only**. Rows are written exclusively by
 `ingest_product_capture`; price history a client can rewrite is not history.
 
+## Views
+
+### `item_price_summary`
+
+One row per item with observations, so a dashboard can show a price-change badge without
+fetching the whole series for every card.
+
+| Column                                              | Meaning                                          |
+| --------------------------------------------------- | ------------------------------------------------ |
+| `item_id`                                           | the item                                         |
+| `latest_price`, `latest_original_price`, `currency` | the newest observation                           |
+| `latest_availability`, `latest_observed_at`         | the newest observation                           |
+| `previous_price`, `previous_observed_at`            | the most recent observation whose price differed |
+| `observation_count`                                 | every observation, including unchanged repeats   |
+
+`previous_price` deliberately skips repeats: after three revisits at the same price, the
+comparison a user wants is still against the price before it moved.
+
+Declared `with (security_invoker = on)`, so the reader's RLS on `item_observations` applies
+rather than the view owner's. A view is otherwise a way around row-level security.
+`supabase/tests/04_revisit_refresh_test.sql` asserts a stranger sees no rows and `anon` is
+refused outright.
+
 ## Functions and triggers
 
 | Name                                     | Kind                    | Purpose                                              |

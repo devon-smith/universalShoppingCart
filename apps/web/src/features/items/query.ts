@@ -38,6 +38,19 @@ export interface SavedItem {
   updated_at: string;
 }
 
+/**
+ * The newest observation and the last one at a different price, from
+ * `item_price_summary`. Absent when an item has only ever been observed once.
+ */
+export interface PriceSummary {
+  item_id: string;
+  latest_price: string | number | null;
+  latest_observed_at: string | null;
+  previous_price: string | number | null;
+  previous_observed_at: string | null;
+  observation_count: number;
+}
+
 export type SortKey =
   'recently-updated' | 'recently-added' | 'price-low' | 'price-high' | 'priority' | 'title';
 

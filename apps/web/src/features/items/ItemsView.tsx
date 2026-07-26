@@ -6,7 +6,14 @@ import { archiveItem, deleteItem, setItemStatus, updateItem } from './actions';
 import type { ItemEdit } from './edits';
 import { ItemCard, STATUS_LABELS } from './ItemCard';
 import { ItemDetail } from './ItemDetail';
-import type { ItemAvailability, ItemFilters, ItemStatus, SavedItem, SortKey } from './query';
+import type {
+  ItemAvailability,
+  ItemFilters,
+  ItemStatus,
+  PriceSummary,
+  SavedItem,
+  SortKey,
+} from './query';
 import { applyQuery, EMPTY_FILTERS, hasActiveFilters, retailerOptions } from './query';
 import { applyRealtimeUpsert, removeItem, replaceItem, withEdit } from './reduce';
 import { useItemsRealtime } from './useItemsRealtime';
@@ -45,9 +52,11 @@ const AVAILABILITY_OPTIONS: ItemAvailability[] = [
  */
 export function ItemsView({
   initialItems,
+  priceSummaries,
   cartIds,
 }: {
   initialItems: SavedItem[];
+  priceSummaries: PriceSummary[];
   cartIds: string[];
 }) {
   const [items, setItems] = useState(initialItems);
@@ -75,6 +84,10 @@ export function ItemsView({
 
   const visible = useMemo(() => applyQuery(items, filters, sort), [items, filters, sort]);
   const retailers = useMemo(() => retailerOptions(items), [items]);
+  const summaries = useMemo(
+    () => new Map(priceSummaries.map((summary) => [summary.item_id, summary])),
+    [priceSummaries],
+  );
 
   function offerUndo(message: string, run: () => Promise<void>) {
     if (undoTimer.current) clearTimeout(undoTimer.current);
@@ -366,6 +379,7 @@ export function ItemsView({
             <ItemCard
               key={item.id}
               item={item}
+              summary={summaries.get(item.id)}
               view={view}
               busy={busyIds.has(item.id)}
               onOpen={setOpenItem}
