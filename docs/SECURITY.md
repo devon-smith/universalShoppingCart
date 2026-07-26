@@ -52,8 +52,10 @@ characters. Redirect targets are built from the client-visible `Host` rather tha
 ## Authorization
 
 Every exposed table has RLS enabled and `anon` holds no grants. The policy matrix and its
-test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 27
-pgTAP assertions covering the cases listed in BUILD_PLAN.md §8.2.
+test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 90
+pgTAP assertions across five files, covering the cases listed in BUILD_PLAN.md §8.2: user
+bootstrap (9), cart and membership RLS (18), atomic ingestion (29), item field ownership
+(14), and revisit refresh (20).
 
 The dashboard checks the user a second time in the page itself, so a middleware
 misconfiguration alone cannot expose it.
@@ -130,3 +132,28 @@ Still to come: the privacy page, data export, and account deletion land in Phase
 - No audit log yet (BUILD_PLAN.md §17.5). Sign-in, invite, and membership events get one
   when sharing lands in Phase 6.
 - No rate limiting of our own; the project relies on Supabase Auth's limits.
+
+## Dependency advisories
+
+`pnpm audit` reports 11 advisories (1 critical, 7 high, 2 moderate, 1 low) as of
+2026-07-26. Every one of them is in build or development tooling, and none is reachable
+from code we ship:
+
+| Package                                 | Path                     | Why it is not reachable                                                                                                                                                         |
+| --------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shell-quote`, `tmp`, `adm-zip`, `uuid` | `wxt > web-ext-run > …`  | WXT's Firefox-runner tooling. Used by `wxt dev` to launch a browser; never bundled into the extension.                                                                          |
+| `sharp`                                 | `next > sharp`           | Only invoked by `next/image`, which the app deliberately does not use — item images are plain `<img>` tags so that retailer CDN images are never proxied (BUILD_PLAN.md §17.4). |
+| `postcss`                               | `next > postcss`         | Build-time CSS processing. Not shipped.                                                                                                                                         |
+| `brace-expansion`                       | `eslint > minimatch > …` | Lint-time only.                                                                                                                                                                 |
+| `esbuild`                               | `vite > esbuild`         | Dev server only, and the advisory is Windows-specific.                                                                                                                          |
+
+None can be fixed without bumping `next` or `wxt` themselves, and forcing transitive
+overrides on a pre-staging repository buys less than it risks. Re-check this table when
+either dependency is upgraded, and before any production release — an advisory that is
+unreachable today becomes reachable the moment the app starts using `next/image`.
+
+Confirmed by inspection of the built bundles rather than by assertion: neither
+`apps/web/.next/static` nor `apps/extension/.output` contains a service-role key or any
+`sb_secret_` value. The only matches for those strings are a key-shape guard inside
+`@supabase/supabase-js` and the extension's own check that refuses a publishable key that
+looks like a service-role key.

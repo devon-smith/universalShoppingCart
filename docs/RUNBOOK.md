@@ -14,6 +14,8 @@ if it were a procedure.
 ## First run from a clean clone
 
 ```bash
+nvm use                      # or otherwise select Node 22; pnpm 10 refuses to run on Node 20
+                             # with an error that does not mention the Node version
 pnpm install                 # also runs `wxt prepare` for the extension
 cp apps/web/.env.example apps/web/.env.local
 cp apps/extension/.env.example apps/extension/.env
