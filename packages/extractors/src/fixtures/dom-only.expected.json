@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://lumenworks.example/lamps/solstice?color=brass",
+    "canonicalUrl": "https://lumenworks.example/lamps/solstice?color=brass",
+    "domain": "lumenworks.example",
+    "retailerName": "Lumenworks",
+    "pageTitle": "Solstice Desk Lamp — Lumen Works"
+  },
+  "product": {
+    "title": "Solstice Desk Lamp",
+    "brand": "Lumen Works",
+    "description": null,
+    "imageUrls": ["https://lumenworks.example/assets/solstice-1.jpg"],
+    "selectedImageUrl": "https://lumenworks.example/assets/solstice-1.jpg",
+    "identifiers": {}
+  },
+  "offer": {
+    "priceAmount": "129.00",
+    "originalPriceAmount": "159.00",
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Color": "brass",
+    "Bulb": "Warm white",
+    "Finish": "Brushed Brass"
+  },
+  "evidence": [
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "h1[class*=\"product\"]",
+      "confidence": 0.55
+    },
+    {
+      "field": "product.brand",
+      "source": "dom",
+      "selector": "[itemprop=\"brand\"]",
+      "confidence": 0.55
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "dom",
+      "confidence": 0.55
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "dom",
+      "confidence": 0.55
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "dom",
+      "selector": "[itemprop=\"price\"]",
+      "confidence": 0.6
+    },
+    {
+      "field": "offer.currency",
+      "source": "dom",
+      "confidence": 0.6
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "dom",
+      "selector": "[class*=\"price--original\"]",
+      "confidence": 0.4
+    },
+    {
+      "field": "offer.availability",
+      "source": "dom",
+      "selector": "add-to-cart",
+      "confidence": 0.35
+    },
+    {
+      "field": "selectedVariant",
+      "source": "dom",
+      "confidence": 0.6
+    }
+  ],
+  "extraction": {
+    "extractorId": "generic",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.55,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

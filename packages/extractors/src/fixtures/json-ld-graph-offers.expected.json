@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.bergsport.example/p/alpenrose-daunenjacke",
+    "canonicalUrl": "https://bergsport.example/p/alpenrose-daunenjacke",
+    "domain": "bergsport.example",
+    "retailerName": "Bergsport",
+    "pageTitle": "Alpenrose Daunenjacke — Bergsport"
+  },
+  "product": {
+    "title": "Alpenrose Daunenjacke",
+    "brand": "Bergsport",
+    "description": null,
+    "imageUrls": ["https://www.bergsport.example/media/adj-778.jpg"],
+    "selectedImageUrl": "https://www.bergsport.example/media/adj-778.jpg",
+    "identifiers": {
+      "sku": "ADJ-778"
+    }
+  },
+  "offer": {
+    "priceAmount": "1099.00",
+    "originalPriceAmount": "1299.00",
+    "currency": "EUR",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {},
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "json_ld",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.identifiers",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "json_ld",
+      "confidence": 0.8
+    },
+    {
+      "field": "offer.currency",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "main h1",
+      "confidence": 0.45
+    }
+  ],
+  "extraction": {
+    "extractorId": "generic",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.906,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

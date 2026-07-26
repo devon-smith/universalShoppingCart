@@ -81,9 +81,18 @@ Signing in on either surface yields the same user, profile, and default cart. De
 the threat-model reasoning are in [SECURITY.md](SECURITY.md); the schema and RLS matrix are
 in [DATA_MODEL.md](DATA_MODEL.md).
 
+## Extraction
+
+`packages/extractors` turns a `Document` into a validated `ProductCaptureV1`. Layered
+extractors (retailer adapter → JSON-LD → meta → DOM heuristics) each report field values
+with evidence, and a merge engine resolves them by source rank and confidence. Details in
+[EXTRACTION.md](EXTRACTION.md).
+
 ## Current state
 
-Phase 1. Accounts, carts, memberships, and row-level security exist and are tested; the
+Phase 2A. Accounts, carts, memberships, and row-level security exist and are tested; the
 web app has a protected dashboard listing the user's carts, and the extension side panel
-signs in and lists them too. No product data yet — capture, `items`, and the real
-dashboard are Phase 2 and 3. See [STATUS.md](STATUS.md).
+signs in and lists them too. The extraction engine is complete and tested against
+fixtures, but nothing saves a capture yet: `items`, `item_observations`, the ingestion
+function, the content script, and the side-panel capture UI are Phase 2B. See
+[STATUS.md](STATUS.md).
