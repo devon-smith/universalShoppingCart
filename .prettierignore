@@ -1,0 +1,16 @@
+pnpm-lock.yaml
+.next/
+.output/
+.wxt/
+.turbo/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+
+# Specification and agent-instruction documents are authored by hand and kept verbatim.
+BUILD_PLAN.md
+PHASE_PROMPTS.md
+AGENTS.md
+CLAUDE.md

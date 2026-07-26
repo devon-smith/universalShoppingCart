@@ -1,0 +1,6 @@
+-- Local development seed data.
+--
+-- Runs after migrations on `pnpm supabase:reset`. Keep this file free of real user
+-- data and free of anything that would be wrong to commit (BUILD_PLAN.md §18.2).
+--
+-- Phase 0 has no tables yet, so there is nothing to seed.

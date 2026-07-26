@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  checks:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify the extension production bundle exists
+        run: test -f apps/extension/.output/chrome-mv3/manifest.json
+
+      - name: Check formatting
+        run: pnpm format:check
+
+  e2e:
+    name: web end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @universal-cart/web exec playwright install --with-deps chromium
+
+      - name: Run Playwright
+        run: pnpm test:e2e
+
+      - name: Upload report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Reject committed .env files
+        run: |
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example$'; then
+            echo "::error::A .env file is tracked in git. Remove it and rotate anything it contained."
+            exit 1
+          fi
+
+      - name: Reject service-role keys and provider secrets in tracked files
+        run: |
+          set -euo pipefail
+          # A Supabase service-role JWT carries "role":"service_role"; the other patterns are
+          # provider key prefixes. Placeholders in .env.example files stay empty, so any hit
+          # here is a real committed secret.
+          if git grep -nIE 'service_role"|sk-[A-Za-z0-9]{20,}|SUPABASE_SERVICE_ROLE_KEY=.+' \
+            -- ':!*.example' ':!.github/workflows/*' ':!docs/*' ':!BUILD_PLAN.md' ':!CLAUDE.md' ':!AGENTS.md'; then
+            echo "::error::Possible secret committed. Rotate it, then remove it from the tree."
+            exit 1
+          fi
+
+      - name: Reject secrets in client bundles
+        run: |
+          set -euo pipefail
+          if git grep -nIE 'NEXT_PUBLIC_[A-Z_]*(SERVICE_ROLE|SECRET)|WXT_PUBLIC_[A-Z_]*(SERVICE_ROLE|SECRET)' \
+            -- ':!.github/workflows/*' ':!docs/*' ':!BUILD_PLAN.md'; then
+            echo "::error::A secret-shaped value has a public env prefix."
+            exit 1
+          fi

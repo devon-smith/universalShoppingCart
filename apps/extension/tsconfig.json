@@ -1,0 +1,24 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true
+  },
+  "include": [
+    ".wxt/wxt.d.ts",
+    "entrypoints/**/*.ts",
+    "entrypoints/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "wxt.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", ".output"]
+}
