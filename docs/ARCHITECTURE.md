@@ -88,11 +88,34 @@ extractors (retailer adapter → JSON-LD → meta → DOM heuristics) each repor
 with evidence, and a merge engine resolves them by source rank and confidence. Details in
 [EXTRACTION.md](EXTRACTION.md).
 
+## Capture
+
+```text
+side panel                      product tab
+    │  click "Capture this page"
+    ├── chrome.scripting.executeScript (activeTab, unlisted capture.js)
+    │                                    │
+    │   versioned, id-correlated message │
+    ├───────────────────────────────────►│ extract → ProductCaptureV1
+    │◄───────────────────────────────────┤
+    │
+    ├── user edits the uncertain fields
+    │
+    └── ingest_product_capture(capture, cartId, fingerprint, userFields)
+              │  one Postgres transaction
+              └── insert or refresh + observation when changed
+```
+
+The fingerprint is computed client-side so URL and variant normalization stay in one
+place; the function verifies its shape and scopes it to the cart. A refresh rewrites only
+retailer-observed columns — note, quantity, priority, desired price, and status are the
+user's.
+
 ## Current state
 
-Phase 2A. Accounts, carts, memberships, and row-level security exist and are tested; the
+Phase 2. Accounts, carts, memberships, and row-level security exist and are tested; the
 web app has a protected dashboard listing the user's carts, and the extension side panel
-signs in and lists them too. The extraction engine is complete and tested against
-fixtures, but nothing saves a capture yet: `items`, `item_observations`, the ingestion
-function, the content script, and the side-panel capture UI are Phase 2B. See
-[STATUS.md](STATUS.md).
+signs in too. A product page can be captured from the side panel and shows up in the
+dashboard, and a duplicate save refreshes rather than duplicating. The dashboard is a list
+— search, filters, sorting, and editing are Phase 3; revisit refresh and price history are
+Phase 4. See [STATUS.md](STATUS.md).

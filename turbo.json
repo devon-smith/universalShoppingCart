@@ -17,7 +17,8 @@
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
         "WXT_PUBLIC_APP_URL",
         "WXT_PUBLIC_SUPABASE_URL",
-        "WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+        "WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "WXT_E2E"
       ],
       "outputs": [".next/**", "!.next/cache/**", ".output/**", "dist/**"]
     },
@@ -45,6 +46,8 @@
         "WXT_PUBLIC_APP_URL",
         "WXT_PUBLIC_SUPABASE_URL",
         "WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "WXT_E2E",
+        "FIXTURE_SERVER_PORT",
         "SUPABASE_MAILPIT_URL"
       ],
       "outputs": ["playwright-report/**", "test-results/**"]

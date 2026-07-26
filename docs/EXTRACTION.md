@@ -121,6 +121,21 @@ never repaired and never saved.
 `fieldsNeedingReview()` returns the fields the correction UI should flag: a missing or
 low-confidence title or price, or a price with no currency.
 
+## Fingerprinting
+
+`fingerprint.ts` produces a SHA-256 over three normalized inputs: the canonical URL, the
+selected variant, and the primary product identifier (GTIN → MPN → SKU → product id, kind
+included so two kinds cannot collide). Web Crypto, so the same value comes out in the
+extension, the browser, and Node.
+
+What is deliberately **not** an input: price, availability, and image. A price change must
+refresh an item, not create one. Tracking parameters are stripped first, so a link shared
+with `?utm_campaign=…` matches a direct visit.
+
+Two variants of one product get different fingerprints; the same product at two retailers
+also gets different ones, because cross-retailer matching (Phase 8) must be a deliberate
+decision rather than an accident of hashing.
+
 ## Fixtures
 
 `packages/extractors/src/fixtures/` holds sanitized HTML pages paired with the exact

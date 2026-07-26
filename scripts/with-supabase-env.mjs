@@ -60,5 +60,9 @@ env.WXT_PUBLIC_SUPABASE_URL ??= env.NEXT_PUBLIC_SUPABASE_URL;
 env.WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 env.WXT_PUBLIC_APP_URL ??= env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
+// The extension end-to-end suite needs the build that can reach the loopback fixture
+// server; see apps/extension/lib/manifest.ts.
+env.WXT_E2E ??= '1';
+
 const result = spawnSync(command, args, { cwd: repoRoot, env, stdio: 'inherit', shell: false });
 process.exit(result.status ?? 1);

@@ -12,6 +12,8 @@ if (!process.env.WXT_PUBLIC_SUPABASE_URL || !process.env.WXT_PUBLIC_SUPABASE_PUB
   );
 }
 
+const fixturePort = Number(process.env.FIXTURE_SERVER_PORT ?? 3200);
+
 export default defineConfig({
   testDir: './tests/e2e',
   // A persistent browser profile per worker plus a shared inbox makes parallel runs
@@ -25,4 +27,12 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   timeout: 60_000,
+  // The capture flow needs a real http page to inject into.
+  webServer: {
+    command: 'node tests/e2e/fixture-server.mjs',
+    url: `http://127.0.0.1:${fixturePort}/health`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 30_000,
+    env: { FIXTURE_SERVER_PORT: String(fixturePort) },
+  },
 });

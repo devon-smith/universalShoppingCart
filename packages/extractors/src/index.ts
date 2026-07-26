@@ -10,6 +10,14 @@
 export { normalizeUrl, TRACKING_PARAMETER_PREFIXES, TRACKING_PARAMETERS } from './normalize-url';
 export type { NormalizeUrlOptions } from './normalize-url';
 
+export {
+  canonicalVariant,
+  computeFingerprint,
+  fingerprintSource,
+  primaryIdentifier,
+} from './fingerprint';
+export type { FingerprintInput } from './fingerprint';
+
 export { normalizeAvailability } from './normalizers/availability';
 export {
   detectCurrency,

@@ -1,7 +1,14 @@
+import globals from 'globals';
+
 import { reactConfig } from '@universal-cart/config/eslint/react';
 
 export default [
   ...reactConfig,
+  {
+    // Node scripts that support the end-to-end suite, not extension code.
+    files: ['tests/e2e/*.mjs'],
+    languageOptions: { globals: { ...globals.node } },
+  },
   {
     ignores: ['.wxt/**', '.output/**'],
   },

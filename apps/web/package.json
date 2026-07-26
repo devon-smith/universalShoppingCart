@@ -18,6 +18,7 @@
     "@supabase/ssr": "0.12.3",
     "@supabase/supabase-js": "2.110.8",
     "@universal-cart/contracts": "workspace:*",
+    "@universal-cart/extractors": "workspace:*",
     "@universal-cart/ui": "workspace:*",
     "next": "16.2.12",
     "react": "19.2.8",

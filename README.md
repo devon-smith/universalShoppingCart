@@ -6,7 +6,7 @@ This is **not** a universal checkout system. It never stores retailer credential
 
 ## Status
 
-**Phase 2A complete** — accounts, access control, and the extraction engine. Sign in from the web app or the extension, get one default cart nobody else can read; the extractor turns a product page into a validated capture with per-field evidence. Saving that capture is Phase 2B. See [docs/STATUS.md](docs/STATUS.md).
+**Phase 2 complete** — the core loop works. Sign in on either surface, open a product page, capture it from the side panel, and it appears in the web dashboard. Saving the same product twice refreshes it instead of duplicating, and never overwrites your note. Search, filters, and editing arrive in Phase 3. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Stack
 

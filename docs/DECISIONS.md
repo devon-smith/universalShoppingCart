@@ -142,3 +142,69 @@ serves, not merely at test time.
 **Consequences.** `pnpm test:e2e` needs Docker and `pnpm supabase:start`. The extension
 suite additionally needs the full Chromium build (`channel: 'chromium'`), because the
 headless shell does not load extensions and the MV3 service worker never starts.
+
+---
+
+## 2026-07-26 — The fingerprint is computed by the client, verified by the server
+
+**Decision.** `ingest_product_capture` takes the fingerprint as a parameter and validates
+its shape (64 lowercase hex) rather than recomputing it in SQL.
+
+**Context.** The fingerprint depends on URL normalization and variant canonicalization
+that live in `packages/extractors`. Reimplementing them in PL/pgSQL would create a second
+definition that must be kept byte-identical with the first, and the two drifting apart
+would silently produce duplicates.
+
+**Consequences.** A client could send a wrong fingerprint. The blast radius is bounded: the
+value is scoped to `(cart_id, fingerprint)`, so the only effect is that the caller's own
+cart deduplicates badly. Nothing about another user's data depends on it. If a
+server-computed fingerprint becomes necessary — for example when a background worker starts
+ingesting in Phase 7 — it will be added as a verification step, not a replacement.
+
+---
+
+## 2026-07-26 — The capture script decides which pages may be read
+
+**Decision.** The "is this page capturable" check runs inside the injected script, using
+`window.location.href`, rather than in the side panel using the tab's URL.
+
+**Context.** With `activeTab` and no `tabs` permission, the extension cannot read tab URLs
+at all — `chrome.tabs.query` returns entries with `url` undefined. Adding the `tabs`
+permission to perform the check would mean acquiring the ability to read every tab's URL in
+order to decline to read one of them, which is backwards.
+
+**Consequences.** The refusal for checkout, payment, and account pages arrives as a normal
+extraction failure the panel displays. The extension never learns the URL of a page it is
+not allowed to read.
+
+---
+
+## 2026-07-26 — `WXT_E2E=1` grants loopback host access to the test build
+
+**Decision.** The extension build reads `WXT_E2E`; when set, the manifest gains
+`http://127.0.0.1/*`. Release builds have no host permission.
+
+**Context.** In production `activeTab` is conferred by clicking the toolbar button, which
+is what opens the side panel. A headless browser cannot click browser chrome, and
+`chrome.permissions.request` needs a confirmation dialog that headless Chrome cannot
+accept — so without this the end-to-end suite could not exercise injection at all.
+
+**Consequences.** Two builds exist, and the difference is exactly one loopback origin.
+`lib/manifest.test.ts` asserts that the release configuration grants no host permission and
+that neither configuration ever grants broad access; the extension end-to-end suite asserts
+the manifest Chrome actually loaded. The release workflow in Phase 9 must not set the flag.
+
+---
+
+## 2026-07-26 — Observations are writable only by the ingestion function
+
+**Decision.** `authenticated` holds `select` on `item_observations` and nothing else. There
+are no insert, update, or delete policies.
+
+**Context.** Price history is the evidence behind "this dropped 20% since you saved it". A
+client that can write it can fabricate it, and the feature stops meaning anything.
+
+**Consequences.** Every write path for observations must go through
+`ingest_product_capture` or a future `SECURITY DEFINER` sibling. Manual price corrections,
+if they are ever wanted, need an explicit function with `source = 'manual'` rather than a
+direct insert.
