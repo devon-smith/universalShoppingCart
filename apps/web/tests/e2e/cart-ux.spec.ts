@@ -330,6 +330,12 @@ test.describe('dashboard as a daily tool', () => {
     await drawer.getByRole('button', { name: 'Yes, delete it' }).click();
 
     await expect(page.getByTestId('item-card')).toHaveCount(3);
+
+    // The card disappears optimistically, so it is not evidence the row is gone. Wait for
+    // the confirmation the server sends back before asserting the deletion survived — a
+    // reload issued mid-request would otherwise cancel the delete and hide the bug.
+    await expect(page.getByTestId('notice')).toContainText('Deleted');
+
     await page.reload();
     await expect(page.getByTestId('item-card')).toHaveCount(3);
   });

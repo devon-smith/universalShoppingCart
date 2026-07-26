@@ -68,6 +68,8 @@ export function ItemsView({
   const [error, setError] = useState<string | null>(null);
   const [undo, setUndo] = useState<Undo | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onRealtimeChange = useCallback(
     (change: Parameters<Parameters<typeof useItemsRealtime>[1]>[0]) => {
@@ -93,6 +95,13 @@ export function ItemsView({
     if (undoTimer.current) clearTimeout(undoTimer.current);
     setUndo({ message, run });
     undoTimer.current = setTimeout(() => setUndo(null), 10_000);
+  }
+
+  /** Confirmation for a write that has no undo. Shown only once the server has agreed. */
+  function showNotice(message: string) {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    setNotice(message);
+    noticeTimer.current = setTimeout(() => setNotice(null), 6_000);
   }
 
   async function withBusy(id: string, work: () => Promise<void>) {
@@ -180,7 +189,13 @@ export function ItemsView({
     if (!result.ok) {
       setItems(previous);
       setError(result.error ?? 'That item could not be deleted.');
+      return;
     }
+
+    // Deletion is permanent and has no undo, so hiding the card is not the same as the work
+    // being done. Confirm only once the server has agreed, otherwise navigating away during
+    // the request leaves the user believing an item is gone that will reappear on reload.
+    showNotice(`Deleted “${item.title}”.`);
   }
 
   const showingArchived = filters.statuses.includes('archived');
@@ -412,6 +427,14 @@ export function ItemsView({
           >
             Undo
           </button>
+        </div>
+      ) : notice ? (
+        <div
+          role="status"
+          data-testid="notice"
+          className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2.5 text-sm shadow-lg dark:bg-[#0d1015]"
+        >
+          <span>{notice}</span>
         </div>
       ) : null}
     </section>
