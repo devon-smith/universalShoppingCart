@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://shop.northwind.example/products/meridian-wool-runner?utm_source=newsletter",
+    "canonicalUrl": "https://shop.northwind.example/products/meridian-wool-runner",
+    "domain": "shop.northwind.example",
+    "retailerName": "Northwind",
+    "pageTitle": "Meridian Wool Runner — Northwind Goods"
+  },
+  "product": {
+    "title": "Meridian Wool Runner",
+    "brand": "Northwind",
+    "description": "A lightweight everyday shoe in merino wool.",
+    "imageUrls": [
+      "https://cdn.example.com/meridian/1.jpg",
+      "https://cdn.example.com/meridian/2.jpg"
+    ],
+    "selectedImageUrl": "https://cdn.example.com/meridian/1.jpg",
+    "identifiers": {
+      "sku": "MWR-042",
+      "gtin": "0123456789012",
+      "mpn": "NW-MWR-042"
+    }
+  },
+  "offer": {
+    "priceAmount": "98.00",
+    "originalPriceAmount": null,
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Color": "Natural Black",
+    "Size": "10"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "json_ld",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.description",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.identifiers",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.currency",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "selectedVariant",
+      "source": "json_ld",
+      "confidence": 0.7
+    },
+    {
+      "field": "product.title",
+      "source": "meta",
+      "selector": "meta[property=\"og:title\"]",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "meta",
+      "selector": "link[rel=\"canonical\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "meta",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "main h1",
+      "confidence": 0.45
+    }
+  ],
+  "extraction": {
+    "extractorId": "generic",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.906,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

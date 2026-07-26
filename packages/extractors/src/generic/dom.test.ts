@@ -1,0 +1,146 @@
+import { describe, expect, it } from 'vitest';
+
+import { domExtractor } from './dom';
+
+function extract(body: string, url = 'https://shop.example/p/1') {
+  const document = new DOMParser().parseFromString(
+    `<!doctype html><html><head><title>Page</title></head><body>${body}</body></html>`,
+    'text/html',
+  );
+  return domExtractor.extract({ document, url });
+}
+
+describe('domExtractor — price discipline', () => {
+  it('reads an itemprop-annotated price', () => {
+    const result = extract(`
+      <span itemprop="price" content="129.00">$129.00</span>
+      <meta itemprop="priceCurrency" content="USD" />
+    `);
+
+    expect(result.offer?.priceAmount).toBe('129.00');
+    expect(result.offer?.currency).toBe('USD');
+  });
+
+  it('reads a data-price attribute', () => {
+    expect(extract('<div data-price="45.50">Forty-five fifty</div>').offer?.priceAmount).toBe(
+      '45.50',
+    );
+  });
+
+  it('does not pick up unrelated money on the page', () => {
+    // The single most important property of the DOM fallback.
+    const result = extract(`
+      <p>Free shipping on orders over $75.00</p>
+      <p>Or 4 payments of $32.25</p>
+      <p>Members save $10.00</p>
+    `);
+
+    expect(result.offer?.priceAmount).toBeUndefined();
+  });
+
+  it('reads an original price from a struck-through element', () => {
+    const result = extract(`
+      <span itemprop="price" content="80.00">$80.00</span>
+      <s class="price--original">$100.00</s>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('80.00');
+    expect(result.offer?.originalPriceAmount).toBe('100.00');
+  });
+});
+
+describe('domExtractor — title and brand', () => {
+  it('prefers an itemprop name over an h1', () => {
+    const result = extract('<h1>Wrong</h1><span itemprop="name">Right</span>');
+    expect(result.product?.title).toBe('Right');
+  });
+
+  it('prefers a product-classed h1 over a bare one', () => {
+    const result = extract('<h1>Site name</h1><h1 class="product-title">Real product</h1>');
+    expect(result.product?.title).toBe('Real product');
+  });
+
+  it('records the document title separately from the product title', () => {
+    const result = extract('<h1 class="product-title">Real product</h1>');
+    expect(result.source?.pageTitle).toBe('Page');
+    expect(result.product?.title).toBe('Real product');
+  });
+});
+
+describe('domExtractor — availability', () => {
+  it('reads an itemprop availability link', () => {
+    const result = extract('<link itemprop="availability" href="https://schema.org/InStock" />');
+    expect(result.offer?.availability).toBe('in_stock');
+  });
+
+  it('treats a disabled add-to-cart button as out of stock', () => {
+    const result = extract('<button class="add-to-cart" disabled>Add to cart</button>');
+    expect(result.offer?.availability).toBe('out_of_stock');
+  });
+
+  it('treats aria-disabled the same way', () => {
+    const result = extract('<button class="add-to-cart" aria-disabled="true">Add to cart</button>');
+    expect(result.offer?.availability).toBe('out_of_stock');
+  });
+
+  it('treats an enabled add-to-cart button as in stock, but less confidently', () => {
+    const result = extract('<button class="add-to-cart">Add to cart</button>');
+    expect(result.offer?.availability).toBe('in_stock');
+
+    const evidence = result.evidence.find((item) => item.field === 'offer.availability');
+    expect(evidence?.confidence).toBeLessThan(0.5);
+  });
+
+  it('reads an explicit sold-out marker', () => {
+    const result = extract('<p class="sold-out">Sold out</p>');
+    expect(result.offer?.availability).toBe('out_of_stock');
+  });
+
+  it('says nothing when there is no signal', () => {
+    expect(extract('<p>Some copy</p>').offer?.availability).toBeUndefined();
+  });
+});
+
+describe('domExtractor — images', () => {
+  it('resolves relative gallery images', () => {
+    const result = extract('<div class="product-gallery"><img src="/a.jpg" /></div>');
+    expect(result.product?.imageUrls).toEqual(['https://shop.example/a.jpg']);
+  });
+
+  it('does not carry inline data images', () => {
+    const result = extract(
+      '<div class="product-gallery"><img src="data:image/png;base64,AAA" /></div>',
+    );
+    expect(result.product?.imageUrls).toBeUndefined();
+  });
+});
+
+describe('domExtractor — evidence', () => {
+  it('records a selector for every field it claims', () => {
+    const result = extract(`
+      <h1 class="product-title">A lamp</h1>
+      <span itemprop="price" content="10.00">$10.00</span>
+    `);
+
+    const titleEvidence = result.evidence.find((item) => item.field === 'product.title');
+    expect(titleEvidence?.selector).toBe('h1[class*="product"]');
+    expect(titleEvidence?.source).toBe('dom');
+  });
+
+  it('keeps every confidence below the structured-data range', () => {
+    const result = extract(`
+      <h1 class="product-title">A lamp</h1>
+      <span itemprop="price" content="10.00">$10.00</span>
+      <div class="product-gallery"><img src="/a.jpg" /></div>
+    `);
+
+    for (const item of result.evidence) {
+      expect(item.confidence).toBeLessThanOrEqual(0.6);
+    }
+  });
+
+  it('always claims to support a page, so there is always a fallback', () => {
+    const document = new DOMParser().parseFromString('<html><body></body></html>', 'text/html');
+    expect(domExtractor.supports({ document, url: 'https://shop.example/p' })).toBe(true);
+  });
+});

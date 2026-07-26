@@ -15,8 +15,13 @@
   },
   "devDependencies": {
     "@universal-cart/config": "workspace:*",
+    "@universal-cart/test-utils": "workspace:*",
     "eslint": "9.39.5",
+    "jsdom": "29.1.1",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
+  },
+  "dependencies": {
+    "@universal-cart/contracts": "workspace:*"
   }
 }

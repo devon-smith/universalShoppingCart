@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://fieldcraft.example/shop/kestrel-rain-shell",
+    "canonicalUrl": "https://fieldcraft.example/shop/kestrel-rain-shell",
+    "domain": "fieldcraft.example",
+    "retailerName": "Fieldcraft",
+    "pageTitle": "Kestrel Rain Shell — Fieldcraft Supply"
+  },
+  "product": {
+    "title": "Kestrel Rain Shell",
+    "brand": "Fieldcraft",
+    "description": "A packable shell for changeable weather.",
+    "imageUrls": [
+      "https://fieldcraft.example/img/kestrel-hero.jpg",
+      "https://cdn.example.com/kestrel-card.jpg"
+    ],
+    "selectedImageUrl": "https://fieldcraft.example/img/kestrel-hero.jpg",
+    "identifiers": {}
+  },
+  "offer": {
+    "priceAmount": "189.00",
+    "originalPriceAmount": "245.00",
+    "currency": "CAD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {},
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "meta",
+      "selector": "meta[property=\"og:title\"]",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.brand",
+      "source": "meta",
+      "confidence": 0.7
+    },
+    {
+      "field": "product.description",
+      "source": "meta",
+      "confidence": 0.7
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "meta",
+      "selector": "meta[property=\"product:price:amount\"]",
+      "confidence": 0.7
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "meta",
+      "confidence": 0.65
+    },
+    {
+      "field": "offer.currency",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "offer.availability",
+      "source": "meta",
+      "confidence": 0.7
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "meta",
+      "selector": "link[rel=\"canonical\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "meta",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "main h1",
+      "confidence": 0.45
+    }
+  ],
+  "extraction": {
+    "extractorId": "generic",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.728,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

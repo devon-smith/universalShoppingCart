@@ -1,0 +1,136 @@
+import { z } from 'zod';
+
+/**
+ * `ProductCaptureV1` — what the extension produces from a product page and what the
+ * ingestion function consumes (BUILD_PLAN.md §6).
+ *
+ * Design rules this schema enforces rather than merely documents:
+ * - Money is a decimal string. Never a JavaScript number: `0.1 + 0.2` is not a price.
+ * - Currency is an ISO 4217 code when known, `null` otherwise. Never guessed.
+ * - Unknown values are `null` or the explicit `unknown` availability, never invented.
+ * - Evidence is per field, so the UI can explain uncertainty and a regression test can
+ *   say which extractor produced a wrong value.
+ * - Nothing here can carry page HTML, cookies, or tokens: every field is a named scalar.
+ */
+
+export const CAPTURE_SCHEMA_VERSION = 1 as const;
+
+/** Availability, normalized from schema.org URLs, meta tags, and DOM signals. */
+export const availabilitySchema = z.enum([
+  'in_stock',
+  'out_of_stock',
+  'preorder',
+  'backorder',
+  'unknown',
+]);
+export type Availability = z.infer<typeof availabilitySchema>;
+
+/** Where a field value came from, in ascending order of trust. */
+export const evidenceSourceSchema = z.enum(['dom', 'meta', 'json_ld', 'adapter', 'user']);
+export type EvidenceSource = z.infer<typeof evidenceSourceSchema>;
+
+/**
+ * A decimal money amount, as a string.
+ *
+ * Accepts an optional sign, digits, and an optional fractional part. Rejects exponent
+ * notation, thousands separators, and empty fractions — normalization happens before
+ * validation, so anything reaching here should already be canonical.
+ */
+export const decimalStringSchema = z
+  .string()
+  .regex(/^-?\d+(\.\d+)$/, { error: 'Money must be a decimal string such as "19.99"' });
+
+/** ISO 4217 alphabetic code. */
+export const currencyCodeSchema = z
+  .string()
+  .regex(/^[A-Z]{3}$/, { error: 'Currency must be an ISO 4217 code such as "USD"' });
+
+const httpUrlSchema = z.url({ protocol: /^https?$/, error: 'Must be an http(s) URL' });
+
+export const evidenceSchema = z.object({
+  /** Dotted path into the capture, e.g. `offer.priceAmount`. */
+  field: z.string().min(1),
+  source: evidenceSourceSchema,
+  /** Optional CSS selector or JSON pointer, for diagnosing a regression. */
+  selector: z.string().optional(),
+  confidence: z.number().min(0).max(1),
+});
+export type Evidence = z.infer<typeof evidenceSchema>;
+
+export const captureSourceSchema = z.object({
+  url: httpUrlSchema,
+  canonicalUrl: httpUrlSchema.nullable(),
+  domain: z.string().min(1),
+  retailerName: z.string().min(1),
+  pageTitle: z.string().nullable(),
+});
+
+export const productIdentifiersSchema = z.object({
+  sku: z.string().min(1).optional(),
+  gtin: z.string().min(1).optional(),
+  mpn: z.string().min(1).optional(),
+  productId: z.string().min(1).optional(),
+});
+export type ProductIdentifiers = z.infer<typeof productIdentifiersSchema>;
+
+export const captureProductSchema = z.object({
+  title: z.string().nullable(),
+  brand: z.string().nullable(),
+  description: z.string().nullable(),
+  imageUrls: z.array(httpUrlSchema),
+  selectedImageUrl: httpUrlSchema.nullable(),
+  identifiers: productIdentifiersSchema,
+});
+
+export const captureOfferSchema = z.object({
+  priceAmount: decimalStringSchema.nullable(),
+  originalPriceAmount: decimalStringSchema.nullable(),
+  currency: currencyCodeSchema.nullable(),
+  availability: availabilitySchema,
+});
+
+export const captureExtractionSchema = z.object({
+  extractorId: z.string().min(1),
+  extractorVersion: z.string().min(1),
+  overallConfidence: z.number().min(0).max(1),
+  observedAt: z.iso.datetime({ error: 'observedAt must be an ISO 8601 timestamp' }),
+});
+
+export const productCaptureV1Schema = z.object({
+  schemaVersion: z.literal(CAPTURE_SCHEMA_VERSION),
+  source: captureSourceSchema,
+  product: captureProductSchema,
+  offer: captureOfferSchema,
+  /** Only the options currently selected, never the full option matrix. */
+  selectedVariant: z.record(z.string().min(1), z.string()),
+  evidence: z.array(evidenceSchema),
+  extraction: captureExtractionSchema,
+});
+
+export type ProductCaptureV1 = z.infer<typeof productCaptureV1Schema>;
+export type CaptureSource = z.infer<typeof captureSourceSchema>;
+export type CaptureProduct = z.infer<typeof captureProductSchema>;
+export type CaptureOffer = z.infer<typeof captureOfferSchema>;
+export type CaptureExtraction = z.infer<typeof captureExtractionSchema>;
+
+/**
+ * A partial capture, as returned by a single extractor before merging.
+ *
+ * Every field is optional and `evidence` is the only required part, because an extractor
+ * reports what it found — and how sure it is — rather than a complete product.
+ */
+export interface PartialCapture {
+  source?: Partial<CaptureSource>;
+  product?: Partial<CaptureProduct>;
+  offer?: Partial<CaptureOffer>;
+  selectedVariant?: Record<string, string>;
+  evidence: Evidence[];
+}
+
+export function parseProductCaptureV1(payload: unknown): ProductCaptureV1 {
+  return productCaptureV1Schema.parse(payload);
+}
+
+export function safeParseProductCaptureV1(payload: unknown) {
+  return productCaptureV1Schema.safeParse(payload);
+}

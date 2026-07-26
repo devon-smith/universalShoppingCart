@@ -3,18 +3,73 @@
 Updated after every phase. See [BUILD_PLAN.md §22](../BUILD_PLAN.md) for phase definitions
 and acceptance criteria.
 
-| Phase                                  | State       |
-| -------------------------------------- | ----------- |
-| 0 — Repository foundation              | Complete    |
-| 1 — Authentication and authorization   | Complete    |
-| 2 — Generic capture vertical slice     | Not started |
-| 3 — Cart dashboard and core UX         | Not started |
-| 4 — Observations and revisit refresh   | Not started |
-| 5 — Real retailer adapters             | Not started |
-| 6 — Sharing and comparison             | Not started |
-| 7 — Background refresh and alerts      | Not started |
-| 8 — Product matching and AI comparison | Not started |
-| 9 — Release hardening                  | Not started |
+| Phase                                  | State                       |
+| -------------------------------------- | --------------------------- |
+| 0 — Repository foundation              | Complete                    |
+| 1 — Authentication and authorization   | Complete                    |
+| 2 — Generic capture vertical slice     | 2A complete, 2B not started |
+| 3 — Cart dashboard and core UX         | Not started                 |
+| 4 — Observations and revisit refresh   | Not started                 |
+| 5 — Real retailer adapters             | Not started                 |
+| 6 — Sharing and comparison             | Not started                 |
+| 7 — Background refresh and alerts      | Not started                 |
+| 8 — Product matching and AI comparison | Not started                 |
+| 9 — Release hardening                  | Not started                 |
+
+## Phase 2A — Capture contract and extraction engine
+
+**Complete.** Phase 2B — the save vertical slice — has not started.
+
+### What works
+
+- **`ProductCaptureV1`** in `packages/contracts`: a Zod schema that enforces the design
+  rules rather than merely documenting them. Money is a decimal string (a number is
+  rejected outright), currency is ISO 4217 or `null`, URLs must be `http(s)`, unknown
+  values stay `null` or the explicit `unknown` availability, and evidence is per field.
+- **Normalizers**: price (string arithmetic, US and European formats, no rounding),
+  currency (unambiguous symbols only — a bare `$` stays `null`), availability, text, and
+  canonical URLs.
+- **JSON-LD extractor**: multiple script blocks, top-level arrays, `@graph`, `@type` as a
+  string or array, single offers, offer arrays, `AggregateOffer`, `priceSpecification`,
+  brand and image in every shape schema.org allows, and offer selection by SKU.
+- **Open Graph / product meta extractor** with a canonical-link reader.
+- **Generic DOM extractor**: annotation- and landmark-driven only. It does not scan text
+  for currency symbols, and there is a test asserting it ignores "free shipping over
+  $75.00" and "4 payments of $32.25" on the same page as the real price.
+- **Selected-variant detection** from selects, radios, ARIA state, and URL parameters —
+  only what is selected, never the option matrix.
+- **Merge engine** with source ranking, confidence tie-breaks, and empty-value guards; it
+  keeps losing evidence so extractor disagreements stay visible.
+- **Pipeline** that assembles, validates, and reports. A crashing extractor cannot prevent
+  a capture, and its crash is recorded in `extractorFailures` instead of vanishing.
+- **Six sanitized fixtures** with expected-capture JSON, covering structured data, meta
+  only, DOM only, and the nothing-extractable case.
+
+### Verification
+
+| Command          | Result                     |
+| ---------------- | -------------------------- |
+| `pnpm lint`      | Pass — 7 workspaces        |
+| `pnpm typecheck` | Pass — 7 workspaces        |
+| `pnpm test`      | Pass — 21 files, 266 tests |
+| `pnpm build`     | Pass                       |
+
+`packages/extractors` alone contributes 172 tests across 11 files.
+
+### Deliberately not built yet
+
+- `items` and `item_observations` tables, fingerprinting, and the ingestion function.
+- The side-panel capture UI and the content script — no `activeTab` or `scripting`
+  permission has been added.
+- Retailer adapters. The registry slot exists (`priority` above 70) and is empty.
+
+### Known limitations
+
+- No adapter has been written, so extraction quality on a real retailer page is whatever
+  its structured data allows. That is the intended Phase 2A boundary.
+- `retailerName` is derived from the domain and is a display fallback, not an identity.
+- Fixtures use reserved `.example` hosts and invented products; the first real-page
+  regression fixtures arrive with the adapters.
 
 ## Phase 1 — Authentication and authorization
 

@@ -6,7 +6,7 @@ This is **not** a universal checkout system. It never stores retailer credential
 
 ## Status
 
-**Phase 1 complete** — accounts and access control. Sign in from the web app or the extension with Google or an emailed code, get one default cart, and nobody else can read it. Product capture and the dashboard are next. See [docs/STATUS.md](docs/STATUS.md).
+**Phase 2A complete** — accounts, access control, and the extraction engine. Sign in from the web app or the extension, get one default cart nobody else can read; the extractor turns a product page into a validated capture with per-field evidence. Saving that capture is Phase 2B. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Stack
 
@@ -49,6 +49,7 @@ Full setup, local Supabase, and troubleshooting: [docs/RUNBOOK.md](docs/RUNBOOK.
 | [docs/RUNBOOK.md](docs/RUNBOOK.md)           | Setup, local Supabase, releases, troubleshooting                                                   |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md)     | Tables, triggers, and the row-level security matrix                                                |
 | [docs/SECURITY.md](docs/SECURITY.md)         | Secret classification, auth model, extension permissions, known gaps                               |
+| [docs/EXTRACTION.md](docs/EXTRACTION.md)     | How a product page becomes a capture: pipeline, merge rules, normalizers, fixtures                 |
 
 ## How to work on this repo
 

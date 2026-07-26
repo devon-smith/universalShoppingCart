@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://catalogue.example/page",
+    "canonicalUrl": "https://catalogue.example/page",
+    "domain": "catalogue.example",
+    "retailerName": "Catalogue",
+    "pageTitle": "Catalogue"
+  },
+  "product": {
+    "title": null,
+    "brand": null,
+    "description": null,
+    "imageUrls": [],
+    "selectedImageUrl": null,
+    "identifiers": {}
+  },
+  "offer": {
+    "priceAmount": null,
+    "originalPriceAmount": null,
+    "currency": null,
+    "availability": "unknown"
+  },
+  "selectedVariant": {},
+  "evidence": [
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    }
+  ],
+  "extraction": {
+    "extractorId": "generic",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}
