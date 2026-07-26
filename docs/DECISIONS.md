@@ -208,3 +208,68 @@ client that can write it can fabricate it, and the feature stops meaning anythin
 `ingest_product_capture` or a future `SECURITY DEFINER` sibling. Manual price corrections,
 if they are ever wanted, need an explicit function with `source = 'manual'` rather than a
 direct insert.
+
+---
+
+## 2026-07-26 — Observed columns are protected by a trigger, not by convention
+
+**Decision.** `items_protect_observed_fields` restores every retailer-observed column to
+its previous value on any `UPDATE` that is not coming from `ingest_product_capture`, which
+announces itself with a transaction-local setting.
+
+**Context.** Phase 2B stopped a refresh from overwriting user fields by simply not writing
+them. The other direction was unguarded: RLS allows a client to update an item, and
+"update" meant every column. A UI bug — or anyone with the publishable key and a REST
+client — could have rewritten price history through the items table.
+
+**Consequences.** Client edits silently keep observed values rather than failing, because
+the UI sends whole rows and rejecting an unchanged observed column would make every edit an
+error. Any future writer of observed columns must go through the ingestion function or set
+the same marker, and should get its own pgTAP coverage.
+
+---
+
+## 2026-07-26 — Money is selected as `text`
+
+**Decision.** Every query that reads a money column selects it as `current_price::text`
+rather than letting PostgREST serialize the `numeric`.
+
+**Context.** PostgREST reports `numeric` as a JSON number. JSON numbers are IEEE doubles,
+so the exact decimal the database holds is approximated on the way out — the same class of
+error the schema was designed to avoid by not using `float` in the first place.
+
+**Consequences.** Money arrives in TypeScript as a decimal string, matching the capture
+contract. Display code converts to a number only at the last moment for
+`Intl.NumberFormat`; nothing does arithmetic on it. Any new query that reads a money column
+must remember the cast — the generated types will not catch it, because they describe what
+PostgREST _would_ return.
+
+---
+
+## 2026-07-26 — Item mutations do not call `revalidatePath`
+
+**Decision.** The item Server Actions return a result and nothing else. They do not
+invalidate the dashboard route.
+
+**Context.** Revalidating after every status toggle or note edit refetches the entire list
+and re-renders the page, which races the optimistic state it is supposed to confirm — an
+observed source of lost updates when two changes were made in quick succession.
+
+**Consequences.** The client is responsible for its own cache, which it already is:
+optimistic apply, rollback on failure, Realtime for anything it missed. A navigation to
+`/app` still fetches fresh data, because the route is `force-dynamic`.
+
+---
+
+## 2026-07-26 — Filtering and sorting run in the browser
+
+**Decision.** `/app` fetches the user's items once, including archived ones, and filters
+and sorts them client-side.
+
+**Context.** A personal cart is tens to low hundreds of items. Round-tripping every
+keystroke would make search feel worse for no benefit, and would put query construction —
+the part most likely to leak another user's rows — on the critical path of every control.
+
+**Consequences.** The predicates are pure functions over an array with unit tests, so
+moving them into Postgres when a cart outgrows this is mechanical. The threshold to watch
+is payload size, not query time.

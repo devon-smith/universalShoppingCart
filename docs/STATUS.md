@@ -8,13 +8,78 @@ and acceptance criteria.
 | 0 — Repository foundation              | Complete    |
 | 1 — Authentication and authorization   | Complete    |
 | 2 — Generic capture vertical slice     | Complete    |
-| 3 — Cart dashboard and core UX         | Not started |
+| 3 — Cart dashboard and core UX         | Complete    |
 | 4 — Observations and revisit refresh   | Not started |
 | 5 — Real retailer adapters             | Not started |
 | 6 — Sharing and comparison             | Not started |
 | 7 — Background refresh and alerts      | Not started |
 | 8 — Product matching and AI comparison | Not started |
 | 9 — Release hardening                  | Not started |
+
+## Phase 3 — Cart dashboard and daily UX
+
+**Complete.** The dashboard is usable as a daily tool: find something, change it, undo a
+mistake, and see another device's change arrive without a reload.
+
+### What works
+
+- **The observed/authored boundary is now enforced in both directions.** Phase 2B stopped
+  a refresh from touching user fields; `items_protect_observed_fields` now stops a client
+  from touching retailer fields. A client update that includes `current_price` silently
+  keeps the stored value — asserted from SQL in `supabase/tests/03_…`.
+- **Search** across title, brand, retailer, note, and variant values, all terms required.
+- **Filters**: status (archived hidden unless asked for), retailer, availability, on sale,
+  and "hit my target".
+- **Sorting** by recently updated, recently added, price either way, priority, or title.
+  Items with no price sort last in both price directions — unknown is not free.
+- **List and card views.**
+- **Item detail drawer** splitting "what the retailer says" (read-only, with last-checked
+  time and identifiers) from "yours" (status, quantity, priority, desired price, note).
+- **Optimistic mutations** with rollback on failure, and an **undo** for archive that
+  restores the previous status rather than defaulting to `saved`.
+- **Permanent delete** behind a confirmation, offered only from the detail drawer, because
+  it takes the price history with it.
+- **Realtime**: `items` changes patch the local cache; rows for carts this view is not
+  showing are ignored.
+- **Extension panel** shows recent items with their status and a one-tap next step.
+- **Money leaves Postgres as text.** `current_price::text` and friends: PostgREST returns
+  `numeric` as a JSON number otherwise, and a JSON number is a double.
+
+### Verification
+
+| Command          | Result                                       |
+| ---------------- | -------------------------------------------- |
+| `pnpm lint`      | Pass — 7 workspaces                          |
+| `pnpm typecheck` | Pass — 7 workspaces                          |
+| `pnpm test`      | Pass — 30 files, 381 tests                   |
+| `pnpm build`     | Pass                                         |
+| `pnpm test:db`   | Pass — 4 files, 70 pgTAP assertions          |
+| `pnpm test:e2e`  | Pass — 26 web + 8 extension Playwright tests |
+
+The Phase 3 end-to-end tests drive the dashboard the way a person would: search by several
+terms, filter by retailer and availability and sale, sort and check that an unknown price
+sorts last, switch views, edit the user fields and confirm the observed ones did not move,
+reject an invalid quantity before it reaches the database, change status from a card,
+archive and undo back to the _previous_ status, show archived only when asked, and delete
+permanently only after confirming.
+
+### Deliberately not built yet
+
+- Price history and revisit refresh — Phase 4. The detail drawer shows the last observation
+  time but not the series.
+- Sharing, invitations, and the compare tray — Phase 6.
+- Multi-cart switching. Items from every cart the user can read appear in one list; the
+  cart switcher lands with sharing, when a second cart first becomes possible.
+
+### Known limitations
+
+- Filtering and sorting happen in the browser over the full list. That is right at
+  personal-cart scale and the predicates are pure functions, so moving them into Postgres
+  later is mechanical rather than a rewrite.
+- The undo lives for ten seconds and is not restored on reload.
+- Realtime updates arrive for the list, not for an open detail drawer's form fields; a
+  concurrent edit would be overwritten by whichever save lands last (BUILD_PLAN.md §13.2
+  specifies last-write-wins for the MVP).
 
 ## Phase 2B — Capture save vertical slice
 
