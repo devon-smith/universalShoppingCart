@@ -182,6 +182,40 @@ When it is worth configuring:
 4. Verify manually: sign in with Google on the web app, then on the extension, and confirm
    both land on the same user id and the same default cart.
 
+## Manual pre-release checks
+
+These cannot run in CI, and the reason is worth stating plainly rather than leaving as a
+silent gap.
+
+**How capture is authorized.** `activeTab` is granted when the user _invokes_ the
+extension — the toolbar icon, the context menu, or the keyboard shortcut — and it is
+revoked the moment that tab navigates. The side panel does not share that lifecycle: it
+stays open across navigations, so a button inside it is not an invocation and holds no
+grant by the time somebody has browsed to a product page. That is why "Save to Universal
+Cart" and ⌘⇧U exist; they are the authorization mechanism, not conveniences.
+
+A headless browser cannot click a toolbar button or a real context-menu item, so the
+end-to-end build grants `http://127.0.0.1/*` instead. **The tested build and the shipped
+build therefore authorize page access by different mechanisms.** `tests/e2e/authorization.spec.ts`
+covers everything a browser can check — that the menu is registered, the command declared,
+and no build holds broad host access — but the grant itself is Chrome's behaviour and has
+to be seen by hand:
+
+- [ ] Load the release build unpacked (`pnpm --filter @universal-cart/extension build`, no
+      `WXT_E2E`). Confirm `chrome://extensions` shows no host permissions.
+- [ ] Open the side panel from the toolbar, then browse to a product page on another site.
+- [ ] Right-click the page → **Save to Universal Cart**. A preview must appear in the panel.
+- [ ] Repeat with ⌘⇧U (Ctrl+Shift+U on Windows).
+- [ ] Press the panel's own capture button on a page you navigated to after opening the
+      panel. It is expected to fail — confirm it explains the right-click route rather than
+      leaking Chrome's "Cannot access contents of the page".
+
+**Known inert feature.** Automatic revisit-refresh runs when the panel mounts, with no
+invocation on that tab, so it can never hold `activeTab` and reads nothing in a release
+build. It fails silently by design. Making it work needs an optional host permission
+granted per origin at the user's request; until then, refresh a saved item by capturing it
+again.
+
 ## Releases
 
 - **Web** — staging as above. Production Vercel wiring is Phase 9.
