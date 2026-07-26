@@ -60,10 +60,35 @@ misconfiguration alone cannot expose it.
 
 ## Extension permissions
 
-Requested today: `sidePanel`, `storage`, `identity`. No `host_permissions`, no
-`<all_urls>`, no `activeTab`, no `scripting` — the extension reads no page content yet.
-`apps/extension/tests/e2e/auth.spec.ts` asserts the manifest against exactly this list, so
-a permission cannot be added quietly.
+Requested today: `sidePanel`, `storage`, `identity`, `activeTab`, `scripting`. No
+`host_permissions` and no `<all_urls>` in a release build.
+
+`activeTab` is the whole design. It grants access to one tab, at the moment the user
+invokes the extension, and expires on navigation — so the extension can read the product
+page in front of the user and nothing else. The capture script is **unlisted**: it appears
+in no `content_scripts` entry, matches no host, and is injected on demand with
+`chrome.scripting.executeScript`.
+
+Two tests guard this. `apps/extension/lib/manifest.test.ts` pins the exact permission list
+and asserts that no build grants broad host access; the extension end-to-end suite reads
+the manifest back out of the _running_ extension, so a permission cannot be added quietly.
+
+The end-to-end build (`WXT_E2E=1`) additionally grants `http://127.0.0.1/*`, because a
+headless browser cannot click the toolbar button that confers `activeTab` in a real
+session. A release build must never set that flag.
+
+### What the capture script may read
+
+The "may this page be read at all" decision lives inside the injected script, not in the
+panel — only code running on the page can see its URL. Asking for the `tabs` permission to
+make that check in the panel would mean reading every tab's URL in order to decline to
+read one of them.
+
+Refused outright, regardless of what the user clicks: `/checkout`, `/payment`, `/billing`,
+`/account`, `/signin`, `/login`, `/order`, and anything that is not `http(s)`. The script
+reads the DOM, runs extraction, and returns a `ProductCaptureV1` — a fixed set of named
+scalars. It cannot carry page HTML, cookies, tokens, or unrelated page text, because
+there is no field in the contract that would hold them.
 
 The manifest sets `script-src 'self'; object-src 'self'`. There is no `eval`, no remote
 code, and no downloaded extraction logic; `no-eval`, `no-implied-eval`, and `no-new-func`
@@ -71,8 +96,9 @@ are errors in the shared ESLint config.
 
 ## Privacy
 
-Not collected, at all: browsing history, cookies, page HTML, retailer credentials,
-payment details. The extension has no way to read a page in this build.
+Not collected, at all: browsing history, cookies, page HTML, retailer credentials, payment
+details. Extraction runs only after an explicit click, only on the tab in front of the
+user, and only on pages the script agrees to read.
 
 Still to come: the privacy page, data export, and account deletion land in Phase 9.
 

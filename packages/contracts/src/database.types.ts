@@ -99,6 +99,160 @@ export type Database = {
         }
         Relationships: []
       }
+      item_observations: {
+        Row: {
+          availability: Database["public"]["Enums"]["item_availability"]
+          confidence: number | null
+          currency: string | null
+          extractor_id: string | null
+          extractor_version: string | null
+          id: number
+          item_id: string
+          observed_at: string
+          original_price: number | null
+          price: number | null
+          source: Database["public"]["Enums"]["observation_source"]
+        }
+        Insert: {
+          availability?: Database["public"]["Enums"]["item_availability"]
+          confidence?: number | null
+          currency?: string | null
+          extractor_id?: string | null
+          extractor_version?: string | null
+          id?: never
+          item_id: string
+          observed_at?: string
+          original_price?: number | null
+          price?: number | null
+          source: Database["public"]["Enums"]["observation_source"]
+        }
+        Update: {
+          availability?: Database["public"]["Enums"]["item_availability"]
+          confidence?: number | null
+          currency?: string | null
+          extractor_id?: string | null
+          extractor_version?: string | null
+          id?: never
+          item_id?: string
+          observed_at?: string
+          original_price?: number | null
+          price?: number | null
+          source?: Database["public"]["Enums"]["observation_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_observations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          availability: Database["public"]["Enums"]["item_availability"]
+          brand: string | null
+          canonical_url: string | null
+          cart_id: string
+          created_at: string
+          created_by: string
+          currency: string | null
+          current_price: number | null
+          description: string | null
+          desired_price: number | null
+          domain: string
+          extraction_confidence: number | null
+          extractor_id: string | null
+          extractor_version: string | null
+          fingerprint: string
+          id: string
+          identifiers: Json
+          image_url: string | null
+          last_observed_at: string | null
+          note: string | null
+          original_price: number | null
+          priority: Database["public"]["Enums"]["item_priority"]
+          quantity: number
+          retailer_name: string
+          selected_variant: Json
+          source_url: string
+          status: Database["public"]["Enums"]["item_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          availability?: Database["public"]["Enums"]["item_availability"]
+          brand?: string | null
+          canonical_url?: string | null
+          cart_id: string
+          created_at?: string
+          created_by: string
+          currency?: string | null
+          current_price?: number | null
+          description?: string | null
+          desired_price?: number | null
+          domain: string
+          extraction_confidence?: number | null
+          extractor_id?: string | null
+          extractor_version?: string | null
+          fingerprint: string
+          id?: string
+          identifiers?: Json
+          image_url?: string | null
+          last_observed_at?: string | null
+          note?: string | null
+          original_price?: number | null
+          priority?: Database["public"]["Enums"]["item_priority"]
+          quantity?: number
+          retailer_name: string
+          selected_variant?: Json
+          source_url: string
+          status?: Database["public"]["Enums"]["item_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          availability?: Database["public"]["Enums"]["item_availability"]
+          brand?: string | null
+          canonical_url?: string | null
+          cart_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string | null
+          current_price?: number | null
+          description?: string | null
+          desired_price?: number | null
+          domain?: string
+          extraction_confidence?: number | null
+          extractor_id?: string | null
+          extractor_version?: string | null
+          fingerprint?: string
+          id?: string
+          identifiers?: Json
+          image_url?: string | null
+          last_observed_at?: string | null
+          note?: string | null
+          original_price?: number | null
+          priority?: Database["public"]["Enums"]["item_priority"]
+          quantity?: number
+          retailer_name?: string
+          selected_variant?: Json
+          source_url?: string
+          status?: Database["public"]["Enums"]["item_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -133,10 +287,31 @@ export type Database = {
     Functions: {
       can_edit_cart: { Args: { p_cart_id: string }; Returns: boolean }
       can_read_cart: { Args: { p_cart_id: string }; Returns: boolean }
+      ingest_product_capture: {
+        Args: {
+          p_capture: Json
+          p_cart_id: string
+          p_fingerprint: string
+          p_source?: Database["public"]["Enums"]["observation_source"]
+          p_user_fields?: Json
+        }
+        Returns: Json
+      }
+      observation_refresh_interval: { Args: never; Returns: string }
       owns_cart: { Args: { p_cart_id: string }; Returns: boolean }
+      parse_money: { Args: { p_value: string }; Returns: number }
     }
     Enums: {
       cart_role: "owner" | "editor" | "viewer"
+      item_availability:
+        | "in_stock"
+        | "out_of_stock"
+        | "preorder"
+        | "backorder"
+        | "unknown"
+      item_priority: "low" | "normal" | "high"
+      item_status: "saved" | "cart" | "purchased" | "archived"
+      observation_source: "capture" | "revisit" | "manual" | "background"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -268,6 +443,16 @@ export const Constants = {
   public: {
     Enums: {
       cart_role: ["owner", "editor", "viewer"],
+      item_availability: [
+        "in_stock",
+        "out_of_stock",
+        "preorder",
+        "backorder",
+        "unknown",
+      ],
+      item_priority: ["low", "normal", "high"],
+      item_status: ["saved", "cart", "purchased", "archived"],
+      observation_source: ["capture", "revisit", "manual", "background"],
     },
   },
 } as const

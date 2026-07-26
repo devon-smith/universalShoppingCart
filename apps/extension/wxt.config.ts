@@ -1,21 +1,28 @@
 import { defineConfig } from 'wxt';
 
+import { buildHostPermissions, buildPermissions } from './lib/manifest';
+
 /**
  * Manifest V3 configuration.
  *
- * Permissions stay at the minimum the implemented features need (BUILD_PLAN.md §11.5).
- * Phase 0 ships a side panel and nothing else, so it asks only for `sidePanel` and
- * `storage`. `activeTab` and `scripting` are added in Phase 2B alongside the
- * content script that performs click-to-capture; no host permission is requested
- * at install time, ever.
+ * The permission set lives in `lib/manifest.ts` so it can be unit tested — see
+ * `lib/manifest.test.ts`, which pins the exact list and asserts that no build grants
+ * broad host access (BUILD_PLAN.md §11.5).
+ *
+ * `WXT_E2E=1` produces the end-to-end build, which additionally grants loopback host
+ * access, because a headless browser cannot click the toolbar button that confers
+ * `activeTab` in a real session. `pnpm test:e2e` sets it; a release build must not.
  */
+const e2e = process.env.WXT_E2E === '1';
+
 export default defineConfig({
   srcDir: '.',
   modules: ['@wxt-dev/module-react'],
   manifest: {
     name: 'Universal Cart',
     description: 'Save the product you are looking at to your cloud-synced shopping list.',
-    permissions: ['sidePanel', 'storage', 'identity'],
+    permissions: buildPermissions(),
+    host_permissions: buildHostPermissions({ e2e }),
     action: {
       default_title: 'Open Universal Cart',
     },

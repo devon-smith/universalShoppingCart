@@ -32,6 +32,9 @@ importers:
       '@universal-cart/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@universal-cart/extractors':
+        specifier: workspace:*
+        version: link:../../packages/extractors
       '@universal-cart/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -63,6 +66,9 @@ importers:
       eslint:
         specifier: 9.39.5
         version: 9.39.5(jiti@2.7.0)
+      globals:
+        specifier: 16.5.0
+        version: 16.5.0
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -84,6 +90,9 @@ importers:
       '@universal-cart/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@universal-cart/extractors':
+        specifier: workspace:*
+        version: link:../../packages/extractors
       '@universal-cart/ui':
         specifier: workspace:*
         version: link:../../packages/ui

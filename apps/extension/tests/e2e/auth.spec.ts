@@ -24,9 +24,10 @@ test.describe('side panel sign-in', () => {
     await page.getByLabel(/6-digit code sent to/).fill(code);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-    // Signed in: the account section and the default cart created at signup appear.
+    // Signed in: the capture surface and the account section appear.
+    await expect(page.getByRole('heading', { name: 'Save a product' })).toBeVisible();
     await expect(page.getByText(email)).toBeVisible();
-    await expect(page.getByRole('listitem').filter({ hasText: 'My cart' })).toBeVisible();
+    await expect(page.getByText('Nothing saved yet')).toBeVisible();
 
     // The session lives in extension-local storage, not in a cookie or in memory.
     const stored = await page.evaluate(async () => {
@@ -97,7 +98,16 @@ test.describe('side panel sign-in', () => {
     });
 
     expect(manifest.manifest_version).toBe(3);
-    expect(manifest.permissions.sort()).toEqual(['identity', 'sidePanel', 'storage']);
-    expect(manifest.host_permissions ?? []).toEqual([]);
+    expect(manifest.permissions.sort()).toEqual([
+      'activeTab',
+      'identity',
+      'scripting',
+      'sidePanel',
+      'storage',
+    ]);
+
+    // This is the end-to-end build, which grants loopback access only; a release build
+    // grants no host permission at all, asserted in lib/manifest.test.ts.
+    expect(manifest.host_permissions ?? []).toEqual(['http://127.0.0.1/*']);
   });
 });

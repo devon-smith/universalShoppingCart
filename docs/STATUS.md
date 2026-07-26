@@ -3,22 +3,100 @@
 Updated after every phase. See [BUILD_PLAN.md §22](../BUILD_PLAN.md) for phase definitions
 and acceptance criteria.
 
-| Phase                                  | State                       |
-| -------------------------------------- | --------------------------- |
-| 0 — Repository foundation              | Complete                    |
-| 1 — Authentication and authorization   | Complete                    |
-| 2 — Generic capture vertical slice     | 2A complete, 2B not started |
-| 3 — Cart dashboard and core UX         | Not started                 |
-| 4 — Observations and revisit refresh   | Not started                 |
-| 5 — Real retailer adapters             | Not started                 |
-| 6 — Sharing and comparison             | Not started                 |
-| 7 — Background refresh and alerts      | Not started                 |
-| 8 — Product matching and AI comparison | Not started                 |
-| 9 — Release hardening                  | Not started                 |
+| Phase                                  | State       |
+| -------------------------------------- | ----------- |
+| 0 — Repository foundation              | Complete    |
+| 1 — Authentication and authorization   | Complete    |
+| 2 — Generic capture vertical slice     | Complete    |
+| 3 — Cart dashboard and core UX         | Not started |
+| 4 — Observations and revisit refresh   | Not started |
+| 5 — Real retailer adapters             | Not started |
+| 6 — Sharing and comparison             | Not started |
+| 7 — Background refresh and alerts      | Not started |
+| 8 — Product matching and AI comparison | Not started |
+| 9 — Release hardening                  | Not started |
+
+## Phase 2B — Capture save vertical slice
+
+**Complete.** A product page can be captured in the extension and appears in the web
+dashboard; saving it twice refreshes it instead of duplicating.
+
+### What works
+
+- **Schema.** `items` and `item_observations`, with the user-authored / retailer-observed
+  split enforced by the ingestion function rather than by convention. Money is
+  `numeric(20,6)`; a partial unique index on `(cart_id, fingerprint)` over non-archived
+  rows makes a duplicate save impossible. Observations are select-only for clients — they
+  are written exclusively by the ingestion function, because price history a browser can
+  rewrite is not history.
+- **Fingerprinting.** SHA-256 over the normalized canonical URL, the selected variant, and
+  the primary identifier. Price is deliberately not an input.
+- **`ingest_product_capture`.** One transaction: authenticate, check edit access, reject an
+  unsupported schema version or a malformed fingerprint or a locale-formatted price, find
+  by fingerprint, insert or refresh observed columns only, and append an observation only
+  when something changed or the last one is over 12 hours old.
+- **Capture flow.** An unlisted script injected under `activeTab` — no `content_scripts`
+  entry, no host permission — reads the DOM, decides for itself whether the page may be
+  read at all, and returns a capture over a versioned, request-correlated message.
+- **Side panel.** Preview with the extracted image, editable title/price/currency, variant
+  chips, quantity, note, destination cart, and a recent-items list. Uncertain fields are
+  marked rather than blocking the save.
+- **Dashboard.** Saved products with price, discount, variant, note, quantity,
+  availability, and last-checked time. Missing values say "unknown" instead of showing a
+  blank.
+
+### Verification
+
+| Command                                    | Result                                       |
+| ------------------------------------------ | -------------------------------------------- |
+| `pnpm lint`                                | Pass — 7 workspaces                          |
+| `pnpm typecheck`                           | Pass — 7 workspaces                          |
+| `pnpm test`                                | Pass — 27 files, 330 tests                   |
+| `pnpm build`                               | Pass — web and extension production bundles  |
+| `pnpm test:db`                             | Pass — 3 files, 56 pgTAP assertions          |
+| `pnpm test:e2e`                            | Pass — 16 web + 8 extension Playwright tests |
+| `pnpm supabase:start` / `:reset` / `:stop` | Pass                                         |
+
+The extension suite drives a real Chromium with the built extension loaded, against a
+local fixture server:
+
+- captures `json-ld-complete.html`, showing the extracted title, price, currency, and
+  variant in the preview
+- edits the title, adds a note and a quantity, saves, and sees the item in the panel
+- captures the same page again and gets "Already saved — refreshed", with one item
+- captures a page whose price exists only in the DOM
+- fills in a page that states nothing, after being told which fields to check
+- refuses to read a checkout URL
+
+The web suite ingests a capture through the real RPC as a second client and then checks the
+dashboard in the browser:
+
+- price, sale price, discount, retailer, variant, note, quantity, and availability render
+- a duplicate save shows as one refreshed item with the note and quantity intact
+- a capture with no price says "Price unknown", not a blank
+- another user's products are not visible
+
+### Deliberately not built yet
+
+- Search, filters, sorting, and the item detail drawer — Phase 3.
+- Editing a saved item from the dashboard; today user fields are set at capture time.
+- Realtime subscriptions: the dashboard reflects saves on load, not live.
+- Revisit refresh and price history views — Phase 4.
+- Retailer adapters — Phase 5.
+
+### Known limitations
+
+- **The end-to-end build grants `http://127.0.0.1/*`.** A headless browser cannot click
+  the toolbar button that confers `activeTab`, so `WXT_E2E=1` adds loopback host access.
+  A release build has no host permission at all; `lib/manifest.test.ts` asserts it.
+- The dashboard is a list, not yet a working cart UI. That is Phase 3.
+- Fingerprints are computed client-side. The server verifies the shape and scopes them to
+  the cart, so a wrong value only affects the caller's own deduplication — but a client
+  that computes them differently would create duplicates for itself.
 
 ## Phase 2A — Capture contract and extraction engine
 
-**Complete.** Phase 2B — the save vertical slice — has not started.
+**Complete.**
 
 ### What works
 
@@ -47,12 +125,12 @@ and acceptance criteria.
 
 ### Verification
 
-| Command          | Result                     |
-| ---------------- | -------------------------- |
-| `pnpm lint`      | Pass — 7 workspaces        |
-| `pnpm typecheck` | Pass — 7 workspaces        |
-| `pnpm test`      | Pass — 21 files, 266 tests |
-| `pnpm build`     | Pass                       |
+| Command          | Result                                                 |
+| ---------------- | ------------------------------------------------------ |
+| `pnpm lint`      | Pass — 7 workspaces                                    |
+| `pnpm typecheck` | Pass — 7 workspaces                                    |
+| `pnpm test`      | Pass — 21 files, 266 tests (at the time of that phase) |
+| `pnpm build`     | Pass                                                   |
 
 `packages/extractors` alone contributes 172 tests across 11 files.
 

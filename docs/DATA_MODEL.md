@@ -5,8 +5,8 @@ Current schema. Reference: [BUILD_PLAN.md](../BUILD_PLAN.md) §7–§8. Migratio
 are committed at `packages/contracts/src/database.types.ts` and refreshed with
 `pnpm db:types`.
 
-Product tables (`items`, `item_observations`) arrive in Phase 2B and are deliberately
-absent here.
+The user-authored / retailer-observed split described under `items` is the load-bearing
+idea in this schema: a refresh may rewrite one group and may never touch the other.
 
 ## Tables
 
@@ -58,16 +58,83 @@ complete; authority itself comes from `carts.owner_id`.
 
 Index: `cart_members_user_id_idx (user_id)`.
 
+### `items`
+
+A saved product. The columns fall into three groups, and the grouping is the point.
+
+**User-authored — a retailer refresh must never write these:**
+
+| Column          | Type                 | Notes                                                           |
+| --------------- | -------------------- | --------------------------------------------------------------- |
+| `status`        | `item_status` enum   | `saved` \| `cart` \| `purchased` \| `archived`, default `saved` |
+| `quantity`      | `integer`            | > 0, default 1                                                  |
+| `note`          | `text`               | ≤ 2000 characters                                               |
+| `priority`      | `item_priority` enum | `low` \| `normal` \| `high`                                     |
+| `desired_price` | `numeric(20,6)`      | ≥ 0 when present                                                |
+
+**Retailer-observed — rewritten on every capture and revisit:**
+
+| Column             | Type                     | Notes                        |
+| ------------------ | ------------------------ | ---------------------------- |
+| `source_url`       | `text`                   | the URL as visited           |
+| `canonical_url`    | `text`                   | when the page provides one   |
+| `domain`           | `text`                   |                              |
+| `retailer_name`    | `text`                   |                              |
+| `title`            | `text`                   | non-blank                    |
+| `brand`            | `text`                   |                              |
+| `description`      | `text`                   |                              |
+| `image_url`        | `text`                   |                              |
+| `currency`         | `text`                   | ISO 4217 when present        |
+| `current_price`    | `numeric(20,6)`          | ≥ 0 when present             |
+| `original_price`   | `numeric(20,6)`          | ≥ 0 when present             |
+| `availability`     | `item_availability` enum | default `unknown`            |
+| `selected_variant` | `jsonb`                  | only what is selected        |
+| `identifiers`      | `jsonb`                  | sku / gtin / mpn / productId |
+
+**Provenance:** `fingerprint` (64 lowercase hex, checked), `extractor_id`,
+`extractor_version`, `extraction_confidence` (0–1), `last_observed_at`, `created_by`.
+
+Indexes: `(cart_id, status, updated_at desc)`, `(domain)`, `(created_by)`, and a **partial
+unique index** `(cart_id, fingerprint) where status <> 'archived'`. That index is what
+makes a re-save refresh rather than duplicate; excluding archived rows means archiving
+something and saving it again works the way a user expects.
+
+`cart_id` and `created_by` are immutable (`items_freeze_provenance`).
+
+### `item_observations`
+
+Append-only price and availability history. One row per genuine change, not per visit.
+
+| Column                                            | Type                                                                          |
+| ------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `id`                                              | `bigint` identity                                                             |
+| `item_id`                                         | `uuid`, cascade on delete                                                     |
+| `observed_at`                                     | `timestamptz`                                                                 |
+| `price`, `original_price`                         | `numeric(20,6)`                                                               |
+| `currency`                                        | `text`                                                                        |
+| `availability`                                    | `item_availability` enum                                                      |
+| `source`                                          | `observation_source` enum: `capture` \| `revisit` \| `manual` \| `background` |
+| `extractor_id`, `extractor_version`, `confidence` | provenance                                                                    |
+
+Index: `(item_id, observed_at desc)`.
+
+`authenticated` holds **select only**. Rows are written exclusively by
+`ingest_product_capture`; price history a client can rewrite is not history.
+
 ## Functions and triggers
 
-| Name                                | Kind                    | Purpose                                             |
-| ----------------------------------- | ----------------------- | --------------------------------------------------- |
-| `public.set_updated_at()`           | trigger                 | stamps `updated_at` on update                       |
-| `public.handle_new_user()`          | trigger on `auth.users` | creates profile, default cart, and owner membership |
-| `public.reject_cart_owner_change()` | trigger                 | rejects any change to `carts.owner_id`              |
-| `public.can_read_cart(uuid)`        | `security definer`      | owner or any member                                 |
-| `public.can_edit_cart(uuid)`        | `security definer`      | owner or `owner`/`editor` member                    |
-| `public.owns_cart(uuid)`            | `security definer`      | owner only                                          |
+| Name                                     | Kind                    | Purpose                                              |
+| ---------------------------------------- | ----------------------- | ---------------------------------------------------- |
+| `public.set_updated_at()`                | trigger                 | stamps `updated_at` on update                        |
+| `public.handle_new_user()`               | trigger on `auth.users` | creates profile, default cart, and owner membership  |
+| `public.reject_cart_owner_change()`      | trigger                 | rejects any change to `carts.owner_id`               |
+| `public.can_read_cart(uuid)`             | `security definer`      | owner or any member                                  |
+| `public.can_edit_cart(uuid)`             | `security definer`      | owner or `owner`/`editor` member                     |
+| `public.owns_cart(uuid)`                 | `security definer`      | owner only                                           |
+| `public.reject_item_created_by_change()` | trigger                 | `items.created_by` and `items.cart_id` are immutable |
+| `public.parse_money(text)`               | immutable               | decimal string → numeric, rejecting locale formats   |
+| `public.observation_refresh_interval()`  | immutable               | how stale an unchanged observation may get (12h)     |
+| `public.ingest_product_capture(...)`     | `security definer`      | atomic capture save; see below                       |
 
 The three predicates are `security definer` to break the policy recursion between `carts`
 and `cart_members`: each policy needs to consult the other table, which its own RLS would
@@ -85,7 +152,43 @@ request is rejected before any policy is consulted.
 | `carts`        | `can_read_cart(id)`      | `owner_id = auth.uid()` | `can_edit_cart(id)` | owner only                      |
 | `cart_members` | `can_read_cart(cart_id)` | owner of the cart       | owner of the cart   | owner, or the member themselves |
 
-Coverage lives in `supabase/tests/` and runs with `pnpm test:db`.
+| `items` | `can_read_cart(cart_id)` | `can_edit_cart` **and** `created_by = auth.uid()` | `can_edit_cart(cart_id)` | `can_edit_cart(cart_id)` |
+| `item_observations` | via the item's cart | — (function only) | — | — |
+
+Coverage lives in `supabase/tests/` and runs with `pnpm test:db` — 56 assertions.
+
+## `ingest_product_capture`
+
+```sql
+ingest_product_capture(
+  p_capture jsonb,
+  p_cart_id uuid,
+  p_fingerprint text,
+  p_user_fields jsonb default '{}',
+  p_source observation_source default 'capture'
+) returns jsonb  -- { created, observationInserted, item }
+```
+
+One transaction rather than several client-side writes (BUILD_PLAN.md §8.3). In order it:
+
+1. requires an authenticated caller and edit access to the destination cart;
+2. rejects an unsupported `schemaVersion` instead of guessing at the payload;
+3. rejects a fingerprint that is not 64 lowercase hex characters;
+4. requires a title — a user correction wins over the extractor's value;
+5. parses money with `parse_money`, so a locale-formatted string fails loudly rather than
+   being silently truncated by a cast;
+6. finds an active item with the same `(cart_id, fingerprint)`;
+7. inserts it, or **refreshes only the retailer-observed columns**;
+8. appends an observation only when a tracked value changed or the newest one is older
+   than `observation_refresh_interval()`.
+
+It is `SECURITY DEFINER` because it writes `item_observations`, so its access checks are
+explicit in the body rather than delegated to RLS.
+
+The fingerprint is computed by the client (`packages/extractors/src/fingerprint.ts`)
+because the URL and variant normalization it depends on must produce identical values on
+every surface. The server verifies its shape and scopes it to the cart, so a wrong value
+can only affect the caller's own deduplication.
 
 ## Conventions
 
