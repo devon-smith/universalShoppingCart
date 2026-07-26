@@ -15,7 +15,7 @@ export default defineConfig({
   manifest: {
     name: 'Universal Cart',
     description: 'Save the product you are looking at to your cloud-synced shopping list.',
-    permissions: ['sidePanel', 'storage'],
+    permissions: ['sidePanel', 'storage', 'identity'],
     action: {
       default_title: 'Open Universal Cart',
     },

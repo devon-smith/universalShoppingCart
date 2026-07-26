@@ -156,11 +156,20 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+# Local development origin. The hosted project sets this to the production web app URL.
+site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# The web app always supplies its own origin as the auth redirect target, so every
+# origin it can be served from locally is listed: 3000 for `pnpm dev` and 3100 for the
+# Playwright suite (PLAYWRIGHT_WEB_PORT). A hosted project lists its real origins here.
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "http://127.0.0.1:3000/**",
+  "http://localhost:3100/**",
+  "http://127.0.0.1:3100/**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -196,7 +205,9 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# Raised well above the default of 2 because the end-to-end suite signs several throwaway
+# users in per run. A hosted project should keep a conservative production value.
+email_sent = 200
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -243,10 +254,13 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# The default magic-link email points at the implicit-flow verify endpoint, which puts
+# the session in a URL fragment the server cannot read. This template points at the
+# app's own /auth/confirm route instead, which exchanges the token server-side.
+# A hosted project needs the same template configured in the dashboard.
+[auth.email.template.magic_link]
+subject = "Sign in to Universal Cart"
+content_path = "./supabase/templates/magic_link.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -338,6 +352,18 @@ email_optional = false
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]
 enabled = false
+
+# Google sign-in. Disabled locally by default because it needs real OAuth credentials;
+# set both variables and flip `enabled` to exercise the flow against a local stack.
+# The hosted project configures this in the Supabase dashboard, never in this file.
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
+# Extension sign-in redirects to the chrome-extension:// identity URL; the web app
+# redirects to /auth/callback. Both must be allow-listed in the Google console.
+redirect_uri = ""
+skip_nonce_check = false
 
 # Use Firebase Auth as a third-party provider alongside Supabase Auth.
 [auth.third_party.firebase]

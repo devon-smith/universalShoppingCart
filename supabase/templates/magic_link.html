@@ -1,0 +1,14 @@
+<h2>Sign in to Universal Cart</h2>
+
+<p>Click the link below to sign in on this device. It expires in one hour and can be used once.</p>
+
+<p>
+  <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email">Sign in</a>
+</p>
+
+<p>
+  Signing in from the browser extension? Enter this code instead:
+  <strong>{{ .Token }}</strong>
+</p>
+
+<p>If you did not request this, you can ignore this email.</p>

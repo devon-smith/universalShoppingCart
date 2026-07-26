@@ -36,6 +36,14 @@ export const reactConfig = [
       'react/prop-types': 'off',
     },
   },
+  {
+    files: ['**/tests/**/*.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    rules: {
+      // Playwright fixtures take a callback named `use`, which the hooks rule mistakes
+      // for React's `use`.
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
 ];
 
 export default reactConfig;

@@ -15,7 +15,6 @@ if it were a procedure.
 
 ```bash
 pnpm install                 # also runs `wxt prepare` for the extension
-cp .env.example .env         # documentation only; no secrets live here
 cp apps/web/.env.example apps/web/.env.local
 cp apps/extension/.env.example apps/extension/.env
 
@@ -25,11 +24,21 @@ pnpm test
 pnpm build
 ```
 
-Playwright needs browser binaries once per machine:
+Sign-in needs a Supabase project. Start the local stack and copy two values into both
+env files:
 
 ```bash
-pnpm --filter @universal-cart/web exec playwright install chromium
-pnpm test:e2e
+pnpm supabase:start
+pnpm supabase:status         # API URL -> *_SUPABASE_URL, publishable key -> *_SUPABASE_PUBLISHABLE_KEY
+```
+
+The end-to-end suites sign real users in, so they need the stack running. They read the
+connection details from it automatically:
+
+```bash
+pnpm --filter @universal-cart/web exec playwright install chromium   # once per machine
+pnpm test:db                 # pgTAP: schema, triggers, RLS
+pnpm test:e2e                # web + extension Playwright suites
 ```
 
 ## Development
@@ -56,6 +65,33 @@ pnpm supabase:stop
 Copy the printed API URL and publishable key into `apps/web/.env.local` and
 `apps/extension/.env`. The service-role key that `supabase status` also prints is
 server-only — never put it in either file.
+
+Sign-in email goes to Mailpit at <http://127.0.0.1:54324>; nothing leaves the machine.
+
+Database tests:
+
+```bash
+pnpm test:db     # pgTAP files in supabase/tests/, run inside a rolled-back transaction
+pnpm db:types    # regenerate packages/contracts/src/database.types.ts after a migration
+```
+
+### Google sign-in locally
+
+`[auth.external.google]` is disabled in `supabase/config.toml` because it needs real
+credentials. To exercise it, create an OAuth client in the Google console, set
+`SUPABASE_AUTH_GOOGLE_CLIENT_ID` and `SUPABASE_AUTH_GOOGLE_SECRET` in your shell, flip
+`enabled` to `true`, and restart the stack. Allow-list both redirect URIs: the web app's
+`/auth/callback` and the extension's `https://<extension-id>.chromiumapp.org/auth-callback`.
+
+### Hosted project checklist
+
+Local configuration does not travel. A hosted project needs, in its dashboard:
+
+- the site URL and redirect allow-list for the real origins
+- the Google provider, with the client secret entered there and nowhere else
+- the magic-link email template from `supabase/templates/magic_link.html` — without it the
+  emailed link points at the implicit-flow verify endpoint and the server never sees the
+  session, and the extension's 6-digit code is missing entirely
 
 Migrations are committed under `supabase/migrations/` and applied in filename order.
 Production schema is never edited by hand; a change lands as a migration or it does not

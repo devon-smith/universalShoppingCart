@@ -44,14 +44,15 @@ Turborepo drives every root script. `pnpm build` runs each app's build after its
 dependencies build; `pnpm test:e2e` depends on the same package's `build` so Playwright
 always exercises a production bundle.
 
-| Root command     | What it runs                                                        |
-| ---------------- | ------------------------------------------------------------------- |
-| `pnpm dev`       | Next dev server and `wxt` dev in parallel                           |
-| `pnpm lint`      | ESLint flat config per workspace                                    |
-| `pnpm typecheck` | `tsc --noEmit` per workspace (`next typegen` first for the web app) |
-| `pnpm test`      | Vitest per workspace                                                |
-| `pnpm build`     | `next build` and `wxt build`                                        |
-| `pnpm test:e2e`  | Playwright against the built web app                                |
+| Root command     | What it runs                                                         |
+| ---------------- | -------------------------------------------------------------------- |
+| `pnpm dev`       | Next dev server and `wxt` dev in parallel                            |
+| `pnpm lint`      | ESLint flat config per workspace                                     |
+| `pnpm typecheck` | `tsc --noEmit` per workspace (`next typegen` first for the web app)  |
+| `pnpm test`      | Vitest per workspace                                                 |
+| `pnpm build`     | `next build` and `wxt build`                                         |
+| `pnpm test:e2e`  | Playwright: built web app, and the extension in a persistent context |
+| `pnpm test:db`   | pgTAP against the local Supabase database                            |
 
 ## Boundaries that must hold
 
@@ -64,9 +65,25 @@ always exercises a production bundle.
 - Retailer-observed fields and user-authored fields are stored separately and a refresh
   may never overwrite the user-authored ones.
 
+## Authentication
+
+One Supabase identity system, two session stores:
+
+- **Web** — cookies, via `@supabase/ssr`. `src/middleware.ts` refreshes the session on
+  every navigation and gates `/app`; server code identifies the user with
+  `supabase.auth.getUser()`, which validates against the Auth server rather than trusting
+  a cookie.
+- **Extension** — `chrome.storage.local`, via a storage adapter passed to the Supabase
+  client. PKCE, `detectSessionInUrl` disabled, Google routed through
+  `chrome.identity.launchWebAuthFlow` so no extension page is ever a redirect target.
+
+Signing in on either surface yields the same user, profile, and default cart. Details and
+the threat-model reasoning are in [SECURITY.md](SECURITY.md); the schema and RLS matrix are
+in [DATA_MODEL.md](DATA_MODEL.md).
+
 ## Current state
 
-Phase 0. The web app serves a static landing page, the extension registers a side panel
-and requests only `sidePanel` and `storage`, and Supabase has configuration and an empty
-migrations directory. Authentication, capture, items, and the dashboard land in later
-phases — see [STATUS.md](STATUS.md).
+Phase 1. Accounts, carts, memberships, and row-level security exist and are tested; the
+web app has a protected dashboard listing the user's carts, and the extension side panel
+signs in and lists them too. No product data yet — capture, `items`, and the real
+dashboard are Phase 2 and 3. See [STATUS.md](STATUS.md).

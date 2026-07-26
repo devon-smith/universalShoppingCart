@@ -1,40 +1,43 @@
-import { cn } from '@universal-cart/ui';
+import { useSession } from '@/lib/auth/useSession';
+import { hasSupabaseConfig } from '@/lib/supabase/config';
 
-import { publicEnv } from '@/lib/env';
+import { SignInPanel } from './SignInPanel';
+import { SignedInPanel } from './SignedInPanel';
 
-const upcoming = [
-  'Phase 1 — sign in with the same account as the web app',
-  'Phase 2 — capture the product on the current tab and save it',
-  'Phase 3 — recent cart items and quick edits',
-];
+function NotConfigured() {
+  return (
+    <section className="panel__section">
+      <h2 className="panel__section-title">Not configured</h2>
+      <p className="panel__subtitle">
+        Set <code>WXT_PUBLIC_SUPABASE_URL</code> and{' '}
+        <code>WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> in <code>apps/extension/.env</code>, then
+        rebuild the extension.
+      </p>
+    </section>
+  );
+}
 
 export function SidePanelApp() {
+  const configured = hasSupabaseConfig();
+  const session = useSession();
+
   return (
     <main className="panel">
-      <header className="panel__header">
+      <header>
         <h1 className="panel__title">Universal Cart</h1>
-        <p className="panel__subtitle">Phase 0 — the panel loads, nothing is captured yet.</p>
+        <p className="panel__subtitle">
+          This build reads no page content and requests no host permissions.
+        </p>
       </header>
 
-      <section aria-labelledby="upcoming-heading" className="panel__section">
-        <h2 id="upcoming-heading" className="panel__section-title">
-          What lands next
-        </h2>
-        <ul className="panel__list">
-          {upcoming.map((entry) => (
-            <li key={entry} className={cn('panel__list-item')}>
-              {entry}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <footer className="panel__footer">
-        This build reads no page content and requests no host permissions. Dashboard:{' '}
-        <a href={publicEnv.WXT_PUBLIC_APP_URL} target="_blank" rel="noreferrer">
-          {publicEnv.WXT_PUBLIC_APP_URL}
-        </a>
-      </footer>
+      {!configured ? <NotConfigured /> : null}
+      {configured && session.status === 'loading' ? (
+        <p className="panel__subtitle">Restoring your session…</p>
+      ) : null}
+      {configured && session.status === 'signed-out' ? <SignInPanel /> : null}
+      {configured && session.status === 'signed-in' ? (
+        <SignedInPanel session={session.session} />
+      ) : null}
     </main>
   );
 }
