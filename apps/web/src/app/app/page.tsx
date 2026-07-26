@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { signOut } from '@/app/login/actions';
-import type { SavedItemSummary } from '@/features/items/ItemCard';
-import { ItemCard } from '@/features/items/ItemCard';
+import { ItemsView } from '@/features/items/ItemsView';
+import type { SavedItem } from '@/features/items/query';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -13,8 +13,16 @@ export const metadata: Metadata = {
 /** Per-user data; there is nothing here to prerender. */
 export const dynamic = 'force-dynamic';
 
+/**
+ * Archived items are fetched too, so the archived filter and undo work without a round
+ * trip. At personal-cart scale that is a few dozen extra rows.
+ *
+ * Money columns are cast to `text`. PostgREST would otherwise return `numeric` as a JSON
+ * number, and JSON numbers are IEEE doubles — the exact decimal the database holds would
+ * be silently approximated on the way out (BUILD_PLAN.md §6.2).
+ */
 const ITEM_COLUMNS =
-  'id, title, brand, retailer_name, source_url, image_url, currency, current_price, original_price, availability, selected_variant, note, quantity, status, last_observed_at';
+  'id, cart_id, title, brand, description, retailer_name, domain, source_url, canonical_url, image_url, currency, current_price::text, original_price::text, availability, selected_variant, identifiers, note, quantity, priority, desired_price::text, status, last_observed_at, created_at, updated_at';
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabase();
@@ -37,17 +45,14 @@ export default async function DashboardPage() {
         .select('id, name, is_default')
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: true }),
-      supabase
-        .from('items')
-        .select(ITEM_COLUMNS)
-        .neq('status', 'archived')
-        .order('updated_at', { ascending: false }),
+      supabase.from('items').select(ITEM_COLUMNS).order('updated_at', { ascending: false }),
     ]);
 
-  const savedItems = (items ?? []) as unknown as SavedItemSummary[];
+  const savedItems = (items ?? []) as unknown as SavedItem[];
+  const cartIds = (carts ?? []).map((cart) => cart.id);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-12">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -67,31 +72,13 @@ export default async function DashboardPage() {
         </form>
       </header>
 
-      <section aria-labelledby="items-heading" className="flex flex-col gap-3">
-        <h2 id="items-heading" className="text-sm font-semibold">
-          Saved products{savedItems.length > 0 ? ` (${savedItems.length})` : ''}
-        </h2>
-
-        {itemsError ? (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-300">
-            Could not load your saved products: {itemsError.message}
-          </p>
-        ) : savedItems.length === 0 ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-dashed border-[var(--color-line)] px-4 py-6">
-            <p className="text-sm font-medium">Nothing saved yet</p>
-            <p className="text-sm text-[var(--color-ink-muted)]">
-              Install the extension, open a product page, and click{' '}
-              <strong>Capture this page</strong> in the side panel. What you save appears here.
-            </p>
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {savedItems.map((item) => (
-              <ItemCard key={item.id} item={item} />
-            ))}
-          </ul>
-        )}
-      </section>
+      {itemsError ? (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+          Could not load your saved products: {itemsError.message}
+        </p>
+      ) : (
+        <ItemsView initialItems={savedItems} cartIds={cartIds} />
+      )}
 
       <section aria-labelledby="carts-heading" className="flex flex-col gap-3">
         <h2 id="carts-heading" className="text-sm font-semibold">

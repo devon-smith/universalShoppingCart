@@ -111,11 +111,23 @@ place; the function verifies its shape and scopes it to the cart. A refresh rewr
 retailer-observed columns — note, quantity, priority, desired price, and status are the
 user's.
 
+## The dashboard
+
+`/app` is a Server Component that fetches the user's items once and hands them to a client
+component. Search, filtering, and sorting are pure functions over that array
+(`features/items/query.ts`), so the controls respond without a round trip. Mutations are
+Server Actions that write user-authored columns only; the client applies each change
+optimistically and rolls it back if the server refuses. Realtime patches the same local
+cache, so a change made on another device appears without a refetch.
+
+Money is selected as `text`. PostgREST reports `numeric` as a JSON number, and a JSON
+number is an IEEE double — the exact decimal would be approximated on the way out.
+
 ## Current state
 
-Phase 2. Accounts, carts, memberships, and row-level security exist and are tested; the
+Phase 3. Accounts, carts, memberships, and row-level security exist and are tested; the
 web app has a protected dashboard listing the user's carts, and the extension side panel
 signs in too. A product page can be captured from the side panel and shows up in the
-dashboard, and a duplicate save refreshes rather than duplicating. The dashboard is a list
-— search, filters, sorting, and editing are Phase 3; revisit refresh and price history are
-Phase 4. See [STATUS.md](STATUS.md).
+dashboard, where it can be searched, filtered, sorted, edited, archived with undo, and
+deleted. A duplicate save refreshes rather than duplicating. Price history and revisit
+refresh are Phase 4; sharing and comparison are Phase 6. See [STATUS.md](STATUS.md).

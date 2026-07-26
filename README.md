@@ -6,7 +6,7 @@ This is **not** a universal checkout system. It never stores retailer credential
 
 ## Status
 
-**Phase 2 complete** — the core loop works. Sign in on either surface, open a product page, capture it from the side panel, and it appears in the web dashboard. Saving the same product twice refreshes it instead of duplicating, and never overwrites your note. Search, filters, and editing arrive in Phase 3. See [docs/STATUS.md](docs/STATUS.md).
+**Phase 3 complete** — a usable daily cart. Capture products from the extension side panel; search, filter, sort, edit, and archive them on the web, with undo and live updates across devices. Price history and revisit refresh are next. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Stack
 
