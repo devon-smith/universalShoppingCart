@@ -113,6 +113,44 @@ describe('domExtractor — images', () => {
     );
     expect(result.product?.imageUrls).toBeUndefined();
   });
+
+  it('takes the real image from data-src when src holds a lazy placeholder', () => {
+    // Lazy loaders park a 1x1 data: URI in src and keep the real URL in data-src. Committing
+    // to src merely because the attribute exists loses the image on every such page.
+    const result = extract(`
+      <div class="product-gallery">
+        <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+             data-src="/hero.jpg" />
+      </div>
+    `);
+
+    expect(result.product?.imageUrls).toEqual(['https://shop.example/hero.jpg']);
+    expect(result.product?.selectedImageUrl).toBe('https://shop.example/hero.jpg');
+  });
+
+  it('falls back to the first candidate in a srcset', () => {
+    const result = extract(`
+      <div class="product-gallery">
+        <img data-srcset="/hero-400.jpg 400w, /hero-800.jpg 800w" />
+      </div>
+    `);
+
+    expect(result.product?.imageUrls).toEqual(['https://shop.example/hero-400.jpg']);
+  });
+
+  it('keeps the gallery image ahead of a recommendation tile', () => {
+    // Recommendation cards reuse product-ish class names. The gallery selector ranks above
+    // the generic one, so the hero image stays the selected one even though both are kept
+    // as candidates.
+    const result = extract(`
+      <section class="recommendations">
+        <div class="product-image"><img src="/also-bought.jpg" /></div>
+      </section>
+      <div class="product-gallery"><img src="/hero.jpg" /></div>
+    `);
+
+    expect(result.product?.selectedImageUrl).toBe('https://shop.example/hero.jpg');
+  });
 });
 
 describe('domExtractor — evidence', () => {

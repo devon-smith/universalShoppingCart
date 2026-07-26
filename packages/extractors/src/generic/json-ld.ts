@@ -92,9 +92,26 @@ function hasType(node: JsonObject, ...wanted: string[]): boolean {
 
 /** `Product` and the subtypes retailers actually use. */
 export function findProductNodes(value: JsonValue | null): JsonObject[] {
-  return flattenJsonLd(value).filter((node) =>
-    hasType(node, 'Product', 'ProductModel', 'IndividualProduct', 'Vehicle', 'Book'),
+  const nodes = flattenJsonLd(value).filter((node) =>
+    hasType(
+      node,
+      'Product',
+      'ProductModel',
+      'ProductGroup',
+      'IndividualProduct',
+      'Vehicle',
+      'Book',
+    ),
   );
+
+  // Google's variant markup describes the family as a `ProductGroup` and the variant on
+  // screen as a `Product`. The variant is the better subject — it carries the price and
+  // availability the user is looking at — so groups sort last. Document order is otherwise
+  // preserved, and a page whose only block is a group still extracts.
+  const groups = nodes.filter((node) => hasType(node, 'ProductGroup'));
+  if (groups.length === 0 || groups.length === nodes.length) return nodes;
+
+  return [...nodes.filter((node) => !hasType(node, 'ProductGroup')), ...groups];
 }
 
 /** Read a value that schema.org allows to be a string, an object with `name`, or a list. */
@@ -179,9 +196,11 @@ function readOffer(offer: JsonObject): OfferFacts {
     readString(offer.priceCurrency) ?? readString(priceSpecification?.priceCurrency),
   );
 
-  // schema.org has no canonical "was" price; retailers use these three.
+  // schema.org has no canonical "was" price; retailers use these three. On an
+  // AggregateOffer, though, `highPrice` is the top of a range across variants rather than a
+  // former price — reporting it as one renders a discount the retailer never offered.
   const originalRaw =
-    offer.highPrice ??
+    (hasType(offer, 'AggregateOffer') ? null : offer.highPrice) ??
     (isObject(offer.priceSpecification) ? offer.priceSpecification.listPrice : undefined) ??
     offer.listPrice ??
     null;
