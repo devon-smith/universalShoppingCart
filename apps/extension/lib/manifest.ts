@@ -29,7 +29,34 @@ export const REQUIRED_PERMISSIONS = [
   'activeTab',
   // Inject the capture script into it.
   'scripting',
+  // "Save to Universal Cart" on the page. This is not a convenience: a context-menu click
+  // is an *action invocation*, which is what actually confers `activeTab` on the tab the
+  // user is looking at. See CAPTURE_INVOCATIONS below.
+  'contextMenus',
 ] as const;
+
+/** The context-menu entry, and the command id for the keyboard shortcut. */
+export const CAPTURE_MENU_ID = 'universal-cart/capture';
+export const CAPTURE_COMMAND_ID = 'capture-product';
+
+/**
+ * How capture is authorized, and why the panel button alone is not enough.
+ *
+ * `activeTab` is granted when the user *invokes the extension* — clicking the toolbar
+ * icon, choosing a context-menu item, or pressing the keyboard shortcut — and it is
+ * **revoked as soon as that tab navigates**.
+ *
+ * The side panel does not follow that lifecycle. It stays open across navigations and tab
+ * switches, so by the time somebody browses to a product page and presses a button inside
+ * the panel, the grant from opening the panel is long gone: a click inside an extension
+ * page is not an action invocation. `chrome.scripting.executeScript` then fails with
+ * "Cannot access contents of the page".
+ *
+ * So every path that must read a page begins with one of these, on the tab in question.
+ * Broad host access at install would also solve it and is refused — it discards the whole
+ * click-to-capture design (BUILD_PLAN.md §11.5, CLAUDE.md).
+ */
+export const CAPTURE_INVOCATIONS = ['action', 'context_menu', 'keyboard_command'] as const;
 
 export function buildPermissions(): string[] {
   return [...REQUIRED_PERMISSIONS];

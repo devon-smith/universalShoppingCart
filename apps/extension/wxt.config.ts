@@ -1,6 +1,6 @@
 import { defineConfig } from 'wxt';
 
-import { buildHostPermissions, buildPermissions } from './lib/manifest';
+import { CAPTURE_COMMAND_ID, buildHostPermissions, buildPermissions } from './lib/manifest';
 
 /**
  * Manifest V3 configuration.
@@ -25,6 +25,14 @@ export default defineConfig({
     host_permissions: buildHostPermissions({ e2e }),
     action: {
       default_title: 'Open Universal Cart',
+    },
+    // A keyboard invocation confers `activeTab` on the current tab; a click inside the side
+    // panel cannot (see lib/manifest.ts, CAPTURE_INVOCATIONS).
+    commands: {
+      [CAPTURE_COMMAND_ID]: {
+        suggested_key: { default: 'Ctrl+Shift+U', mac: 'Command+Shift+U' },
+        description: 'Save the current product to Universal Cart',
+      },
     },
     content_security_policy: {
       // No remote code, no eval (BUILD_PLAN.md §17.4).

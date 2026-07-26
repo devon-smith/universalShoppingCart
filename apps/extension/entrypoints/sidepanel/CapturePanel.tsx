@@ -2,7 +2,9 @@ import type { ProductCaptureV1 } from '@universal-cart/contracts';
 import { fieldsNeedingReview } from '@universal-cart/extractors';
 import { useCallback, useEffect, useState } from 'react';
 
+import { takePendingCapture } from '@/lib/capture/pending';
 import { requestCapture } from '@/lib/capture/request';
+import { isCaptureFailed, isCaptureReady } from '@/lib/messaging/protocol';
 import type { RevisitResult } from '@/lib/capture/revisit';
 import { itemLookup, refreshFromPage } from '@/lib/capture/revisit';
 import type { UserFields } from '@/lib/capture/save';
@@ -140,7 +142,58 @@ export function CapturePanel({ onSaved }: { onSaved: () => void }) {
   }, [readPage]);
 
   /**
+   * Collect a capture the background worker already took.
+   *
+   * The context-menu and keyboard paths extract *before* this panel is necessarily open,
+   * because only those invocations hold `activeTab` for the page (lib/manifest.ts,
+   * CAPTURE_INVOCATIONS). The result travels through session storage, so it does not
+   * matter whether the panel or the capture got there first; the message below is only a
+   * nudge for a panel that was already open.
+   */
+  useEffect(() => {
+    let active = true;
+
+    const collect = () => {
+      takePendingCapture(chrome.storage.session)
+        .then((pending) => {
+          if (!active || !pending) return;
+
+          if (!pending.result.ok) {
+            setStage({ name: 'error', message: pending.result.issues.join('; ') });
+            return;
+          }
+
+          const page = pending.result.capture;
+          setDraft(draftFrom(page));
+          setStage({ name: 'preview', capture: page, needsReview: fieldsNeedingReview(page) });
+        })
+        .catch(() => undefined);
+    };
+
+    collect();
+
+    const onMessage = (message: unknown) => {
+      if (isCaptureReady(message)) collect();
+      else if (isCaptureFailed(message)) setStage({ name: 'error', message: message.message });
+    };
+
+    chrome.runtime.onMessage.addListener(onMessage);
+
+    return () => {
+      active = false;
+      chrome.runtime.onMessage.removeListener(onMessage);
+    };
+  }, []);
+
+  /**
    * Re-observe the page if it is already saved (BUILD_PLAN.md §14.1).
+   *
+   * Known limitation: this runs on mount, with no user invocation on the tab, so it cannot
+   * hold `activeTab` and reads nothing on a page the user navigated to after opening the
+   * panel. It fails silently by design — the user did not ask for anything — but that
+   * means automatic revisit is effectively inert in a release build. Making it work needs
+   * an optional host permission for the origin, granted at the user's request; see
+   * docs/RUNBOOK.md.
    *
    * Extraction happens locally; nothing is sent anywhere unless the fingerprint matches
    * something the user already saved, so opening the panel on an unsaved page leaves no

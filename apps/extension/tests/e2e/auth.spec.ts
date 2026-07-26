@@ -100,6 +100,7 @@ test.describe('side panel sign-in', () => {
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.permissions.sort()).toEqual([
       'activeTab',
+      'contextMenus',
       'identity',
       'scripting',
       'sidePanel',
