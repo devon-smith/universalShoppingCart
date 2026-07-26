@@ -408,3 +408,62 @@ is what needs fixing; `shop.example/p/engagement-ring` names what somebody is bu
 the individual page that broke, so reproducing one means opening the retailer and finding
 a comparable product. That is the intended trade. An end-to-end test asserts the rendered
 page contains neither the product title, the note, nor the URL path of a seeded item.
+
+---
+
+## 2026-07-26 — Deployment splits into an early staging environment and later production hardening
+
+**Decision.** BUILD_PLAN.md §22 puts all deployment in Phase 9. It is split in two instead:
+a hosted **staging** environment immediately after live-page extraction validation, and
+production hardening plus the Chrome Web Store release at Phase 9 as planned.
+
+Staging is: a hosted development Supabase project, a Vercel preview/staging deployment, a
+locally loaded unpacked extension pointed at it, and a small set of trusted testers. It is
+an integration environment, not a release — the extension stays unpacked and the listing
+does not exist yet.
+
+**Context.** Everything to date runs against local Supabase over `127.0.0.1`. A whole class
+of problems only appears once there is a real origin: auth redirect URLs, cookie domains
+and `SameSite` behaviour, the extension's origin against a hosted Supabase project's
+allowed list, CSP under a real domain, Realtime over a hosted socket, and migrations
+applied to a database that was not created by `supabase:reset` a minute earlier. Finding
+those at Phase 9, on top of store packaging and privacy disclosures, would mean debugging
+several unfamiliar things at once.
+
+The `127.0.0.1`-versus-`localhost` cookie-jar bug already found in Phase 1 is the small
+version of this. There will be a hosted version of it.
+
+**Consequences.** One more environment to keep migrations current in, and a second set of
+environment variables to manage before it is strictly required. In exchange, Phase 9 gets
+to be about hardening rather than about first contact with production. Staging holds no
+data anyone would miss and can be reset.
+
+---
+
+## 2026-07-26 — Sharing ships viewer-first
+
+**Decision.** The Phase 6 schema and RLS model support `owner`, `editor`, and `viewer` from
+the start, as BUILD_PLAN.md §7.3 and §8.1 describe. The first release **exposes** only
+viewer invitations, revocation, read-only shared carts, and the comparison tray. Editor
+access follows once viewer sharing is working and tested. No public unauthenticated
+sharing in the first implementation.
+
+**Context.** Read-only sharing has one destructive edge case — revocation — and it is
+already covered by the existing RLS tests. Editor access opens a set of product questions
+that are not about whether sharing works: whether editors may archive or delete, whether
+they may invite others, whether they may edit another person's note or desired price,
+whether they may move items between carts, who owns observation history on a shared item,
+and what an in-flight optimistic update should do when the owner revokes access underneath
+it. Each is answerable; none should be bundled into the first proof that sharing works at
+all.
+
+Public unauthenticated sharing is excluded separately: a link that works without an account
+is a different threat model, needing its own token handling, expiry, and a decision about
+what a stranger may see of someone's notes and desired prices.
+
+**Consequences.** A collaborator cannot add to a shared cart in the first release, which is
+a real limitation for a shared trip or gift list. The role enum still carries `editor`, so
+enabling it later is policy and UI, not a migration. The RLS tests for editor permissions
+are written in Phase 6 alongside the viewer ones even though the role is not yet reachable
+from the interface — an unreachable permission still needs to be correct before it becomes
+reachable.

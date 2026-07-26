@@ -97,9 +97,92 @@ Migrations are committed under `supabase/migrations/` and applied in filename or
 Production schema is never edited by hand; a change lands as a migration or it does not
 land.
 
+## Live page testing
+
+Extraction against real retailers is not covered by CI and is recorded by hand. See
+[LIVE_TESTING.md](LIVE_TESTING.md) for the procedure and the log template.
+
+## Staging deployment
+
+**Not yet configured.** This is the next environment to exist, after live-page extraction
+validation — see [DECISIONS.md](DECISIONS.md) for why it comes before Phase 9 rather than
+during it. Staging is an integration environment: hosted backend and dashboard, extension
+still loaded unpacked, a couple of trusted testers, and data nobody would miss.
+
+What it needs, in order:
+
+1. **A hosted Supabase project** on the free tier, named for development rather than
+   production. Push the committed migrations to it — never apply schema by hand:
+
+   ```bash
+   pnpm exec supabase link --project-ref <ref>
+   pnpm exec supabase db push
+   ```
+
+2. **Vercel**, pointed at this repository with the root directory set to `apps/web`.
+   Environment variables, all client-safe:
+
+   | Variable                               | Value                   |
+   | -------------------------------------- | ----------------------- |
+   | `NEXT_PUBLIC_APP_URL`                  | the Vercel staging URL  |
+   | `NEXT_PUBLIC_SUPABASE_URL`             | staging project API URL |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | staging publishable key |
+
+   `SUPABASE_SERVICE_ROLE_KEY` is **not** needed — nothing server-side uses it yet, and it
+   must never be added with a `NEXT_PUBLIC_` prefix.
+
+3. **Supabase Auth URL configuration** for the staging project: set the Site URL to the
+   Vercel URL and add `<vercel-url>/auth/confirm` as a redirect URL. Magic links point at
+   whatever is configured here; get it wrong and sign-in silently bounces back to `/login`.
+
+4. **The extension, pointed at staging.** Set `WXT_PUBLIC_SUPABASE_URL`,
+   `WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `WXT_PUBLIC_APP_URL` in
+   `apps/extension/.env`, rebuild, and reload the unpacked extension. It stays unpacked —
+   no store listing at this stage.
+
+Expect the first hosted sign-in to surface something local development could not: cookie
+domain and `SameSite` behaviour, the extension origin against the hosted project, CSP under
+a real domain, or Realtime over a hosted socket. That is the point of doing it early.
+
+### Verifying a staging deploy
+
+- Sign in on the web app with a magic link and land on `/app`
+- Sign in on the extension with an emailed code, on the same account
+- Capture a real product, and see it on the dashboard without a reload
+- Edit a note on the web app and see it in the extension's recent items
+- Check `/app/diagnostics` reports the domain and adapter
+
+## Google sign-in configuration
+
+Implemented on both surfaces and **not** exercised end to end, because it needs real OAuth
+credentials that cannot live in this repository. Email sign-in is the baseline and is
+enough for staging — Google is deliberately not a blocker.
+
+No credential belongs in git. The client secret is server-only and goes into the Supabase
+dashboard; the extension bundle may contain the publishable key and nothing else.
+
+When it is worth configuring:
+
+1. **Google Cloud console** → APIs & Services → Credentials → OAuth 2.0 Client ID, type
+   _Web application_.
+   - Authorized JavaScript origins: the Vercel URL, and `http://localhost:3000` for
+     development.
+   - Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` —
+     Supabase's callback, not the app's.
+2. **A second OAuth client**, type _Chrome Extension_, for the extension's own flow. Its
+   redirect URL is `https://<extension-id>.chromiumapp.org/`, which
+   `chrome.identity.launchWebAuthFlow` provides. The extension id is stable only once the
+   extension has a key — before a store listing it changes on every unpacked reload, so
+   this is easier to do after the listing exists.
+3. **Supabase dashboard** → Authentication → Providers → Google: enable it, paste the web
+   client id and client secret. Locally, `[auth.external.google]` in
+   `supabase/config.toml` stays disabled.
+4. Verify manually: sign in with Google on the web app, then on the extension, and confirm
+   both land on the same user id and the same default cart.
+
 ## Releases
 
-- **Web** — not yet configured. Vercel wiring lands with the first deployable feature set.
+- **Web** — staging as above. Production Vercel wiring is Phase 9.
 - **Extension** — not yet configured. `pnpm --filter @universal-cart/extension zip`
   produces an artifact; the Chrome Web Store testing listing and the release checklist land
   in Phase 9.
