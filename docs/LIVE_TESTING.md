@@ -1,0 +1,156 @@
+# Live page testing
+
+A record of extraction against **real retailer pages**, which nothing in CI touches.
+
+Every automated test in this repository runs against sanitized fixtures — deliberately, so
+CI is deterministic and does not hammer live sites. The cost of that is a blind spot:
+extraction quality on the pages actually used is unmeasured until someone measures it here.
+
+This log is what turns the Phase 5 adapter selection from a judgment call into evidence.
+See [DECISIONS.md](DECISIONS.md) — the five adapters target commerce _platforms_ because
+the repository had no record of which retailers matter. These results are that record.
+
+## How to run a session
+
+```bash
+pnpm supabase:start
+pnpm dev
+```
+
+Load the extension at `chrome://extensions` → Developer mode → **Load unpacked** →
+`apps/extension/.output/chrome-mv3`. Sign in on both surfaces with the same address.
+
+For each product: open the page, **select a variant** where one exists, open the side
+panel, capture, check the preview against the page, save, then confirm it on
+<http://localhost:3000/app>. Afterwards open <http://localhost:3000/app/diagnostics> and
+copy the adapter and confidence for each domain.
+
+## What to include
+
+A pass over ten easy pages proves less than a pass over five awkward ones. Try to cover:
+
+- [ ] A discounted product showing both a list and a sale price
+- [ ] A product with two option dimensions (size **and** colour)
+- [ ] A product where the selected variant is unavailable but the product is not
+- [ ] A marketplace listing with several sellers
+- [ ] A page that shows no price until a variant is chosen
+- [ ] A product offering both a subscription and a one-time price
+- [ ] A page whose server HTML differs from the hydrated DOM
+- [ ] A non-USD page, ideally one using `1.299,00` formatting
+- [ ] A page on a platform an adapter claims to support
+- [ ] A page on none of the five supported platforms
+
+## Summary
+
+Fill in as you go. `Adapter` is what `/app/diagnostics` reports, not what you expected.
+
+| #   | Domain | Adapter | Confidence | Result | Notes |
+| --- | ------ | ------- | ---------- | ------ | ----- |
+| 1   |        |         |            |        |       |
+| 2   |        |         |            |        |       |
+| 3   |        |         |            |        |       |
+| 4   |        |         |            |        |       |
+| 5   |        |         |            |        |       |
+| 6   |        |         |            |        |       |
+| 7   |        |         |            |        |       |
+| 8   |        |         |            |        |       |
+| 9   |        |         |            |        |       |
+| 10  |        |         |            |        |       |
+
+`Result`: ✅ everything correct · ⚠️ saved but something wrong · ❌ could not capture or save
+
+---
+
+## Test 1
+
+**URL**
+**Domain**
+**Date**
+
+### What the page says
+
+Fill this in from the page itself, _before_ looking at the panel. Comparing two columns
+you wrote at different times is the only way to catch a plausible-looking wrong value.
+
+| Field          | On the page |
+| -------------- | ----------- |
+| Title          |             |
+| Current price  |             |
+| Original price |             |
+| Currency       |             |
+| Availability   |             |
+| Variant        |             |
+
+### What was extracted
+
+| Field            | Extracted | Correct? |
+| ---------------- | --------- | -------- |
+| Title            |           |          |
+| Current price    |           |          |
+| Original price   |           |          |
+| Currency         |           |          |
+| Image            |           |          |
+| Availability     |           |          |
+| Selected variant |           |          |
+| Canonical URL    |           |          |
+
+**Adapter / fallback status** — from `/app/diagnostics`: adapter id and version, or
+`generic`. Note the failure class if one is shown.
+
+**Overall confidence**
+
+**Fields the panel flagged for review** — the ⚠ markers before saving.
+
+### Behaviour
+
+| Check                                                               | Result |
+| ------------------------------------------------------------------- | ------ |
+| Saved without error                                                 |        |
+| Appeared on the dashboard without a reload                          |        |
+| Re-saving the same URL and variant refreshed instead of duplicating |        |
+| A different variant saved as a **separate** item                    |        |
+| Reopening the panel on the page recognised it as already saved      |        |
+| A changed price recorded a new observation                          |        |
+| An unchanged revisit recorded **nothing**                           |        |
+| Editing a note, then revisiting, left the note intact               |        |
+
+### What was wrong
+
+Be specific about the _value_, not just the field: "original price picked up the 4×
+instalment amount (£47.25) instead of the list price (£189)" is actionable; "price wrong"
+is not.
+
+### Should this become a fixture?
+
+If extraction was wrong, yes. Save the page (**Ctrl/Cmd+S** → _Webpage, HTML only_), strip
+it to the DOM the extractor reads, and drop it in
+`packages/extractors/src/fixtures/adapters/`. **Sanitize first** — no account details, no
+order history, no cookies or tokens, nothing identifying. See the README there.
+
+---
+
+## Test 2
+
+_Copy the Test 1 block._
+
+---
+
+## Findings
+
+Filled in after the session. This section is the deliverable — the rest is working notes.
+
+### Adapters that worked
+
+### Domains needing a retailer-specific adapter
+
+Name the domain and what the generic pipeline got wrong on it. An adapter is justified when
+a page holds data the generic layers cannot reach, not merely when a site is popular.
+
+### Extraction bugs to fix
+
+### Pages to turn into regression fixtures
+
+### Anything about the flow itself
+
+Capture speed, the preview, the correction UI, whether the panel opened where expected.
+Extraction can be perfect and the feature still be annoying to use.

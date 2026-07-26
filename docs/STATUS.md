@@ -16,6 +16,34 @@ and acceptance criteria.
 | 8 — Product matching and AI comparison | Not started |
 | 9 — Release hardening                  | Not started |
 
+## Roadmap from here
+
+Two departures from BUILD_PLAN.md §22, both recorded in [DECISIONS.md](DECISIONS.md):
+deployment splits into an early staging environment and later production hardening, and
+sharing ships viewer-first.
+
+```text
+Open draft PR                          ← done
+    ↓
+Ten live captures against real retailers    ← next, see LIVE_TESTING.md
+    ↓
+Fix extraction · add sanitized regression fixtures
+    ↓
+CI and security tests green
+    ↓
+Staging: hosted dev Supabase + Vercel, unpacked extension pointed at it
+    ↓
+One or two trusted testers
+    ↓
+Merge the stable baseline
+    ↓
+Phase 6, viewer-first
+```
+
+Nothing between the draft PR and staging adds a feature. The live-capture pass measures
+extraction against the pages that matter and the fixes are driven by what it finds — no
+speculative retailer adapters before then.
+
 ## Phase 5 — Retailer adapters
 
 **Complete.** Five platform adapters, a versioned registry, ten sanitized fixtures, and an
