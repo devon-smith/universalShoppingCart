@@ -2,10 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { getBrowserSupabase } from '@/lib/supabase/browser';
+
 import type { ItemEdit } from './edits';
 import { parseItemEditForm } from './edits';
 import { availabilityLabel, discountPercent, formatMoney, relativeTime } from './format';
+import { freshness } from './freshness';
 import { STATUS_LABELS } from './ItemCard';
+import type { Observation } from './PriceHistory';
+import { PriceHistory } from './PriceHistory';
 import type { SavedItem } from './query';
 
 export interface ItemDetailProps {
@@ -26,6 +31,11 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Keyed by item id so switching items shows "loading" rather than the previous item's
+  // history, without an effect that resets state on the way in.
+  const [history, setHistory] = useState<{ itemId: string; observations: Observation[] } | null>(
+    null,
+  );
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,6 +46,30 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
     dialogRef.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    let active = true;
+    const itemId = item.id;
+
+    // Money as text, so the history shows the exact decimals that were observed.
+    getBrowserSupabase()
+      .from('item_observations')
+      .select('id, observed_at, price::text, currency, availability, source')
+      .eq('item_id', itemId)
+      .order('observed_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (!active) return;
+        setHistory({ itemId, observations: (data ?? []) as unknown as Observation[] });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [item.id]);
+
+  const loadingHistory = history?.itemId !== item.id;
+  const observations = loadingHistory ? null : (history?.observations ?? null);
 
   const price = formatMoney(item.current_price, item.currency);
   const original = formatMoney(item.original_price, item.currency);
@@ -102,8 +136,18 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
             ) : null}
 
             <dt className="text-[var(--color-ink-muted)]">Last checked</dt>
-            <dd>{relativeTime(item.last_observed_at)}</dd>
+            <dd data-testid="detail-freshness" data-level={freshness(item.last_observed_at).level}>
+              {relativeTime(item.last_observed_at)}
+            </dd>
           </dl>
+
+          {freshness(item.last_observed_at).level === 'stale' ||
+          freshness(item.last_observed_at).level === 'never' ? (
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              {freshness(item.last_observed_at).label}. Open the page with the extension side panel
+              to re-check it.
+            </p>
+          ) : null}
 
           <p className="text-xs text-[var(--color-ink-muted)]">
             These come from the page and are refreshed when you capture it again. They cannot be
@@ -227,6 +271,13 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
             {saving ? 'Saving…' : 'Save changes'}
           </button>
         </form>
+
+        <section aria-labelledby="history-heading" className="flex flex-col gap-2">
+          <h3 id="history-heading" className="text-xs font-semibold tracking-wide uppercase">
+            Price history
+          </h3>
+          <PriceHistory observations={observations} loading={loadingHistory} />
+        </section>
 
         <section aria-labelledby="diagnostics-heading" className="flex flex-col gap-1">
           <h3

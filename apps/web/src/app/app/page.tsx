@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { signOut } from '@/app/login/actions';
 import { ItemsView } from '@/features/items/ItemsView';
-import type { SavedItem } from '@/features/items/query';
+import type { PriceSummary, SavedItem } from '@/features/items/query';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -48,7 +48,15 @@ export default async function DashboardPage() {
       supabase.from('items').select(ITEM_COLUMNS).order('updated_at', { ascending: false }),
     ]);
 
+  // One extra query for every card's price-change badge, rather than one per card.
+  const { data: summaries } = await supabase
+    .from('item_price_summary')
+    .select(
+      'item_id, latest_price::text, latest_observed_at, previous_price::text, previous_observed_at, observation_count',
+    );
+
   const savedItems = (items ?? []) as unknown as SavedItem[];
+  const priceSummaries = (summaries ?? []) as unknown as PriceSummary[];
   const cartIds = (carts ?? []).map((cart) => cart.id);
 
   return (
@@ -77,7 +85,7 @@ export default async function DashboardPage() {
           Could not load your saved products: {itemsError.message}
         </p>
       ) : (
-        <ItemsView initialItems={savedItems} cartIds={cartIds} />
+        <ItemsView initialItems={savedItems} priceSummaries={priceSummaries} cartIds={cartIds} />
       )}
 
       <section aria-labelledby="carts-heading" className="flex flex-col gap-3">

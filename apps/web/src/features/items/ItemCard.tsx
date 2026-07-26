@@ -1,8 +1,9 @@
 'use client';
 
 import { availabilityLabel, discountPercent, formatMoney, relativeTime } from './format';
+import { freshness, priceChange } from './freshness';
 import { isAtOrBelowDesired } from './query';
-import type { ItemStatus, SavedItem } from './query';
+import type { ItemStatus, PriceSummary, SavedItem } from './query';
 
 export const STATUS_LABELS: Record<ItemStatus, string> = {
   saved: 'Saved',
@@ -20,6 +21,7 @@ const NEXT_STATUS: Partial<Record<ItemStatus, { to: ItemStatus; label: string }>
 
 export interface ItemCardProps {
   item: SavedItem;
+  summary?: PriceSummary | undefined;
   view: 'list' | 'cards';
   onOpen: (item: SavedItem) => void;
   onStatusChange: (item: SavedItem, status: ItemStatus) => void;
@@ -34,13 +36,23 @@ export interface ItemCardProps {
  * showing a blank — an unknown price is information; an empty space is a bug the user has
  * to guess at.
  */
-export function ItemCard({ item, view, onOpen, onStatusChange, onArchive, busy }: ItemCardProps) {
+export function ItemCard({
+  item,
+  summary,
+  view,
+  onOpen,
+  onStatusChange,
+  onArchive,
+  busy,
+}: ItemCardProps) {
   const price = formatMoney(item.current_price, item.currency);
   const original = formatMoney(item.original_price, item.currency);
   const discount = discountPercent(item.current_price, item.original_price);
   const variant = Object.entries(item.selected_variant ?? {});
   const next = NEXT_STATUS[item.status];
   const hitTarget = isAtOrBelowDesired(item);
+  const change = priceChange(item.current_price, summary?.previous_price ?? null);
+  const age = freshness(item.last_observed_at);
 
   return (
     <li
@@ -119,6 +131,23 @@ export function ItemCard({ item, view, onOpen, onStatusChange, onArchive, busy }
           ) : null}
         </p>
 
+        {change.direction === 'down' || change.direction === 'up' ? (
+          <p
+            data-testid="price-change"
+            data-direction={change.direction}
+            className={[
+              'text-xs font-medium',
+              change.direction === 'down'
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : 'text-amber-700 dark:text-amber-400',
+            ].join(' ')}
+          >
+            {change.direction === 'down' ? '▼' : '▲'}{' '}
+            {formatMoney(change.amount, item.currency) ?? change.amount}
+            {change.percent !== null ? ` (${change.percent}%)` : ''} since you saved it
+          </p>
+        ) : null}
+
         {hitTarget ? (
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
             At or below your target of {formatMoney(item.desired_price, item.currency)}
@@ -142,8 +171,20 @@ export function ItemCard({ item, view, onOpen, onStatusChange, onArchive, busy }
           <p className="text-xs text-[var(--color-ink-muted)] italic">{item.note}</p>
         ) : null}
 
-        <p className="text-xs text-[var(--color-ink-muted)]">
-          {availabilityLabel(item.availability)} · checked {relativeTime(item.last_observed_at)}
+        <p
+          data-testid="freshness"
+          data-level={age.level}
+          className={[
+            'text-xs',
+            age.level === 'stale' || age.level === 'never'
+              ? 'text-amber-700 dark:text-amber-400'
+              : 'text-[var(--color-ink-muted)]',
+          ].join(' ')}
+        >
+          {availabilityLabel(item.availability)} ·{' '}
+          {age.level === 'stale' || age.level === 'never'
+            ? age.label
+            : `checked ${relativeTime(item.last_observed_at)}`}
         </p>
 
         <div className="mt-1 flex flex-wrap gap-2">

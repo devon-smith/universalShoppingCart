@@ -273,3 +273,73 @@ the part most likely to leak another user's rows — on the critical path of eve
 **Consequences.** The predicates are pure functions over an array with unit tests, so
 moving them into Postgres when a cart outgrows this is mechanical. The threshold to watch
 is payload size, not query time.
+
+---
+
+## 2026-07-26 — The previous price comes from a view, not from the client
+
+**Decision.** `item_price_summary` computes each item's latest price, the last price that
+_differed_, and an observation count in Postgres. The dashboard reads it alongside the item
+list rather than fetching observations per card.
+
+**Context.** A price-change badge needs two numbers, but the second one is not simply "the
+observation before this one" — after three revisits at an unchanged price, the comparison a
+user wants is still against the price before it moved. Doing that in the client means
+fetching every observation for every card on the list.
+
+**Consequences.** One extra round trip for the whole page instead of one per card. The view
+is `security_invoker`, so the reader's RLS on `item_observations` still applies — a view is
+otherwise a way around row-level security, and `supabase/tests/04_…` asserts it is not one
+here. The badge's wording ("since you saved it") is loose for an item whose price has
+bounced; a save-time baseline would need a column, and is not worth one yet.
+
+---
+
+## 2026-07-26 — Price history is a list, not a chart
+
+**Decision.** The detail drawer renders observations as a dated list with price,
+availability, and source. No sparkline, no charting dependency.
+
+**Context.** Until background refresh exists, every observation comes from a page the user
+personally opened. A personal cart accumulates a handful of them per item. A chart over
+three points is decoration, and it would hide the field that actually answers the question
+being asked — _when_, and _from what_.
+
+**Consequences.** No charting library in the bundle. When Phase 7 starts producing daily
+observations the shape of the data changes and this decision should be revisited; the
+component boundary (`PriceHistory`) is where that swap happens.
+
+---
+
+## 2026-07-26 — A revisit sends no user fields at all
+
+**Decision.** `refreshFromPage` calls `ingest_product_capture` with an empty `p_user_fields`
+object, never a copy of the item's current note, quantity, priority, desired price, or
+status.
+
+**Context.** The ingestion function already preserves user-authored columns on refresh, and
+a trigger already rejects client writes to observed columns. Sending the user's fields back
+would be a third place that could get it wrong — and the one most likely to, because it
+would be sending values read a moment earlier from a possibly stale panel.
+
+**Consequences.** A refresh cannot clobber user data even if the function's preservation
+logic regressed; there is nothing in the payload to clobber it with. The rule is asserted
+from both sides: `refreshFromPage`'s unit tests check what is sent, and
+`supabase/tests/04_…` checks all five fields survive a revisit.
+
+---
+
+## 2026-07-26 — The extension does not watch tab changes
+
+**Decision.** The side panel re-observes the current page when it mounts. It does not
+listen for tab activation or navigation.
+
+**Context.** Refreshing whenever the user lands on a saved product would need
+`chrome.tabs.onUpdated` and the `tabs` permission, which grants the URL of every tab the
+user opens. That is browsing history, and the privacy promise is that the extension reads
+only the page the user pointed it at.
+
+**Consequences.** With the panel already open, navigating to a saved product does not
+re-observe it until the panel is reopened, and there is an explicit "Refresh from this
+page" button for that case. The permission list stays at `activeTab`, `scripting`,
+`storage`, `sidePanel`, and `identity`, which `lib/manifest.test.ts` asserts.

@@ -257,6 +257,9 @@ test.describe('dashboard as a daily tool', () => {
     await card.getByRole('button', { name: 'Mark purchased' }).click();
     await expect(card).toHaveAttribute('data-status', 'purchased');
 
+    // The badge flips optimistically, before the write lands. Wait for the card to leave
+    // its busy state, or the reload cancels the request that is still in flight.
+    await expect(card.getByRole('button', { name: 'Move back to saved' })).toBeEnabled();
     await page.reload();
     await expect(page.getByTestId('item-card').filter({ hasText: 'Meridian' })).toHaveAttribute(
       'data-status',
