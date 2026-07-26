@@ -36,6 +36,12 @@ blob-report/
 .playwright/
 playwright/.cache/
 
+# Live-testing scratch space. Raw saved pages, screenshots, and notes taken while
+# testing against real retailers — working files, not fixtures. A fixture is sanitized,
+# minimized, and committed under packages/extractors/src/fixtures/; anything here has not
+# been through that and may still carry account details, order history, or tokens.
+.live/
+
 # Editor / OS
 .DS_Store
 .idea/
