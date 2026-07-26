@@ -50,9 +50,9 @@ jobs:
         run: pnpm format:check
 
   e2e:
-    name: web end-to-end
+    name: end-to-end (web + extension)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -69,15 +69,25 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @universal-cart/web exec playwright install --with-deps chromium
 
+      - name: Start Supabase
+        # Both suites sign real users in, so they need a real project.
+        run: pnpm supabase:start
+
       - name: Run Playwright
         run: pnpm test:e2e
 
-      - name: Upload report
+      - name: Stop Supabase
+        if: ${{ always() }}
+        run: pnpm supabase:stop
+
+      - name: Upload reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: apps/web/playwright-report/
+          path: |
+            apps/web/playwright-report/
+            apps/extension/playwright-report/
           retention-days: 7
 
   secrets:

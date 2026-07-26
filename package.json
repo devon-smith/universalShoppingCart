@@ -15,12 +15,14 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "build": "turbo run build",
-    "test:e2e": "turbo run test:e2e",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
-    "supabase:reset": "supabase db reset",
+    "test:e2e": "node scripts/with-supabase-env.mjs pnpm exec turbo run test:e2e",
+    "supabase:start": "node scripts/supabase.mjs start",
+    "supabase:stop": "node scripts/supabase.mjs stop",
+    "supabase:reset": "node scripts/supabase.mjs db reset",
     "clean": "turbo run clean",
-    "supabase:status": "supabase status"
+    "supabase:status": "node scripts/supabase.mjs status",
+    "test:db": "node scripts/supabase.mjs test db",
+    "db:types": "node scripts/generate-db-types.mjs"
   },
   "devDependencies": {
     "@universal-cart/config": "workspace:*",

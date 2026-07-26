@@ -1,22 +1,23 @@
-import { cn } from '@universal-cart/ui';
+import Link from 'next/link';
 
-import { publicEnv } from '@/lib/env';
+import { getCurrentUser } from '@/lib/supabase/server';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
 
-const phaseZeroChecklist = [
-  'pnpm workspace + Turborepo task graph',
-  'Next.js App Router web app',
-  'WXT + React Manifest V3 extension with a side panel',
-  'Shared contracts, extractors, ui, config, and test-utils packages',
-  'Local Supabase configuration and migration directory',
-  'GitHub Actions running lint, typecheck, test, and build',
+const capabilities = [
+  'Sign in with Google or a one-time email link',
+  'One default cart created for you, automatically',
+  'Row-level access control — nobody else can read your carts',
+  'The same account in the dashboard and the browser extension',
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = isSupabaseConfigured() ? await getCurrentUser() : null;
+
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-8 px-6 py-16">
       <header className="flex flex-col gap-3">
         <p className="text-sm font-medium tracking-wide text-[var(--color-accent)] uppercase">
-          Phase 0 — repository foundation
+          Phase 1 — accounts and access control
         </p>
         <h1 className="text-4xl font-semibold tracking-tight">Universal Cart</h1>
         <p className="text-base text-[var(--color-ink-muted)]">
@@ -25,18 +26,15 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section aria-labelledby="scaffold-heading" className="flex flex-col gap-3">
-        <h2 id="scaffold-heading" className="text-sm font-semibold">
-          What is wired up so far
+      <section aria-labelledby="capabilities-heading" className="flex flex-col gap-3">
+        <h2 id="capabilities-heading" className="text-sm font-semibold">
+          What works today
         </h2>
         <ul className="flex flex-col gap-2">
-          {phaseZeroChecklist.map((entry) => (
+          {capabilities.map((entry) => (
             <li
               key={entry}
-              className={cn(
-                'rounded-md border border-[var(--color-line)] px-3 py-2 text-sm',
-                'text-[var(--color-ink-muted)]',
-              )}
+              className="rounded-md border border-[var(--color-line)] px-3 py-2 text-sm text-[var(--color-ink-muted)]"
             >
               {entry}
             </li>
@@ -44,9 +42,17 @@ export default function HomePage() {
         </ul>
       </section>
 
+      <div className="flex gap-3">
+        <Link
+          href={user ? '/app' : '/login'}
+          className="rounded-md bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white"
+        >
+          {user ? 'Go to your carts' : 'Sign in'}
+        </Link>
+      </div>
+
       <footer className="text-xs text-[var(--color-ink-muted)]">
-        Serving from <code>{publicEnv.NEXT_PUBLIC_APP_URL}</code>. Authentication, capture, and the
-        dashboard arrive in later phases.
+        Product capture, the dashboard, and sharing arrive in later phases.
       </footer>
     </main>
   );

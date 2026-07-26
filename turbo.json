@@ -38,6 +38,15 @@
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
+      "env": [
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "WXT_PUBLIC_APP_URL",
+        "WXT_PUBLIC_SUPABASE_URL",
+        "WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_MAILPIT_URL"
+      ],
       "outputs": ["playwright-report/**", "test-results/**"]
     },
     "clean": {

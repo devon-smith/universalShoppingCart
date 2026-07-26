@@ -76,3 +76,69 @@ and the CLI version affects local Postgres and migration behaviour, so it should
 in the lockfile like every other tool.
 
 **Consequences.** Docker is still required. CLI upgrades are a reviewable lockfile change.
+
+---
+
+## 2026-07-26 — The extension signs in with a one-time code, not a magic link
+
+**Decision.** The side panel's email fallback asks Supabase for an OTP and verifies the
+6-digit code in the panel. It does not ask the user to click the emailed link.
+
+**Context.** Clicking a link opens a browser tab. That tab's session lands in cookies for
+the web app's origin, which is not the extension's session store — the panel would still
+be signed out. The same email carries both a link (for the dashboard) and a code (for the
+panel), so one email serves both surfaces.
+
+**Consequences.** The magic-link email template is part of the contract between the two
+clients: it must contain both `{{ .TokenHash }}` and `{{ .Token }}`. A hosted Supabase
+project needs the template from `supabase/templates/magic_link.html` configured in its
+dashboard.
+
+---
+
+## 2026-07-26 — RLS predicates are SECURITY DEFINER helpers
+
+**Decision.** `can_read_cart`, `can_edit_cart`, and `owns_cart` are `security definer` SQL
+functions, and the policies on `carts` and `cart_members` call them instead of querying
+each other's tables directly.
+
+**Context.** A `carts` policy needs to consult `cart_members`, and a `cart_members` policy
+needs to consult `carts`. Doing that inline makes each policy re-enter the other table's
+RLS, which Postgres rejects as infinite recursion.
+
+**Consequences.** These three functions bypass RLS by design, so they are the highest-value
+review target in the schema. Each answers a yes/no question about `auth.uid()` only,
+returns no rows, and grants `EXECUTE` to `authenticated` alone. Any future predicate added
+here needs the same scrutiny.
+
+---
+
+## 2026-07-26 — Redirect URLs are built from the request Host, not `NextRequest.url`
+
+**Decision.** `apps/web/src/lib/auth/absolute-url.ts` derives the redirect origin from
+`x-forwarded-host`/`host`, falling back to `request.url` only when neither is present.
+
+**Context.** Next normalizes `request.url` and `request.nextUrl` to the server's own
+origin. A request to `http://127.0.0.1:3100` comes back as `http://localhost:3100`, and
+those are different cookie jars — the session established by `/auth/confirm` was dropped
+by the very redirect that followed it, and the user landed back on `/login`.
+
+**Consequences.** Anything that builds a redirect must go through these helpers. A
+deployment behind a proxy must set `x-forwarded-host` and `x-forwarded-proto` correctly.
+
+---
+
+## 2026-07-26 — End-to-end suites require a real Supabase project
+
+**Decision.** Both Playwright suites fail fast without `NEXT_PUBLIC_SUPABASE_URL` /
+`WXT_PUBLIC_SUPABASE_URL`. `pnpm test:e2e` fills them from the running local stack via
+`scripts/with-supabase-env.mjs`; CI starts Supabase before the suite.
+
+**Context.** The alternative — skipping auth tests when no project is reachable — produces
+a green suite that tested nothing, which is worse than a red one. Next also inlines
+`NEXT_PUBLIC_*` at build time, so the values have to be present for the build the suite
+serves, not merely at test time.
+
+**Consequences.** `pnpm test:e2e` needs Docker and `pnpm supabase:start`. The extension
+suite additionally needs the full Chromium build (`channel: 'chromium'`), because the
+headless shell does not load extensions and the MV3 service worker never starts.

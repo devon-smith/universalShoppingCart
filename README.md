@@ -6,7 +6,7 @@ This is **not** a universal checkout system. It never stores retailer credential
 
 ## Status
 
-**Phase 0 complete** — monorepo scaffold, running web app, loadable extension side panel, local Supabase configuration, and CI. No authentication, capture, or dashboard yet. See [docs/STATUS.md](docs/STATUS.md).
+**Phase 1 complete** — accounts and access control. Sign in from the web app or the extension with Google or an emailed code, get one default cart, and nobody else can read it. Product capture and the dashboard are next. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Stack
 
@@ -26,6 +26,8 @@ Requires Node.js 22, pnpm 10, Docker, and Chrome.
 pnpm install
 cp apps/web/.env.example apps/web/.env.local
 cp apps/extension/.env.example apps/extension/.env
+
+pnpm supabase:start     # then copy the API URL and publishable key into both env files
 pnpm dev
 ```
 
@@ -45,6 +47,8 @@ Full setup, local Supabase, and troubleshooting: [docs/RUNBOOK.md](docs/RUNBOOK.
 | [docs/STATUS.md](docs/STATUS.md)             | Per-phase state and verification results                                                           |
 | [docs/DECISIONS.md](docs/DECISIONS.md)       | Short ADRs                                                                                         |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md)           | Setup, local Supabase, releases, troubleshooting                                                   |
+| [docs/DATA_MODEL.md](docs/DATA_MODEL.md)     | Tables, triggers, and the row-level security matrix                                                |
+| [docs/SECURITY.md](docs/SECURITY.md)         | Secret classification, auth model, extension permissions, known gaps                               |
 
 ## How to work on this repo
 
@@ -65,7 +69,9 @@ pnpm lint
 pnpm typecheck
 pnpm test            # Vitest, every workspace
 pnpm build           # web + extension production bundles
-pnpm test:e2e        # Playwright against the built web app
+pnpm test:e2e        # Playwright: web app and extension (needs `pnpm supabase:start`)
+pnpm test:db         # pgTAP: schema, triggers, row-level security
+pnpm db:types        # regenerate the generated database types after a migration
 pnpm format          # Prettier write
 pnpm format:check    # Prettier check (CI runs this)
 pnpm supabase:start

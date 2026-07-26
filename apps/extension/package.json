@@ -12,15 +12,18 @@
     "typecheck": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rm -rf node_modules .turbo .output .wxt coverage"
+    "clean": "rm -rf node_modules .turbo .output .wxt coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.110.8",
     "@universal-cart/contracts": "workspace:*",
     "@universal-cart/ui": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.0",
     "@types/chrome": "0.1.29",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
