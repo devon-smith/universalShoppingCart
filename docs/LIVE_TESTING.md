@@ -44,20 +44,25 @@ A pass over ten easy pages proves less than a pass over five awkward ones. Try t
 
 Fill in as you go. `Adapter` is what `/app/diagnostics` reports, not what you expected.
 
-| #   | Domain | Adapter | Confidence | Result | Notes |
-| --- | ------ | ------- | ---------- | ------ | ----- |
-| 1   |        |         |            |        |       |
-| 2   |        |         |            |        |       |
-| 3   |        |         |            |        |       |
-| 4   |        |         |            |        |       |
-| 5   |        |         |            |        |       |
-| 6   |        |         |            |        |       |
-| 7   |        |         |            |        |       |
-| 8   |        |         |            |        |       |
-| 9   |        |         |            |        |       |
-| 10  |        |         |            |        |       |
+| #   | Domain | Category | Adapter | Confidence | Result | Failed on | Notes |
+| --- | ------ | -------- | ------- | ---------- | ------ | --------- | ----- |
+| 1   |        |          |         |            |        |           |       |
+| 2   |        |          |         |            |        |           |       |
+| 3   |        |          |         |            |        |           |       |
+| 4   |        |          |         |            |        |           |       |
+| 5   |        |          |         |            |        |           |       |
+| 6   |        |          |         |            |        |           |       |
+| 7   |        |          |         |            |        |           |       |
+| 8   |        |          |         |            |        |           |       |
+| 9   |        |          |         |            |        |           |       |
+| 10  |        |          |         |            |        |           |       |
 
 `Result`: ✅ everything correct · ⚠️ saved but something wrong · ❌ could not capture or save
+
+`Failed on`: leave blank when ✅. Otherwise use one or more of `price`, `original-price`,
+`currency`, `title`, `image`, `variant`, `availability`, `canonical`, `duplicate`, `sync`,
+`observation`. These are the codes the Findings section groups by, so writing them here
+means the summary falls out of the table rather than having to be reconstructed.
 
 ---
 
@@ -65,7 +70,11 @@ Fill in as you go. `Adapter` is what `/app/diagnostics` reports, not what you ex
 
 **URL**
 **Domain**
+**Category** — what kind of thing it is (clothing, electronics, grocery, furniture). Failure
+patterns cluster by category more than by retailer.
 **Date**
+**Tester** — matters once more than one person is testing, so a surprising result can be
+asked about rather than guessed at.
 
 ### What the page says
 
@@ -83,16 +92,22 @@ you wrote at different times is the only way to catch a plausible-looking wrong 
 
 ### What was extracted
 
-| Field            | Extracted | Correct? |
-| ---------------- | --------- | -------- |
-| Title            |           |          |
-| Current price    |           |          |
-| Original price   |           |          |
-| Currency         |           |          |
-| Image            |           |          |
-| Availability     |           |          |
-| Selected variant |           |          |
-| Canonical URL    |           |          |
+| Field           | Extracted | Correct? |
+| --------------- | --------- | -------- |
+| Title           |           |          |
+| Current price   |           |          |
+| Original price  |           |          |
+| Currency        |           |          |
+| Image           |           |          |
+| Availability    |           |          |
+| Selected colour |           |          |
+| Selected size   |           |          |
+| Other options   |           |          |
+| Canonical URL   |           |          |
+
+Colour and size get their own rows because they fail independently: a page will often read
+the colour correctly from the URL and miss the size entirely, and a single "variant" row
+hides that.
 
 **Adapter / fallback status** — from `/app/diagnostics`: adapter id and version, or
 `generic`. Note the failure class if one is shown.
@@ -100,6 +115,10 @@ you wrote at different times is the only way to catch a plausible-looking wrong 
 **Overall confidence**
 
 **Fields the panel flagged for review** — the ⚠ markers before saving.
+
+**Corrections you had to make** — which fields you edited by hand before saving, and to
+what. This is the number that decides whether capture is actually usable day to day: a
+save that needs three corrections every time is a worse experience than no capture at all.
 
 ### Behaviour
 
@@ -140,6 +159,31 @@ _Copy the Test 1 block._
 Filled in after the session. This section is the deliverable — the rest is working notes.
 
 ### Adapters that worked
+
+Domains where `/app/diagnostics` named a platform adapter **and** the fields were right.
+This is the answer to whether the platform-adapter bet paid off.
+
+### Domains that fell back to generic extraction
+
+Falling back is not itself a failure — say whether the generic pipeline got the fields
+right anyway. A domain only earns an adapter when it fell back _and_ got something wrong.
+
+### Failure counts by class
+
+Straight from the `Failed on` column, so the next piece of work is chosen by frequency
+rather than by whichever failure was most annoying to hit.
+
+| Class                           | Count | Domains |
+| ------------------------------- | ----- | ------- |
+| Missing or wrong price          |       |         |
+| Wrong original price            |       |         |
+| Missing or wrong variant        |       |         |
+| Incorrect availability          |       |         |
+| Wrong or missing image          |       |         |
+| Canonical URL dropped a variant |       |         |
+| Duplicate not detected          |       |         |
+| Extension/dashboard out of sync |       |         |
+| Observation not recorded        |       |         |
 
 ### Domains needing a retailer-specific adapter
 
