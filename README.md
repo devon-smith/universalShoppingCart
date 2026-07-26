@@ -51,6 +51,7 @@ Full setup, local Supabase, and troubleshooting: [docs/RUNBOOK.md](docs/RUNBOOK.
 | [docs/SECURITY.md](docs/SECURITY.md)         | Secret classification, auth model, extension permissions, known gaps                               |
 | [docs/EXTRACTION.md](docs/EXTRACTION.md)     | How a product page becomes a capture: pipeline, merge rules, normalizers, fixtures                 |
 | [docs/LIVE_TESTING.md](docs/LIVE_TESTING.md) | Log for testing extraction against real retailer pages, which CI never touches                     |
+| [docs/VALIDATION.md](docs/VALIDATION.md)     | What each testing tier can prove, the manual checks, and the gate before building resumes          |
 
 ## How to work on this repo
 
