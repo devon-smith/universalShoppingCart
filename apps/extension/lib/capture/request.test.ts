@@ -89,7 +89,10 @@ describe('requestCapture', () => {
     await expect(requestCapture(d)).rejects.toThrow(/unrecognized response/);
   });
 
-  it('explains an injection failure instead of hanging', async () => {
+  it('tells the user how to authorize the page instead of leaking Chrome’s wording', async () => {
+    // Chrome's own string names the mechanism and offers no way out. The user's problem is
+    // that the `activeTab` grant expired when they navigated, and the fix is a different
+    // gesture — so say that instead.
     const d = deps({
       scripting: {
         executeScript: vi.fn(async () => {
@@ -99,7 +102,21 @@ describe('requestCapture', () => {
     });
 
     await expect(requestCapture(d)).rejects.toThrow(CaptureError);
+    await expect(requestCapture(d)).rejects.toThrow(/Save to Universal Cart/);
+  });
+
+  it('explains any other injection failure instead of hanging', async () => {
+    const d = deps({
+      scripting: {
+        executeScript: vi.fn(async () => {
+          throw new Error('Frame with ID 0 was removed.');
+        }),
+      },
+    });
+
+    await expect(requestCapture(d)).rejects.toThrow(CaptureError);
     await expect(requestCapture(d)).rejects.toThrow(/Could not read this page/);
+    await expect(requestCapture(d)).rejects.toThrow(/Frame with ID 0/);
   });
 
   it('explains a silent page', async () => {

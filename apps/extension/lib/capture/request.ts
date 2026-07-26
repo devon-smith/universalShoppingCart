@@ -33,6 +33,28 @@ export class CaptureError extends Error {
   }
 }
 
+/**
+ * Chrome's wording when the extension does not hold `activeTab` for the tab.
+ *
+ * Matched rather than parsed: the string is an internal detail and may change, so a miss
+ * falls through to the generic message rather than to something wrong.
+ */
+const PERMISSION_DENIED =
+  /cannot access contents of|must request permission|cannot access a chrome|extension manifest/i;
+
+/**
+ * What to tell the user when access was refused.
+ *
+ * Chrome's own message ("Cannot access contents of the page…") describes the mechanism and
+ * gives no way out. The user's problem is not that a permission is missing, it is that the
+ * grant expired when they navigated — and the fix is a different gesture, not a setting.
+ */
+export const PERMISSION_HELP =
+  'Universal Cart needs your go-ahead for this page. Right-click anywhere on it and choose ' +
+  '“Save to Universal Cart”, or press ⌘⇧U (Ctrl+Shift+U on Windows). Chrome only lets the ' +
+  'extension read a page when you invoke it there, and that permission ends as soon as the ' +
+  'page navigates — which is why the panel button alone cannot do it.';
+
 /** Pages the extension must not read (BUILD_PLAN.md §17.1). */
 export function isCapturablePage(url: string | undefined): boolean {
   if (!url) return false;
@@ -79,8 +101,9 @@ export async function requestCapture(deps: RequestCaptureDeps): Promise<Extracti
       files: [CAPTURE_SCRIPT_FILE],
     });
   } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
     throw new CaptureError(
-      `Could not read this page. ${error instanceof Error ? error.message : String(error)}`,
+      PERMISSION_DENIED.test(detail) ? PERMISSION_HELP : `Could not read this page. ${detail}`,
     );
   }
 

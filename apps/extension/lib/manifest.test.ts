@@ -7,11 +7,19 @@ describe('buildPermissions', () => {
     // This list is a promise to users. Changing it should require changing this test.
     expect([...buildPermissions()].sort()).toEqual([
       'activeTab',
+      'contextMenus',
       'identity',
       'scripting',
       'sidePanel',
       'storage',
     ]);
+  });
+
+  it('requests contextMenus, which is how capture is authorized at all', () => {
+    // Not a convenience. A context-menu click is an action invocation, so it confers
+    // `activeTab` on the tab the user is looking at; a click inside the side panel does
+    // not, and the grant from opening the panel dies on the next navigation.
+    expect(buildPermissions()).toContain('contextMenus');
   });
 
   it('does not request tabs, webNavigation, or cookies', () => {
