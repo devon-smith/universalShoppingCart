@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Alder Cutting Board — Fieldcraft Supply</title>
+    <link rel="canonical" href="https://fieldcraft.example/product/alder-cutting-board" />
+    <meta name="generator" content="WooCommerce 8.6.1" />
+  </head>
+  <body class="woocommerce woocommerce-page">
+    <div class="product">
+      <div class="woocommerce-product-gallery">
+        <figure class="woocommerce-product-gallery__image">
+          <img src="/wp-content/uploads/alder-board-large.jpg" alt="" />
+        </figure>
+      </div>
+
+      <div class="summary">
+        <h1 class="product_title entry-title">Alder Cutting Board</h1>
+        <p class="price">
+          <span class="woocommerce-Price-amount amount">£42.00 – £68.00</span>
+        </p>
+
+        <!--
+          The heading shows a price *range*. The selected variation is the one that has a
+          price, and it is on sale — neither fact is visible without matching the
+          attribute selects against the variation matrix.
+        -->
+        <form
+          class="variations_form cart"
+          data-product_variations='[
+            {"variation_id":881,"attributes":{"attribute_pa_size":"large","attribute_pa_finish":"oiled"},"display_price":68,"display_regular_price":78,"is_in_stock":true,"sku":"ACB-L-OIL"},
+            {"variation_id":882,"attributes":{"attribute_pa_size":"small","attribute_pa_finish":"oiled"},"display_price":42,"display_regular_price":42,"is_in_stock":true,"sku":"ACB-S-OIL"},
+            {"variation_id":883,"attributes":{"attribute_pa_size":"large","attribute_pa_finish":"raw"},"display_price":64,"display_regular_price":64,"is_in_stock":false,"sku":"ACB-L-RAW"}
+          ]'
+        >
+          <table class="variations">
+            <tbody>
+              <tr>
+                <th class="label"><label for="pa_size">Size</label></th>
+                <td class="value">
+                  <select id="pa_size" name="attribute_pa_size">
+                    <option value="">Choose an option</option>
+                    <option value="small">Small — 30cm</option>
+                    <option value="large" selected>Large — 45cm</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <th class="label"><label for="pa_finish">Finish</label></th>
+                <td class="value">
+                  <select id="pa_finish" name="attribute_pa_finish">
+                    <option value="">Choose an option</option>
+                    <option value="oiled" selected>Oiled</option>
+                    <option value="raw">Raw</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </form>
+
+        <div class="product_meta">
+          <span class="sku_wrapper">SKU: <span class="sku">ACB-PARENT</span></span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

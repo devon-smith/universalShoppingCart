@@ -31,18 +31,27 @@ export interface CaptureOverrides {
   url?: string;
   availability?: ProductCaptureV1['offer']['availability'];
   observedAt?: string;
+  /** Save a product whose price the page never stated. */
+  noPrice?: boolean;
+  retailerName?: string;
+  extractorId?: string;
+  extractorVersion?: string;
+  confidence?: number;
 }
 
 export function capture(overrides: CaptureOverrides = {}): ProductCaptureV1 {
   const url = overrides.url ?? 'https://shop.northwind.example/p/meridian';
+  // Derived, not hardcoded: a test that overrides the URL is testing a different retailer,
+  // and silently filing it under the default domain would make the assertion meaningless.
+  const domain = new URL(url).hostname.replace(/^www\./, '');
 
   return {
     schemaVersion: 1,
     source: {
       url,
       canonicalUrl: url,
-      domain: 'shop.northwind.example',
-      retailerName: 'Northwind',
+      domain,
+      retailerName: overrides.retailerName ?? 'Northwind',
       pageTitle: 'Meridian Wool Runner',
     },
     product: {
@@ -54,17 +63,17 @@ export function capture(overrides: CaptureOverrides = {}): ProductCaptureV1 {
       identifiers: { sku: 'MWR-042' },
     },
     offer: {
-      priceAmount: overrides.price ?? '98.00',
-      originalPriceAmount: '120.00',
-      currency: 'USD',
+      priceAmount: overrides.noPrice ? null : (overrides.price ?? '98.00'),
+      originalPriceAmount: overrides.noPrice ? null : '120.00',
+      currency: overrides.noPrice ? null : 'USD',
       availability: overrides.availability ?? 'in_stock',
     },
     selectedVariant: { Size: '10', Color: 'Natural Black' },
     evidence: [],
     extraction: {
-      extractorId: 'generic',
-      extractorVersion: '1.0.0',
-      overallConfidence: 0.9,
+      extractorId: overrides.extractorId ?? 'generic',
+      extractorVersion: overrides.extractorVersion ?? '1.0.0',
+      overallConfidence: overrides.confidence ?? 0.9,
       observedAt: overrides.observedAt ?? new Date().toISOString(),
     },
   };

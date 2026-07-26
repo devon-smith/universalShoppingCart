@@ -52,7 +52,15 @@ describe('normalizePrice — precision', () => {
   });
 
   it('does not round a long decimal', () => {
-    expect(normalizePrice('1234.567890').amount).toBe('1234.567890');
+    expect(normalizePrice('1234.5678').amount).toBe('1234.5678');
+  });
+
+  it('normalizes the scale without changing the amount', () => {
+    // Platforms serialize at their storage scale; the same price must compare equal as a
+    // string however it was written.
+    expect(normalizePrice('279.0000').amount).toBe('279.00');
+    expect(normalizePrice('18.5').amount).toBe('18.50');
+    expect(normalizePrice('1234.567890').amount).toBe('1234.56789');
   });
 
   it('strips leading zeros without losing the value', () => {

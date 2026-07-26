@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { signOut } from '@/app/login/actions';
@@ -70,14 +71,22 @@ export default async function DashboardPage() {
             Signed in as {user.email ?? user.id}
           </p>
         </div>
-        <form action={signOut}>
-          <button
-            type="submit"
+        <div className="flex items-center gap-2">
+          <Link
+            href="/app/diagnostics"
             className="rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-surface-muted)]"
           >
-            Sign out
-          </button>
-        </form>
+            Extractor health
+          </Link>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm hover:bg-[var(--color-surface-muted)]"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
       </header>
 
       {itemsError ? (

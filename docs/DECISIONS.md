@@ -343,3 +343,68 @@ only the page the user pointed it at.
 re-observe it until the panel is reopened, and there is an explicit "Refresh from this
 page" button for that case. The permission list stays at `activeTab`, `scripting`,
 `storage`, `sidePanel`, and `identity`, which `lib/manifest.test.ts` asserts.
+
+---
+
+## 2026-07-26 — Adapters target commerce platforms, not retailer brands
+
+**Decision.** The five Phase 5 adapters are Shopify, WooCommerce, Magento/Adobe Commerce,
+BigCommerce, and Salesforce Commerce Cloud — the platforms storefronts are built on —
+rather than five named retailers.
+
+**Context.** BUILD_PLAN.md §10.7 says to add adapters "based on the actual sites used by
+the project's users" and warns against a speculative list. This repository has no usage
+notes and no fixture requests, so there is no list of actual sites to work from. Guessing
+five brand names would have been exactly the speculation the plan warns about, and worse:
+a brand adapter can only be written and fixture-tested against that retailer's live
+markup, which the project is not going to fetch.
+
+A platform's markup, by contrast, is identical across every storefront running it and is
+publicly documented. One adapter covers thousands of shops, its fixtures can be authored
+from the platform's own conventions, and each one earns its place by reading something the
+generic pipeline provably cannot — the variant in a Shopify `?variant=`, a WooCommerce
+variation's price behind a "from" range, Magento's unformatted `data-price-amount`.
+
+**Consequences.** Coverage is broad but shallow: a large retailer on bespoke infrastructure
+gets the generic pipeline, and the extractor-health page is what will surface that. When
+real usage names a specific retailer worth an adapter, adding one is a new file in
+`adapters/` and two fixtures — the registry does not need to change shape. The naming
+convention (`platform`, not `brand.com`) is worth preserving so the two kinds stay
+distinguishable.
+
+---
+
+## 2026-07-26 — The extractor-health page is scoped by RLS, not by an admin role
+
+**Decision.** `/app/diagnostics` shows the signed-in user their own extraction quality,
+grouped by domain. There is no admin role and no cross-user view.
+
+**Context.** BUILD_PLAN.md §19.2 calls for "a basic admin-only extractor-health page". At
+personal-beta scale the developer _is_ a user, so their own carts already surface the
+failures worth acting on — and an admin view would mean either a service-role query path
+in the web app or a privileged role in the RLS model, both of which are new attack surface
+built for one reader.
+
+**Consequences.** The page cannot show aggregate health across the friend group; a domain
+nobody else's data reaches is invisible until someone with access saves from it. In
+exchange there is nothing here to leak: the query is an ordinary `authenticated` select,
+and the same RLS tests that cover the dashboard cover this page. If shared health becomes
+necessary, the honest shape is an aggregate view with no per-item rows, not a role that can
+read everybody's items.
+
+---
+
+## 2026-07-26 — Diagnostics carry a domain, never a URL
+
+**Decision.** The extractor-health page and its underlying types expose `domain`,
+extractor id/version, confidence, and per-field booleans. Titles, notes, and source URLs
+are never selected or rendered.
+
+**Context.** BUILD_PLAN.md §19.1 excludes product notes and full URLs from analytics.
+A domain and a URL look similar and are not: `shop.example` names a retailer's markup, which
+is what needs fixing; `shop.example/p/engagement-ring` names what somebody is buying.
+
+**Consequences.** A failure can be traced to a retailer and an adapter version but not to
+the individual page that broke, so reproducing one means opening the retailer and finding
+a comparable product. That is the intended trade. An end-to-end test asserts the rendered
+page contains neither the product title, the note, nor the URL path of a seeded item.

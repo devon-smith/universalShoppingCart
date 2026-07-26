@@ -10,11 +10,86 @@ and acceptance criteria.
 | 2 — Generic capture vertical slice     | Complete    |
 | 3 — Cart dashboard and core UX         | Complete    |
 | 4 — Observations and revisit refresh   | Complete    |
-| 5 — Real retailer adapters             | Not started |
+| 5 — Real retailer adapters             | Complete    |
 | 6 — Sharing and comparison             | Not started |
 | 7 — Background refresh and alerts      | Not started |
 | 8 — Product matching and AI comparison | Not started |
 | 9 — Release hardening                  | Not started |
+
+## Phase 5 — Retailer adapters
+
+**Complete.** Five platform adapters, a versioned registry, ten sanitized fixtures, and an
+extractor-health page.
+
+### What works
+
+- **Adapters target platforms, not brands** — Shopify, WooCommerce, Magento/Adobe
+  Commerce, BigCommerce, and Salesforce Commerce Cloud. See
+  [DECISIONS.md](DECISIONS.md) for why: the repository has no usage notes naming real
+  retailers, and BUILD_PLAN.md §10.7 explicitly warns against a speculative brand list.
+  A platform's markup is the same across every storefront running it, so one adapter
+  covers thousands of shops and can be fixture-tested without ever fetching a live page.
+- **Each one reads something the generic pipeline cannot.** The Shopify adapter resolves
+  `?variant=` to that variant's own price, stock, and options — the fixture's JSON-LD says
+  98.00 while the selected variant costs 108.00, and an end-to-end test proves 108.00 is
+  what reaches the panel. WooCommerce matches the attribute selects against the variation
+  matrix instead of reporting the "from" range. Magento reads `data-price-amount` rather
+  than parsing "279,00 €", and reads stock from the `available` class rather than from a
+  word that might be "Auf Lager".
+- **Versioned registry** with unique ids, priorities above every generic extractor, and
+  `adapterDescriptors()` exposing it as plain data. Tests assert no adapter claims another
+  platform's fixture, and that none claims any of the generic fixtures.
+- **Generic fallback is proven, not assumed.** An adapter that throws in `supports()` or
+  `extract()` is recorded in `extractorFailures` and the capture still completes from
+  structured data. An adapter that matches but contributes nothing leaves
+  `extraction.extractorId` as `generic` while appearing in `matchedAdapters` — which is
+  exactly the signature of rotted selectors.
+- **The adapter's version is recorded with the capture**, and therefore with every
+  observation: `extraction.extractorId`/`extractorVersion` name the highest-priority
+  adapter that actually contributed a field.
+- **Extractor health at `/app/diagnostics`** — domains sorted worst-first, each with the
+  extractor id/version pairs seen there, per-field presence rates, mean confidence, and a
+  failure class (`no_price`, `no_currency`, `low_confidence`, `generic_fallback`, `ok`).
+  Domains only: no titles, no notes, no URLs, asserted end to end.
+- **Price scale is normalized** without changing any amount, so `279.0000`, `279.00`, and
+  a Shopify integer `27900` all become the same string. Integer minor units have the
+  decimal point moved rather than being divided by 100 through a double.
+
+### Database changes
+
+None. Adapter id, version, and confidence were already stored on `items` from Phase 2B,
+which is what made the health page possible without new telemetry.
+
+### Verification
+
+| Command          | Result                                        |
+| ---------------- | --------------------------------------------- |
+| `pnpm lint`      | Pass — 7 workspaces                           |
+| `pnpm typecheck` | Pass — 7 workspaces                           |
+| `pnpm test`      | Pass — 41 files, 477 tests                    |
+| `pnpm build`     | Pass                                          |
+| `pnpm test:db`   | Pass — 5 files, 90 pgTAP assertions           |
+| `pnpm test:e2e`  | Pass — 36 web + 15 extension Playwright tests |
+
+### Deliberately not built yet
+
+- **Brand-specific adapters.** None, on purpose — see above. Adding one when real usage
+  calls for it is a file in `adapters/` and two fixtures; the registry does not change.
+- **Aggregate health across users.** The page is scoped by RLS to the reader's own items.
+- **Extractor telemetry as events.** `extraction_failed` and friends (BUILD_PLAN.md §19.1)
+  are not emitted anywhere; the health page is derived from stored item columns.
+
+### Known limitations
+
+- A large retailer on bespoke infrastructure gets the generic pipeline. That is the
+  expected majority case and the health page is how it becomes visible.
+- Adapter detection is structural. A storefront that has themed away every platform marker
+  falls back to generic extraction rather than being detected some other way.
+- The health page counts items, not capture attempts: a page that failed extraction badly
+  enough never to be saved leaves no trace in it.
+- BigCommerce and Salesforce Commerce Cloud fixtures price in `$`, which is deliberately
+  not mapped to a currency — the captures carry a price with `currency: null`, which is the
+  honest result and not an adapter bug.
 
 ## Phase 4 — Observations, revisit refresh, and price history
 

@@ -94,6 +94,26 @@ The manifest sets `script-src 'self'; object-src 'self'`. There is no `eval`, no
 code, and no downloaded extraction logic; `no-eval`, `no-implied-eval`, and `no-new-func`
 are errors in the shared ESLint config.
 
+### Retailer adapters
+
+Every adapter is bundled and versioned in `packages/extractors/src/adapters/`. None is
+fetched, and none is evaluated from a string: the JSON blobs commerce platforms embed in
+their pages are read with `JSON.parse`, which cannot execute anything. An adapter reads the
+same DOM the generic pipeline reads, under the same refusal rules, and returns the same
+fixed set of named scalars.
+
+## Diagnostics
+
+`/app/diagnostics` reports extraction health from the reader's own items, scoped by the
+same row-level security as the dashboard — there is no admin role and no cross-user query
+path, so there is nothing there to escalate to.
+
+What it may show is deliberately narrow: a retailer **domain**, an extractor id and
+version, a confidence, and per-field present/absent counts. Never a product title, a note,
+or a page URL. A domain names markup that needs fixing; a URL names what somebody is
+buying (BUILD_PLAN.md §19.1). An end-to-end test asserts the rendered page contains none of
+the three for a seeded item.
+
 ## Privacy
 
 Not collected, at all: browsing history, cookies, page HTML, retailer credentials, payment
