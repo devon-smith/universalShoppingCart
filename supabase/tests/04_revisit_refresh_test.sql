@@ -18,10 +18,28 @@ values ('11110000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-0000000
 insert into public.cart_members (cart_id, user_id, role)
 values ('11110000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'owner');
 
+-- Observation timestamps are anchored to now(), not to a fixed date — an unchanged revisit
+-- is only suppressed while the previous observation is inside
+-- `observation_refresh_interval()`, so hardcoded dates make these assertions expire. See the
+-- same note in 02_ingest_product_capture_test.sql.
+create or replace function pg_temp.anchor()
+returns timestamptz
+language sql
+stable
+as $$ select date_trunc('second', now()) - interval '8 hours' $$;
+
+create or replace function pg_temp.at(p_offset interval)
+returns text
+language sql
+stable
+as $$
+  select to_char((pg_temp.anchor() + p_offset) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+$$;
+
 create or replace function pg_temp.capture(
   p_price text default '98.00',
   p_availability text default 'in_stock',
-  p_observed_at text default '2026-07-26T12:00:00.000Z'
+  p_observed_at text default null
 )
 returns jsonb
 language sql
@@ -55,7 +73,7 @@ as $$
       'extractorId', 'generic',
       'extractorVersion', '1.0.0',
       'overallConfidence', 0.9,
-      'observedAt', p_observed_at
+      'observedAt', coalesce(p_observed_at, pg_temp.at(interval '0'))
     )
   );
 $$;
@@ -102,7 +120,7 @@ set local request.jwt.claims = '{"sub": "a0000000-0000-4000-8000-000000000001", 
 
 select is(
   (public.ingest_product_capture(
-    pg_temp.capture(p_price => '88.00', p_observed_at => '2026-07-26T18:00:00.000Z'),
+    pg_temp.capture(p_price => '88.00', p_observed_at => pg_temp.at(interval '6 hours')),
     '11110000-0000-4000-8000-000000000001',
     pg_temp.fp(),
     '{}'::jsonb,
@@ -122,7 +140,7 @@ select is(
 
 select is(
   (select last_observed_at from public.items where id = pg_temp.item_id()),
-  '2026-07-26T18:00:00.000Z'::timestamptz,
+  pg_temp.anchor() + interval '6 hours',
   'last_observed_at moves forward'
 );
 
@@ -173,7 +191,7 @@ set local request.jwt.claims = '{"sub": "a0000000-0000-4000-8000-000000000001", 
 
 select is(
   (public.ingest_product_capture(
-    pg_temp.capture(p_price => '88.00', p_observed_at => '2026-07-26T18:05:00.000Z'),
+    pg_temp.capture(p_price => '88.00', p_observed_at => pg_temp.at(interval '6 hours 5 minutes')),
     '11110000-0000-4000-8000-000000000001', pg_temp.fp(), '{}'::jsonb, 'revisit'
   ) ->> 'observationInserted')::boolean,
   false,
@@ -182,7 +200,7 @@ select is(
 
 select is(
   (public.ingest_product_capture(
-    pg_temp.capture(p_price => '88.00', p_observed_at => '2026-07-26T18:10:00.000Z'),
+    pg_temp.capture(p_price => '88.00', p_observed_at => pg_temp.at(interval '6 hours 10 minutes')),
     '11110000-0000-4000-8000-000000000001', pg_temp.fp(), '{}'::jsonb, 'revisit'
   ) ->> 'observationInserted')::boolean,
   false,
@@ -193,7 +211,7 @@ select is(
 select is(
   (public.ingest_product_capture(
     pg_temp.capture(p_price => '88.00', p_availability => 'out_of_stock',
-                    p_observed_at => '2026-07-26T19:00:00.000Z'),
+                    p_observed_at => pg_temp.at(interval '7 hours')),
     '11110000-0000-4000-8000-000000000001', pg_temp.fp(), '{}'::jsonb, 'revisit'
   ) ->> 'observationInserted')::boolean,
   true,
