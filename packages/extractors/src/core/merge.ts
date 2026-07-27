@@ -20,7 +20,7 @@ import { SOURCE_RANK } from './types';
 export type MergeableField =
   | `source.${'url' | 'canonicalUrl' | 'domain' | 'retailerName' | 'pageTitle'}`
   | `product.${'title' | 'brand' | 'description' | 'imageUrls' | 'selectedImageUrl' | 'identifiers'}`
-  | `offer.${'priceAmount' | 'originalPriceAmount' | 'currency' | 'availability'}`
+  | `offer.${'priceAmount' | 'originalPriceAmount' | 'currency' | 'availability' | 'variantAvailability'}`
   | 'selectedVariant';
 
 export interface MergeResult {
