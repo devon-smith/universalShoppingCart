@@ -22,14 +22,18 @@
     "clean": "turbo run clean",
     "supabase:status": "node scripts/supabase.mjs status",
     "test:db": "node scripts/supabase.mjs test db",
-    "db:types": "node scripts/generate-db-types.mjs"
+    "db:types": "node scripts/generate-db-types.mjs",
+    "score:live": "tsx scripts/score-live.mjs"
   },
   "devDependencies": {
     "@universal-cart/config": "workspace:*",
+    "@universal-cart/extractors": "workspace:*",
+    "jsdom": "29.1.1",
     "prettier": "3.9.6",
+    "supabase": "2.109.1",
+    "tsx": "^4.23.1",
     "turbo": "2.10.7",
-    "typescript": "5.9.3",
-    "supabase": "2.109.1"
+    "typescript": "5.9.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
