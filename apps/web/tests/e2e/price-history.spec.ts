@@ -37,7 +37,7 @@ test.describe('price history and staleness', () => {
     );
     expect(second.observationInserted).toBe(true);
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Meridian Wool Runner' });
     const change = card.getByTestId('price-change');
@@ -64,7 +64,7 @@ test.describe('price history and staleness', () => {
       'revisit',
     );
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Meridian Wool Runner' });
     await expect(card).toContainText('Out of stock');
@@ -78,7 +78,7 @@ test.describe('price history and staleness', () => {
     const client = await signedInClient(email, inbox);
     await ingest(client, capture({ title: 'Long forgotten', observedAt: hoursAgo(24 * 30) }));
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Long forgotten' });
     const age = card.getByTestId('freshness');
@@ -94,7 +94,7 @@ test.describe('price history and staleness', () => {
     const client = await signedInClient(email, inbox);
     await ingest(client, capture({ title: 'Just checked' }));
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Just checked' });
     await expect(card.getByTestId('freshness')).toHaveAttribute('data-level', 'fresh');
@@ -116,7 +116,7 @@ test.describe('price history and staleness', () => {
     );
     expect(repeat.observationInserted).toBe(false);
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Meridian Wool Runner' });
     await card.getByRole('button', { name: 'Details' }).click();

@@ -4,7 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
-import { mailbox, signInCodeFrom, signInUrlFrom } from './mailpit';
+import { mailbox, signInCodeFrom } from './mailpit';
+import { signInBrowser } from './seed';
 
 /**
  * Phase 3: the dashboard as a daily tool — search, filters, sorting, editing, status
@@ -106,19 +107,8 @@ async function seed(email: string, inbox: ReturnType<typeof mailbox>, fixtures: 
     });
     expect(error, error?.message).toBeNull();
   }
-}
 
-async function signInBrowser(page: Page, email: string, inbox: ReturnType<typeof mailbox>) {
-  // Supabase throttles repeat sign-in emails per address.
-  await page.waitForTimeout(1_500);
-
-  await page.goto('/login?next=%2Fapp');
-  await page.getByLabel('Email address').fill(email);
-  await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
-  await expect(page.locator('p[role="status"]')).toContainText(email);
-
-  await page.goto(signInUrlFrom(await inbox.next()));
-  await expect(page).toHaveURL(/\/app$/);
+  return client;
 }
 
 const CATALOGUE: Fixture[] = [
@@ -131,8 +121,8 @@ const CATALOGUE: Fixture[] = [
 async function openDashboard(page: Page, label: string) {
   const email = uniqueEmail(label);
   const inbox = mailbox(email);
-  await seed(email, inbox, CATALOGUE);
-  await signInBrowser(page, email, inbox);
+  const client = await seed(email, inbox, CATALOGUE);
+  await signInBrowser(page, client);
   await expect(page.getByTestId('item-card')).toHaveCount(4);
   return { email, inbox };
 }

@@ -22,7 +22,7 @@ test.describe('dashboard', () => {
     const result = await ingest(client, capture(), { note: 'for the trip', quantity: 2 });
     expect(result.created).toBe(true);
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Meridian Wool Runner' });
     await expect(card).toHaveCount(1);
@@ -48,7 +48,7 @@ test.describe('dashboard', () => {
     expect(second.created).toBe(false);
     expect(second.observationInserted).toBe(true);
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Meridian Wool Runner' });
     await expect(card).toHaveCount(1);
@@ -72,7 +72,7 @@ test.describe('dashboard', () => {
     };
     await ingest(client, sparse);
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
 
     const card = page.getByRole('listitem').filter({ hasText: 'Ask in store' });
     await expect(card).toContainText('Price unknown');
@@ -101,7 +101,7 @@ test.describe('dashboard', () => {
 
     const stranger = uniqueEmail('stranger');
     const strangerInbox = mailbox(stranger);
-    await signInBrowser(page, stranger, strangerInbox);
+    await signInBrowser(page, await signedInClient(stranger, strangerInbox));
 
     await expect(page.getByText('Private purchase')).toHaveCount(0);
     await expect(page.getByText('Nothing saved yet')).toBeVisible();

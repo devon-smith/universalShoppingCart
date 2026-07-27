@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { mailbox, signInCodeFrom, signInUrlFrom } from './mailpit';
+import { signedInClient, signInBrowser } from './seed';
 
 /** A fresh address per test keeps runs independent without resetting the database. */
 function uniqueEmail(label: string): string {
@@ -69,31 +70,30 @@ test.describe('magic-link sign-in', () => {
     await expect(page).toHaveURL(/\/login\?next=%2Fapp$/);
   });
 
-  test('reuses the same account and cart on a second sign-in', async ({ page }) => {
+  test('signing out and returning keeps one account and one cart', async ({ page }) => {
+    // The risk is the signup trigger firing twice and leaving a returning user with two
+    // carts. Proving that needs a second visit, not a second email — and asking for one
+    // would send twice to the same address within `auth.email.max_frequency`, which is the
+    // dependency that made the throttle assertion below race a clock. One send, two visits.
+    //
+    // The full magic-link flow is still exercised for real by the first test in this file.
     const email = uniqueEmail('repeat');
     const inbox = mailbox(email);
+    const client = await signedInClient(email, inbox);
 
-    for (const attempt of [1, 2]) {
-      if (attempt > 1) {
-        // Supabase throttles repeat sign-in emails to one per `auth.email.max_frequency`
-        // (1s locally). Waiting it out keeps the test about account reuse rather than
-        // about the throttle, which has its own assertion below.
-        await page.waitForTimeout(1_500);
-      }
-
-      await page.goto('/login');
-      await page.getByLabel('Email address').fill(email);
-      await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
-      await expect(page.locator('p[role="status"]')).toContainText(email);
-
-      await page.goto(signInUrlFrom(await inbox.next()));
-      await expect(page).toHaveURL(/\/app$/);
+    for (const visit of [1, 2]) {
+      await signInBrowser(page, client);
 
       const carts = page.getByRole('list').getByRole('listitem');
-      await expect(carts, `attempt ${attempt} should still see exactly one cart`).toHaveCount(1);
+      await expect(carts, `visit ${visit} should still see exactly one cart`).toHaveCount(1);
+      await expect(carts.first()).toContainText('My cart');
 
-      await page.getByRole('button', { name: 'Sign out' }).click();
-      await expect(page).toHaveURL(/\/login$/);
+      // Discard the browser's session rather than clicking Sign out, which revokes the
+      // session server-side and would leave nothing to return with. Signing out is asserted
+      // by the first test in this file; what is being tested here is coming back.
+      await page.context().clearCookies();
+      await page.goto('/app');
+      await expect(page).toHaveURL(/\/login\?next=%2Fapp$/);
     }
   });
 

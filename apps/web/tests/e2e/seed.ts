@@ -1,11 +1,12 @@
 import type { Database, ProductCaptureV1 } from '@universal-cart/contracts';
 import { computeFingerprint } from '@universal-cart/extractors';
+import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import type { mailbox } from './mailpit';
-import { signInCodeFrom, signInUrlFrom } from './mailpit';
+import { signInCodeFrom } from './mailpit';
 
 /**
  * Seeding helpers for the dashboard suites.
@@ -17,6 +18,8 @@ import { signInCodeFrom, signInUrlFrom } from './mailpit';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+/** Where the app under test is served; the session cookies are scoped to its host. */
+const APP_HOST = new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://127.0.0.1:3100').hostname;
 
 export type Inbox = ReturnType<typeof mailbox>;
 export type SeedClient = ReturnType<typeof createClient<Database>>;
@@ -138,16 +141,57 @@ export async function ingest(
   return data as unknown as IngestResult;
 }
 
-/** Sign the same user in inside the browser, so the dashboard renders their data. */
-export async function signInBrowser(page: Page, email: string, inbox: Inbox): Promise<void> {
-  // Supabase throttles repeat sign-in emails per address.
-  await page.waitForTimeout(1_500);
+/**
+ * Put the session `signedInClient` already holds into the browser.
+ *
+ * These suites are about the dashboard, not about signing in. Asking for a second sign-in
+ * email meant every one of them sent twice to the same address seconds apart, so each had to
+ * sleep past `auth.email.max_frequency` — sixteen call sites all depending on the throttle
+ * being short enough to wait out. That in turn forced the window down to `1s` locally, which
+ * left the one test that asserts the throttle racing a page load against it: it failed under
+ * parallel workers and passed when run alone.
+ *
+ * Reusing the session removes the second send, so the throttle can sit at the production
+ * default and the assertion about it becomes a statement rather than a race.
+ *
+ * The cookies are written by `@supabase/ssr` itself rather than assembled here: the encoding
+ * and the chunking across `.0`/`.1` are its business, and a hand-rolled copy would be a
+ * second implementation to keep in step with the app's.
+ *
+ * The magic-link flow is still exercised end to end by `auth.spec.ts`, which signs in for
+ * real. It is the path most likely to break on a hosted origin, so it keeps a real test.
+ */
+export async function signInBrowser(page: Page, client: SeedClient): Promise<void> {
+  const { data, error } = await client.auth.getSession();
+  expect(error, error?.message).toBeNull();
+  expect(data.session, 'seed client has no session to install').not.toBeNull();
 
-  await page.goto('/login?next=%2Fapp');
-  await page.getByLabel('Email address').fill(email);
-  await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
-  await expect(page.locator('p[role="status"]')).toContainText(email);
+  const { access_token, refresh_token } = data.session!;
+  const written: { name: string; value: string }[] = [];
 
-  await page.goto(signInUrlFrom(await inbox.next()));
+  const writer = createServerClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+    cookies: {
+      getAll: () => [],
+      setAll: (cookies) => {
+        written.push(...cookies.map(({ name, value }) => ({ name, value })));
+      },
+    },
+  });
+  await writer.auth.setSession({ access_token, refresh_token });
+  expect(written.length, 'no auth cookies were produced').toBeGreaterThan(0);
+
+  await page.context().addCookies(
+    written.map(({ name, value }) => ({
+      name,
+      value,
+      domain: APP_HOST,
+      path: '/',
+      httpOnly: false,
+      secure: false,
+      sameSite: 'Lax' as const,
+    })),
+  );
+
+  await page.goto('/app');
   await expect(page).toHaveURL(/\/app$/);
 }

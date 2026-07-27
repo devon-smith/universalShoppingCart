@@ -37,7 +37,7 @@ test.describe('extractor health', () => {
       }),
     );
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
     await page.getByRole('link', { name: 'Extractor health' }).click();
     await expect(page).toHaveURL(/\/app\/diagnostics$/);
 
@@ -65,7 +65,7 @@ test.describe('extractor health', () => {
       }),
     );
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
     await page.goto('/app/diagnostics');
 
     const rows = page.getByTestId('domain-health');
@@ -82,8 +82,7 @@ test.describe('extractor health', () => {
     const email = uniqueEmail('registry');
     const inbox = mailbox(email);
 
-    await signedInClient(email, inbox);
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, await signedInClient(email, inbox));
     await page.goto('/app/diagnostics');
 
     // The registry renders whether or not anything has been saved.
@@ -115,7 +114,7 @@ test.describe('extractor health', () => {
       { note: 'do not show this to anyone' },
     );
 
-    await signInBrowser(page, email, inbox);
+    await signInBrowser(page, client);
     await page.goto('/app/diagnostics');
 
     await expect(page.getByTestId('domain-health')).toContainText('shop.northwind.example');
@@ -134,7 +133,7 @@ test.describe('extractor health', () => {
 
     const stranger = uniqueEmail('stranger');
     const strangerInbox = mailbox(stranger);
-    await signInBrowser(page, stranger, strangerInbox);
+    await signInBrowser(page, await signedInClient(stranger, strangerInbox));
     await page.goto('/app/diagnostics');
 
     await expect(page.getByText('private-retailer.example')).toHaveCount(0);
