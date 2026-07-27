@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://stockx.com/vantage-court-low-sail-cobalt",
+    "canonicalUrl": "https://stockx.com/vantage-court-low-sail-cobalt",
+    "domain": "stockx.com",
+    "retailerName": "Stockx",
+    "pageTitle": "Vantage Court Low Sail Cobalt | Example"
+  },
+  "product": {
+    "title": "Vantage Court Low Sail Cobalt",
+    "brand": "Vantage",
+    "description": null,
+    "imageUrls": [
+      "https://images.example.com/360/Vantage-Court-Low-Sail-Cobalt/Images/hero.jpg?w=1000"
+    ],
+    "selectedImageUrl": "https://images.example.com/360/Vantage-Court-Low-Sail-Cobalt/Images/hero.jpg?w=1000",
+    "identifiers": {
+      "mpn": "VC1234-101"
+    }
+  },
+  "offer": {
+    "priceAmount": "84.00",
+    "originalPriceAmount": "120.00",
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Size": "US Men's 10.5",
+    "Color": "Sail/Cobalt-Sail"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": "[data-component=\"primary-product-title\"]",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "[data-testid=\"trade-box-buy-amount\"]",
+      "confidence": 0.4,
+      "value": "84.00"
+    },
+    {
+      "field": "offer.variantAvailability",
+      "source": "adapter",
+      "selector": "[data-testid=\"trade-box-buy-amount\"]",
+      "confidence": 0.8
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "selector": "Retail Price",
+      "confidence": 0.85
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "Size: / Colorway",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.title",
+      "source": "json_ld",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "json_ld",
+      "confidence": 0.4,
+      "value": "76.00"
+    },
+    {
+      "field": "offer.currency",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "selectedVariant",
+      "source": "json_ld",
+      "confidence": 0.7
+    },
+    {
+      "field": "product.title",
+      "source": "meta",
+      "selector": "meta[property=\"og:title\"]",
+      "confidence": 0.75
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "meta",
+      "selector": "link[rel=\"canonical\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "meta",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "document h1",
+      "confidence": 0.27999999999999997
+    }
+  ],
+  "extraction": {
+    "extractorId": "stockx",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.744,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}
