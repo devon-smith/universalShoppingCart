@@ -239,7 +239,12 @@ enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+# Supabase's own default, and what production runs. It was lowered to "1s" so the dashboard
+# suites could sleep past it — they signed the same address in twice, seconds apart, once to
+# seed and once in the browser. They now reuse the seeded session instead, so nothing sends
+# twice to one address and the window can be long enough to be certain of. The test that
+# asserts the throttle then asserts that it EXISTS, rather than racing a page load against it.
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).

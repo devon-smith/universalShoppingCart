@@ -43,7 +43,7 @@ Read the baseline against the ground-truth column   ← done
     ↓
 Fix extraction · add sanitized regression fixtures  ← done, zero silently wrong
     ↓
-CI and security tests green
+CI and security tests green                     ← gate passes
     ↓
 Staging: hosted dev Supabase + Vercel, unpacked extension pointed at it   ← next
     ↓
@@ -75,9 +75,10 @@ It took four extraction fixes and three abandoned approaches to get there, and t
 ones are recorded below in as much detail as the fixes, because knowing that DOM distance
 _inverts_ on a sponsored tile is worth as much as knowing what finally worked.
 
-**The gate does not pass yet.** Every extraction criterion does; one check does not, and it
-is a pre-existing flaky end-to-end test in the auth suite with nothing to do with extraction.
-It is named at the end of this section.
+**The gate PASSES.** `lint`, `typecheck`, `test`, `build`, `format:check`, `test:db` and
+`test:e2e` at default parallelism all pass — the last of those verified over four
+consecutive runs with zero failures, because one green run does not distinguish fixed from
+lucky on a test that had been passing 4/4 in isolation while failing under load.
 
 Counted the way [VALIDATION.md](VALIDATION.md) defines it, across all sixteen saved pages.
 
@@ -105,51 +106,43 @@ corroboration; `stockx` `76` → `78` by adapter; `oos` availability now reads t
 size rather than the style; page controls and composition rows no longer reach
 `selectedVariant`.
 
-#### The one item left, and it is not extraction
+#### The end-to-end flake, closed
 
-`pnpm test:e2e` does not pass at its default parallelism. Everything passes when run
-serially — **36 web, 18 extension, 90 pgTAP assertions, 323 extractor unit tests** — and the
-single failure is always the same test:
-`auth.spec.ts › magic-link sign-in › surfaces the send throttle rather than silently doing
-nothing`. It passes 4 out of 4 in isolation.
+`pnpm test:e2e` now passes at default parallelism: **4 runs, 0 failures**, 36 web and 18
+extension tests each time.
 
-The cause is a race, not a defect in the product. `auth.email.max_frequency` is `1s`, so the
-test has one second from its first send to get a second one away; under parallel workers the
-page load and status assertion alone can outlast that, the throttle expires, and the retry
-succeeds instead of being refused.
+The cause was never the throttle test. Sixteen call sites across four specs each signed one
+address in **twice** — once through `signedInClient` to seed, once through `signInBrowser` to
+put the session in the browser — seconds apart. Every one had to sleep past
+`auth.email.max_frequency`, which forced that window down to `1s` locally, which left the one
+test asserting the throttle racing a page load against it.
 
-Three fixes were tried and all reverted:
+`signInBrowser` now installs the session `signedInClient` already holds instead of asking for
+a second email. The cookies are produced by `@supabase/ssr` itself, driven through a
+collecting cookie adapter, so the encoding and the `.0`/`.1` chunking stay the library's
+business rather than becoming a second implementation to keep in step. With no test sending
+twice to one address, `max_frequency` moved to Supabase's 60s production default and the
+throttle assertion became a statement rather than a race.
 
-- **Drop the reload between the two sends.** Measured; still fails, because awaiting the
-  first send's status message can itself exceed a second under load.
-- **Raise `max_frequency` to Supabase's 60s default**, which is also what production runs.
-  That is the right destination, and it is a larger change than it looks.
-- **Fix `auth.spec.ts:72` alongside it.** That test signs one address in twice and sleeps
-  `1.5s` for the throttle to lapse — but it is not the only place that does.
+**The magic-link flow is still signed in for real**, end to end, by the first test in
+`auth.spec.ts` — the path most likely to break on a hosted origin, and the reason not to let
+every spec inject a session.
 
-The blast radius is the finding. `signInBrowser` in `tests/e2e/seed.ts` carries the identical
-`waitForTimeout(1_500)`, and it is called from **16 sites across four specs** — `dashboard`,
-`price-history`, `cart-ux`, `diagnostics`. Each seeds through `signedInClient`, which emails
-the address, then signs the browser in, which emails it again seconds later. Raise the window
-and all sixteen begin failing.
+Two things the change surfaced. Clicking Sign out revokes the session server-side, so a test
+returning afterwards has dead tokens; the returning-visitor test discards its cookies instead,
+and sign-out keeps its own assertion elsewhere. And `auth.spec.ts`'s account-reuse test was
+renamed to what it now proves — that signing out and returning keeps one account and one cart
+— rather than being left with a name describing a second sign-in it no longer performs.
 
-So the real fix is neither a longer sleep nor a shorter window: **`signInBrowser` should reuse
-the session `signedInClient` already holds** instead of requesting a second email for an
-address that has just received one. Once no test sends twice to one address in quick
-succession, `max_frequency` can move to the production default and the throttle test can
-assert the throttle with no clock to race.
-
-That is a change to shared end-to-end infrastructure and needs room to verify across repeated
-full runs, so it was left rather than half-landed. Nothing was weakened to get a green run,
-and every attempt was reverted rather than trading one failing test for another.
+**Wall-clock:** the web suite went from **24.5s to 11.2s**, a little over half, which is the
+sixteen removed email round-trips and their 1.5s sleeps. The full parallel run is ~30s either
+way, because the extension suite runs alongside it and dominates.
 
 Separately fixed: `scripts/with-supabase-env.mjs` sliced its JSON from the first `{` anywhere
 in the output. On any Node other than the pinned 22, pnpm prints its engine warning to
 _stdout_, so the slice began inside `{"node":">=22"}` and `pnpm test:e2e` died with
 "`supabase status -o json` did not return parseable JSON" — a message pointing at Supabase
 when the cause is a version warning. It now starts at the first line that is exactly `{`.
-
-After that, the next step is a staging deploy, which is configuration rather than code.
 
 ### How the DOM price layer was fixed, and the three approaches that failed first
 
