@@ -115,9 +115,52 @@ Building resumes — Phase 6 or anything else — when all of these are true.
       called out explicitly in its commit message.
 - [ ] Anything still unsupported is written down in `STATUS.md` under known
       limitations rather than left implicit.
+- [ ] **No silently wrong value.** See the distinction below — flagged is not silent.
+- [ ] **At most three flagged fields across the sixteen live pages.**
 
 Failing the gate does not mean fixing everything. It means the remaining gaps are
 **named**, so the decision to proceed is a decision rather than an oversight.
+
+### Flagged is not the same as wrong
+
+A value the preview marks for review before saving is materially different from one
+saved silently. The user sees the warning and corrects it, which is the graceful
+partial extraction BUILD_PLAN.md §1.2 and §10.8 ask for: "make partial extraction
+graceful rather than pretending all data is reliable", and "mark uncertain fields with
+a subtle warning rather than blocking the user".
+
+So:
+
+- **Silently wrong blocks the gate.** A confident, incorrect value is the worst
+  failure this product has. The price is plausible, the title is right, and nothing on
+  the card looks suspicious — there is no moment at which the user could have caught it.
+- **Flagged does not block.** It is still a defect and still goes on the list; it just
+  does not stop Phase 6.
+- **Missing does not block**, and is not a defect where the page genuinely does not say.
+
+A flagged value is a defect that has been made visible, not a defect that has been fixed.
+Nothing here permits closing one by adding a warning to it.
+
+### How many flags before the flag is noise
+
+**Three across the sixteen live pages.** Above that, stop and fix the cause rather than
+raising the ceiling.
+
+The number is set from measurement, not taste. Today four fields flag — amazon's title
+and price, walmart's currency, wayfair's price — and every one of them is a _missing_
+value, where a warning is the only honest thing to show. Zero flags are on values that
+are present and doubted. So three leaves room for roughly one flagged-and-present value
+per twenty pages while keeping most captures clean.
+
+The reasoning behind the ceiling matters more than its value. A warning that appears on
+one capture in five stops being read, and a dismissed warning is worse than no warning,
+because it converts a visible defect back into a silent one and costs the user a click
+to do it. The disagreement rule was deliberately restricted to exact-valued fields for
+this reason: flagging titles, which differ between layers by punctuation on nearly every
+page, would have spent the entire budget on noise the first day.
+
+If a change would push the count past three, the question to ask is not "is three too
+strict" but "why did a second layer stop agreeing".
 
 ## The loop, for each live failure
 

@@ -65,19 +65,32 @@ confidently wrong price scores as a win there. The baseline is read against the 
 ground-truth column, never on its own, and how many pages report a _wrong_ price is what
 decides whether matching the selected variant is urgent or optional.
 
-### Live-capture pass — what is still wrong across the sixteen saved pages
+### Gate status across the sixteen saved pages
 
-Two confidently wrong values remain. Both are understood; neither is guessed at, and both
-trace to the same cause — see below.
+Counted the way [VALIDATION.md](VALIDATION.md) defines it — silently wrong blocks, flagged
+does not, missing is not a defect where the page does not say.
 
-- **stockx** reports `76` against a true `78`. Waiting on disagreement-lowers-confidence,
-  which is sequenced after the items below and accepted as wrong until then.
-- **chewy** reports `49.99` against a true `67.97`, read from a sponsored placement inside
-  the product region. Two exclusion attempts have been reverted; see the note below.
+**Silently wrong: 1.** `stockx` reports `76` against a true `78`. It is not flagged, because
+the DOM layer produces no candidate on that page at all, so nothing contradicts the JSON-LD.
+This is the one value that blocks.
 
-Fixed and measured in this pass: `oos` availability now reads the selected size rather than
-the style, and page controls (quantity, review sort and filter, fulfilment chooser) no longer
-land in `selectedVariant`.
+**Flagged for review: 4 fields on 3 pages.** `amazon` title and price, `walmart` currency,
+`wayfair` price. Every one is a _missing_ value, where a warning is the only honest thing to
+show — none is a present value we doubt. Ceiling is three, so this is one over, and all four
+resolve by finding the value rather than by adjusting the flag.
+
+**Missing: price on 2** (amazon, wayfair), **currency on 3** (amazon, walmart, wayfair),
+**title and image on 1** (amazon), **availability `unknown` on 7** (amazon, gymshark, hm,
+uniqlo, walmart, wayfair, zalando). Amazon and Wayfair expose no reachable Product structured
+data, which accounts for most of this.
+
+`originalPriceAmount` is present on 2 of 16 (everlane, zara). Whether the other fourteen are
+actually on sale is unverified, so this is not counted either way — the strikethrough work is
+deferred and is under-reporting rather than wrongness.
+
+Fixed and measured in this pass: `chewy` `49.99` → `67.97` by cross-layer corroboration;
+`oos` availability now reads the selected size rather than the style; page controls and
+composition rows no longer land in `selectedVariant`.
 
 ### The DOM price layer is the real blocker, and three approaches have been closed
 
@@ -97,15 +110,25 @@ of 16 real pages** — chewy, everlane, walmart. On the other thirteen the price
 JSON-LD or meta and the DOM contributes nothing. Every one of Chewy's 38 candidates is a
 sponsored tile; its true `67.97` sits in `kib-product-price`, which no selector reaches.
 
-So the problem is not ranking or exclusion, it is **selector coverage**. Broad
-`[class*="price"]` scanning was deliberately avoided and should stay avoided, but the current
-hooks (`itemprop`, `data-price`, `current-price`) only match older markup conventions. Modern
-React/CSS-module retailers expose nothing: StockX renders `$78` in
-`<h2 class="chakra-heading css-1o2jc4i">`, so the DOM has no opinion there at all.
+So the problem was never ranking or exclusion, it was **selector coverage** — and coverage
+alone would have made things worse, because a retailer's design system uses the same class for
+its sponsored cards as for its buy box. What resolved Chewy was pairing the two: broaden the
+search, and admit a candidate only when the page's own structured data lists that value among
+this product's offers. On Chewy the broad selector matches 516 elements and exactly two
+survive, both the real `67.97`.
 
-That also bounds what disagreement-lowers-confidence can do. It is implemented and correct,
-and it flags **zero of sixteen** live pages — because on the page it was built for there is no
-second opinion to disagree with. StockX stays at 76 until a layer can see the 78.
+**Corroboration fired on 2 of the 2 pages that have both layers** — chewy and everlane. It
+cannot fire where structured data publishes no price (walmart) or where the DOM finds nothing
+(the other thirteen), and it is a tiebreaker among DOM candidates, never a source.
+
+**StockX remains the open case, and it is not a merge problem.** It renders `$78` in
+`<h2 class="chakra-heading css-1o2jc4i" data-testid="trade-box-buy-amount">`. There is a hook,
+but it carries no price-ish token, so no principled generic selector reaches it — and its
+JSON-LD publishes only `76`, so corroboration could not confirm a `78` even if the DOM found
+one. That also bounds disagreement-lowers-confidence, which is implemented and correct and
+flags nothing here: with no DOM candidate there is no second opinion to disagree with. Closing
+StockX needs a StockX adapter or text-adjacent price detection, and the second is exactly what
+BUILD_PLAN.md §10.5 warns against.
 
 Remaining in `selectedVariant`: Shopify variant ids (`Variant: 47776291946739`) that belong in
 `identifiers`, and opaque option ids (lululemon `Color: 76616` where the page shows "Rumble
