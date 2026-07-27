@@ -37,8 +37,21 @@ function localSupabaseStatus() {
     process.exit(1);
   }
 
+  // The JSON starts at the first line that is exactly `{`, not at the first `{` anywhere.
+  // On a Node version other than the pinned one, pnpm prints its engine warning to *stdout*:
+  //
+  //   WARN  Unsupported engine: wanted: {"node":">=22"} (current: {"node":"v20.20.2", ...})
+  //   {
+  //     "API_URL": ...
+  //
+  // Slicing from the first `{` then starts inside `{"node":">=22"}` and the parse fails with
+  // a message about Supabase that sends the reader to the wrong place entirely.
+  const lines = raw.split('\n');
+  const start = lines.findIndex((line) => line.trim() === '{');
+  const body = start === -1 ? raw : lines.slice(start).join('\n');
+
   try {
-    return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+    return JSON.parse(body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1));
   } catch {
     console.error('`supabase status -o json` did not return parseable JSON.');
     process.exit(1);
