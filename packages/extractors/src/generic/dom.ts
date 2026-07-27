@@ -107,6 +107,82 @@ function imageUrlFrom(element: Element, baseUrl: string): string | null {
   return null;
 }
 
+/**
+ * The part of the page that describes the product being viewed.
+ *
+ * Every heuristic below is a guess, and a guess made against the whole document is a guess
+ * about someone else's product: recommendation carousels, "customers also bought" tiles and
+ * recently-viewed strips all carry prices, add-to-cart buttons and option controls of their
+ * own. On a live Chewy page the first `[data-price]` in document order belonged to an
+ * unrelated bag of dog food, and the extractor reported it at full confidence.
+ *
+ * Anchors are tried in decreasing order of reliability. `null` means no root could be
+ * established, and the caller must then search the whole document *and say so* — the answer
+ * is still worth having, it is just a materially weaker claim.
+ */
+export function findProductRoot(document: Document): Element | null {
+  const microdata = document.querySelector('[itemtype*="Product" i][itemscope]');
+  if (microdata) return microdata;
+
+  const main = document.querySelector('main');
+
+  // The container holding the page's product heading. Climbing a few levels finds the
+  // section wrapping the heading and its price without swallowing the whole page.
+  //
+  // A gallery is frequently a *sibling* of the details column rather than a descendant, so
+  // the climb prefers the first ancestor holding the heading, a price, and the gallery, and
+  // settles for one holding just a price when no such ancestor is close by. Stopping at the
+  // details column would hide the product image from every heuristic below.
+  const gallery = document.querySelector('[class*="product-gallery"], [class*="product-image"]');
+  const heading = document.querySelector('h1[class*="product"], main h1, h1');
+
+  if (heading) {
+    // Climb, scoring each ancestor by how much of a product region it actually contains.
+    // Returning the first ancestor holding anything price-ish is too eager: that is usually
+    // the price widget's own card, which excludes the add-to-cart control and the gallery
+    // and so loses availability entirely. The highest score wins, and ties go to the
+    // tightest container, which is the one least likely to reach a neighbouring product.
+    let best: Element | null = null;
+    let bestScore = 0;
+    let node: Element | null = heading.parentElement;
+
+    for (let depth = 0; node && depth < 6; depth += 1) {
+      if (node === document.body) break;
+
+      const hasPrice = node.querySelector('[itemprop="price"], [data-price], [class*="price"]');
+      const hasCart = node.querySelector(
+        'button[name*="add"], button[id*="add-to-cart"], button[class*="add-to-cart"], [data-testid*="add-to-cart"], [data-testid="add-to-bag"], [class*="sold-out"], [class*="out-of-stock"]',
+      );
+      const hasGallery = gallery !== null && node.contains(gallery);
+      const score = (hasPrice ? 1 : 0) + (hasCart ? 1 : 0) + (hasGallery ? 1 : 0);
+
+      if (score > bestScore) {
+        best = node;
+        bestScore = score;
+      }
+      node = node.parentElement;
+    }
+
+    if (best) return best;
+  }
+
+  if (main) return main;
+
+  // Last resort. The gallery selectors are tried one at a time rather than as one
+  // comma-separated query, because such a query returns whichever matches first in document
+  // order — and a recommendation tile classed `product-image` often precedes the real
+  // gallery, which would anchor the root onto the wrong product entirely.
+  for (const selector of ['[class*="product-gallery"]', '[class*="product-image"]']) {
+    const gallery = document.querySelector(selector);
+    if (gallery?.parentElement) return gallery.parentElement;
+  }
+
+  return null;
+}
+
+/** How much a document-wide search discounts every claim made from it. */
+const UNSCOPED_PENALTY = 0.8;
+
 /** Read a value from an element, preferring an explicit attribute over visible text. */
 function readValue(element: Element): string | null {
   for (const attribute of [
@@ -123,11 +199,11 @@ function readValue(element: Element): string | null {
 }
 
 function firstMatch(
-  document: Document,
+  root: ParentNode,
   selectors: ReadonlyArray<readonly [string, number]>,
 ): { element: Element; selector: string; confidence: number } | null {
   for (const [selector, confidence] of selectors) {
-    const element = document.querySelector(selector);
+    const element = root.querySelector(selector);
     if (element) return { element, selector, confidence };
   }
   return null;
@@ -140,19 +216,32 @@ function firstMatch(
  * enabled one is a weaker in-stock signal — plenty of pages keep the button enabled and
  * fail later. Confidence reflects that asymmetry.
  */
-function availabilityFromControls(document: Document): {
+/** Is this element one option among several, rather than a statement about the product? */
+function isVariantOptionControl(element: Element): boolean {
+  if (element.matches('label, option, [role="radio"], [role="option"], [role="tab"]')) return true;
+  if (element.querySelector('input[type="radio"], input[type="checkbox"]')) return true;
+  return element.closest('[role="radiogroup"], [role="listbox"], fieldset, select') !== null;
+}
+
+function availabilityFromControls(root: ParentNode): {
   availability: ReturnType<typeof normalizeAvailability>;
   confidence: number;
   selector: string;
 } | null {
-  const soldOutText = document.querySelector(
-    '[data-testid="sold-out"], [class*="sold-out"], [class*="out-of-stock"]',
-  );
+  // A sold-out marker on a *variant option* describes that option, not the product. Gymshark
+  // marks L, XL and XXL out of stock while M — the selected size — is buyable; reading the
+  // first such marker reported the whole product as unavailable. An option control is a
+  // label, a radio/checkbox wrapper, or something in a radiogroup, so this is structural
+  // rather than a list of class names to keep chasing.
+  const soldOutText = Array.from(
+    root.querySelectorAll('[data-testid="sold-out"], [class*="sold-out"], [class*="out-of-stock"]'),
+  ).find((element) => !isVariantOptionControl(element));
+
   if (soldOutText) {
     return { availability: 'out_of_stock', confidence: 0.5, selector: '[class*="sold-out"]' };
   }
 
-  const button = document.querySelector<HTMLButtonElement | HTMLInputElement>(
+  const button = root.querySelector<HTMLButtonElement | HTMLInputElement>(
     'button[name*="add"], button[id*="add-to-cart"], button[class*="add-to-cart"], button[data-testid*="add-to-cart"], [data-testid="add-to-bag"]',
   );
   if (!button) return null;
@@ -185,6 +274,15 @@ export const domExtractor: ProductExtractor = {
     const offer: NonNullable<PartialCapture['offer']> = {};
     const source: NonNullable<PartialCapture['source']> = {};
 
+    // Everything below reads the product region, not the page. When no region can be
+    // identified the search widens to the document, and every claim made that way is
+    // discounted and labelled so the weaker basis travels with the value.
+    const productRoot = findProductRoot(document);
+    const root: ParentNode = productRoot ?? document;
+    const scoped = productRoot !== null;
+    const rank = (base: number) => (scoped ? base : base * UNSCOPED_PENALTY);
+    const mark = (selector: string) => (scoped ? selector : `document ${selector}`);
+
     // The document title is worth recording even on a page with no product markup at all;
     // it is what the correction UI shows the user as a starting point.
     const pageTitle = normalizeText(document.title);
@@ -193,27 +291,27 @@ export const domExtractor: ProductExtractor = {
       capture.evidence.push(evidence('source.pageTitle', 'dom', 0.6, 'title'));
     }
 
-    const titleMatch = firstMatch(document, TITLE_SELECTORS);
+    const titleMatch = firstMatch(root, TITLE_SELECTORS);
     const title = titleMatch ? normalizeText(readValue(titleMatch.element)) : null;
     if (title && titleMatch) {
       product.title = title;
       capture.evidence.push(
-        evidence('product.title', 'dom', titleMatch.confidence, titleMatch.selector),
+        evidence('product.title', 'dom', rank(titleMatch.confidence), mark(titleMatch.selector)),
       );
     }
 
-    const brandMatch = firstMatch(document, BRAND_SELECTORS);
+    const brandMatch = firstMatch(root, BRAND_SELECTORS);
     const brand = brandMatch ? normalizeText(readValue(brandMatch.element)) : null;
     if (brand && brandMatch) {
       product.brand = brand;
       capture.evidence.push(
-        evidence('product.brand', 'dom', brandMatch.confidence, brandMatch.selector),
+        evidence('product.brand', 'dom', rank(brandMatch.confidence), mark(brandMatch.selector)),
       );
     }
 
     const images = unique(
       IMAGE_SELECTORS.flatMap(([selector]) =>
-        Array.from(document.querySelectorAll(selector))
+        Array.from(root.querySelectorAll(selector))
           .map((element) => imageUrlFrom(element, url))
           .filter((value): value is string => value !== null),
       ),
@@ -226,19 +324,24 @@ export const domExtractor: ProductExtractor = {
       capture.evidence.push(evidence('product.selectedImageUrl', 'dom', confidence));
     }
 
-    const priceMatch = firstMatch(document, PRICE_SELECTORS);
+    const priceMatch = firstMatch(root, PRICE_SELECTORS);
     if (priceMatch) {
       const parsed = normalizePrice(readValue(priceMatch.element));
       if (parsed.amount) {
         offer.priceAmount = parsed.amount;
         capture.evidence.push(
-          evidence('offer.priceAmount', 'dom', priceMatch.confidence, priceMatch.selector),
+          evidence(
+            'offer.priceAmount',
+            'dom',
+            rank(priceMatch.confidence),
+            mark(priceMatch.selector),
+          ),
         );
       }
 
       const currency =
         normalizeCurrency(
-          document.querySelector('[itemprop="priceCurrency"]')?.getAttribute('content') ?? null,
+          root.querySelector('[itemprop="priceCurrency"]')?.getAttribute('content') ?? null,
         ) ?? parsed.currency;
       if (currency) {
         offer.currency = currency;
@@ -246,7 +349,7 @@ export const domExtractor: ProductExtractor = {
       }
     }
 
-    const originalMatch = firstMatch(document, ORIGINAL_PRICE_SELECTORS);
+    const originalMatch = firstMatch(root, ORIGINAL_PRICE_SELECTORS);
     if (originalMatch) {
       const parsed = normalizePrice(readValue(originalMatch.element));
       if (parsed.amount) {
@@ -262,7 +365,7 @@ export const domExtractor: ProductExtractor = {
       }
     }
 
-    const itempropAvailability = document.querySelector('[itemprop="availability"]');
+    const itempropAvailability = root.querySelector('[itemprop="availability"]');
     const annotated = normalizeAvailability(
       itempropAvailability?.getAttribute('href') ??
         itempropAvailability?.getAttribute('content') ??
@@ -275,7 +378,7 @@ export const domExtractor: ProductExtractor = {
         evidence('offer.availability', 'dom', 0.55, '[itemprop="availability"]'),
       );
     } else {
-      const inferred = availabilityFromControls(document);
+      const inferred = availabilityFromControls(root);
       if (inferred) {
         offer.availability = inferred.availability;
         capture.evidence.push(
@@ -285,7 +388,7 @@ export const domExtractor: ProductExtractor = {
     }
 
     const selectedVariant = mergeVariants(
-      extractSelectedVariantFromDom(document),
+      extractSelectedVariantFromDom(root),
       extractSelectedVariantFromUrl(url),
     );
     if (Object.keys(selectedVariant).length > 0) {

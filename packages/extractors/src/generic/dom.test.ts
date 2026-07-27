@@ -49,6 +49,70 @@ describe('domExtractor — price discipline', () => {
   });
 });
 
+describe('domExtractor — the product root', () => {
+  it('ignores a price that is not inside the product', () => {
+    // Chewy: `[data-price]` matched the first such attribute in document order, which
+    // belonged to a recommendation tile for a different product. Searching the whole
+    // document is how a heuristic reads someone else's price.
+    const result = extract(`
+      <section class="recommendations">
+        <div class="current-price">$19.99</div>
+      </section>
+      <main>
+        <h1 class="product-title">The product being viewed</h1>
+        <div class="current-price">$129.00</div>
+      </main>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('129.00');
+  });
+
+  it('ignores an add-to-cart control that is not inside the product', () => {
+    // Gymshark reported out_of_stock from a disabled button belonging to something else.
+    const result = extract(`
+      <aside class="also-bought">
+        <button class="add-to-cart" disabled>Add to cart</button>
+      </aside>
+      <main>
+        <h1 class="product-title">The product being viewed</h1>
+        <button class="add-to-cart">Add to cart</button>
+      </main>
+    `);
+
+    expect(result.offer?.availability).toBe('in_stock');
+  });
+
+  it('prefers an itemtype Product container over main', () => {
+    const result = extract(`
+      <main>
+        <div class="current-price">$1.00</div>
+        <div itemscope itemtype="https://schema.org/Product">
+          <h1 class="product-title">The product</h1>
+          <div class="current-price">$129.00</div>
+        </div>
+      </main>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('129.00');
+  });
+
+  it('says so in the evidence when it had to search the whole document', () => {
+    // A document-wide search is a materially weaker claim than one scoped to the product,
+    // and the capture should carry that difference rather than hide it.
+    const scoped = extract(
+      '<main><h1 class="product-title">P</h1><div class="current-price">$10.00</div></main>',
+    );
+    const loose = extract('<div class="current-price">$10.00</div>');
+
+    const scopedEvidence = scoped.evidence.find((item) => item.field === 'offer.priceAmount');
+    const looseEvidence = loose.evidence.find((item) => item.field === 'offer.priceAmount');
+
+    expect(looseEvidence?.selector).toContain('document');
+    expect(scopedEvidence?.selector).not.toContain('document');
+    expect(looseEvidence!.confidence).toBeLessThan(scopedEvidence!.confidence);
+  });
+});
+
 describe('domExtractor — title and brand', () => {
   it('prefers an itemprop name over an h1', () => {
     const result = extract('<h1>Wrong</h1><span itemprop="name">Right</span>');
@@ -89,6 +153,35 @@ describe('domExtractor — availability', () => {
 
     const evidence = result.evidence.find((item) => item.field === 'offer.availability');
     expect(evidence?.confidence).toBeLessThan(0.5);
+  });
+
+  it('does not call the product sold out because one size is', () => {
+    // Gymshark marks L, XL and XXL out of stock while M — the size on screen — is buyable.
+    // Reading the first sold-out marker reported the whole product unavailable.
+    const result = extract(`
+      <main>
+        <h1 class="product-title">Shorts</h1>
+        <div role="radiogroup" aria-label="Size">
+          <label class="size size--out-of-stock">L</label>
+          <label class="size size--out-of-stock">XL</label>
+          <label class="size">M</label>
+        </div>
+        <button class="add-to-cart">Add to cart</button>
+      </main>
+    `);
+
+    expect(result.offer?.availability).toBe('in_stock');
+  });
+
+  it('still reads a sold-out marker that is about the product', () => {
+    const result = extract(`
+      <main>
+        <h1 class="product-title">Shorts</h1>
+        <p class="sold-out">This item is sold out</p>
+      </main>
+    `);
+
+    expect(result.offer?.availability).toBe('out_of_stock');
   });
 
   it('reads an explicit sold-out marker', () => {
@@ -155,9 +248,14 @@ describe('domExtractor — images', () => {
 
 describe('domExtractor — evidence', () => {
   it('records a selector for every field it claims', () => {
+    // Wrapped in <main> so this tests what it says it tests. Loose markup with no product
+    // region falls back to a document-wide search, which prefixes the selector — that path
+    // has its own test in "the product root".
     const result = extract(`
-      <h1 class="product-title">A lamp</h1>
-      <span itemprop="price" content="10.00">$10.00</span>
+      <main>
+        <h1 class="product-title">A lamp</h1>
+        <span itemprop="price" content="10.00">$10.00</span>
+      </main>
     `);
 
     const titleEvidence = result.evidence.find((item) => item.field === 'product.title');

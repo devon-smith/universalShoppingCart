@@ -114,10 +114,15 @@ function titleCase(value: string): string {
 }
 
 /** Read selected options out of the DOM. */
-export function extractSelectedVariantFromDom(document: Document): Record<string, string> {
+export function extractSelectedVariantFromDom(root: ParentNode): Record<string, string> {
   const variant: Record<string, string> = {};
 
-  for (const select of Array.from(document.querySelectorAll('select'))) {
+  // Controls are looked for inside the product region only — a sort dropdown or a review
+  // filter elsewhere on the page is not something the user selected about this item. Label
+  // resolution still uses the whole document, because `<label for>` may point anywhere.
+  const document = ((root as Element).ownerDocument ?? root) as Document;
+
+  for (const select of Array.from(root.querySelectorAll('select'))) {
     const option = select.querySelector<HTMLOptionElement>('option[selected]') ?? null;
     const chosen =
       option ?? (select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null);
@@ -131,9 +136,7 @@ export function extractSelectedVariantFromDom(document: Document): Record<string
     if (name) variant[name] = value;
   }
 
-  for (const input of Array.from(
-    document.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
-  )) {
+  for (const input of Array.from(root.querySelectorAll<HTMLInputElement>('input[type="radio"]'))) {
     if (!input.checked && !input.hasAttribute('checked')) continue;
 
     const name = groupLabelFor(input, document) ?? cleanLabel(input.getAttribute('name'));
@@ -146,9 +149,7 @@ export function extractSelectedVariantFromDom(document: Document): Record<string
   }
 
   for (const element of Array.from(
-    document.querySelectorAll(
-      '[aria-checked="true"], [aria-pressed="true"], [aria-selected="true"]',
-    ),
+    root.querySelectorAll('[aria-checked="true"], [aria-pressed="true"], [aria-selected="true"]'),
   )) {
     const name = groupLabelFor(element, document);
     const value =
