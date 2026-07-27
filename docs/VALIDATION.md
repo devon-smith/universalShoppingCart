@@ -116,7 +116,8 @@ Building resumes — Phase 6 or anything else — when all of these are true.
 - [ ] Anything still unsupported is written down in `STATUS.md` under known
       limitations rather than left implicit.
 - [ ] **No silently wrong value.** See the distinction below — flagged is not silent.
-- [ ] **At most three flagged fields across the sixteen live pages.**
+- [ ] **At most three flagged-and-present fields across the sixteen live pages.**
+      Flagged-and-absent is tracked but uncapped.
 
 Failing the gate does not mean fixing everything. It means the remaining gaps are
 **named**, so the decision to proceed is a decision rather than an oversight.
@@ -141,23 +142,40 @@ So:
 A flagged value is a defect that has been made visible, not a defect that has been fixed.
 Nothing here permits closing one by adding a warning to it.
 
+### Two kinds of flag, counted separately
+
+`fieldsNeedingReview` raises a flag for two unrelated reasons, and they are different
+objects:
+
+- **Flagged-and-present.** A value was extracted and something doubts it — most often
+  two independent layers claiming different things. The user has to read it, compare it
+  against the page, and decide. **This is what the ceiling governs.**
+- **Flagged-and-absent.** No value was found, and the panel is asking the user to supply
+  one. There is nothing to adjudicate and nothing to dismiss: the field is visibly empty
+  whether or not it carries a warning. **Tracked, never capped.**
+
+Conflating them makes the gate arbitrary. A page with no structured data raises several
+absent-flags at once and would eat a ceiling meant for a different problem — while the
+fix for an absent-flag is to find the value, which the ceiling does nothing to encourage.
+
 ### How many flags before the flag is noise
 
-**Three across the sixteen live pages.** Above that, stop and fix the cause rather than
-raising the ceiling.
+**Three flagged-and-present fields across the sixteen live pages.** Above that, stop and
+fix the cause rather than raising the ceiling.
 
-The number is set from measurement, not taste. Today four fields flag — amazon's title
-and price, walmart's currency, wayfair's price — and every one of them is a _missing_
-value, where a warning is the only honest thing to show. Zero flags are on values that
-are present and doubted. So three leaves room for roughly one flagged-and-present value
-per twenty pages while keeping most captures clean.
+The reasoning matters more than the number. A warning that appears on one capture in five
+stops being read, and a dismissed warning is worse than no warning, because it converts a
+visible defect back into a silent one and charges the user a click to do it. That argument
+is about a warning the user must _act on_ — which is exactly the flagged-and-present kind,
+and not the absent kind, where the warning is a restatement of an empty field.
 
-The reasoning behind the ceiling matters more than its value. A warning that appears on
-one capture in five stops being read, and a dismissed warning is worse than no warning,
-because it converts a visible defect back into a silent one and costs the user a click
-to do it. The disagreement rule was deliberately restricted to exact-valued fields for
-this reason: flagging titles, which differ between layers by punctuation on nearly every
-page, would have spent the entire budget on noise the first day.
+Three across sixteen is roughly one page in five carrying something to adjudicate: enough
+that a real disagreement gets through, few enough that most captures are clean and a
+warning still reads as unusual.
+
+The disagreement rule was restricted to exact-valued fields for the same reason. Titles
+differ between layers by punctuation on nearly every page, so flagging them would have
+spent the entire budget on noise the first day.
 
 If a change would push the count past three, the question to ask is not "is three too
 strict" but "why did a second layer stop agreeing".
