@@ -41,7 +41,7 @@ pnpm score:live --save .live/baseline.json     ← done
     ↓
 Read the baseline against the ground-truth column   ← done
     ↓
-Fix extraction · add sanitized regression fixtures  ← done, gate passes
+Fix extraction · add sanitized regression fixtures  ← done, zero silently wrong
     ↓
 CI and security tests green
     ↓
@@ -65,7 +65,19 @@ confidently wrong price scores as a win there. The baseline is read against the 
 ground-truth column, never on its own, and how many pages report a _wrong_ price is what
 decides whether matching the selected variant is urgent or optional.
 
-### Gate status: every extraction criterion passes, one unrelated check does not
+### Zero silently wrong values across sixteen real retailer pages
+
+That is the milestone this whole live-capture pass existed to reach. Every price, title and
+availability the extension would save from those pages is either correct, or marked for the
+user to correct before saving. Nothing is confidently wrong.
+
+It took four extraction fixes and three abandoned approaches to get there, and the abandoned
+ones are recorded below in as much detail as the fixes, because knowing that DOM distance
+_inverts_ on a sponsored tile is worth as much as knowing what finally worked.
+
+**The gate does not pass yet.** Every extraction criterion does; one check does not, and it
+is a pre-existing flaky end-to-end test in the auth suite with nothing to do with extraction.
+It is named at the end of this section.
 
 Counted the way [VALIDATION.md](VALIDATION.md) defines it, across all sixteen saved pages.
 
@@ -106,18 +118,36 @@ test has one second from its first send to get a second one away; under parallel
 page load and status assertion alone can outlast that, the throttle expires, and the retry
 succeeds instead of being refused.
 
-Two obvious fixes were tried and both rejected:
+Three fixes were tried and all reverted:
 
 - **Drop the reload between the two sends.** Measured; still fails, because awaiting the
   first send's status message can itself exceed a second under load.
-- **Raise `max_frequency` to Supabase's 60s default.** This breaks the neighbouring test at
-  `auth.spec.ts:72`, which signs the same address in twice and waits `1.5s` deliberately to
-  let the throttle lapse. The two tests want opposite things from the same setting.
+- **Raise `max_frequency` to Supabase's 60s default**, which is also what production runs.
+  That is the right destination, and it is a larger change than it looks.
+- **Fix `auth.spec.ts:72` alongside it.** That test signs one address in twice and sleeps
+  `1.5s` for the throttle to lapse — but it is not the only place that does.
 
-So it needs a real fix rather than a quick one — most likely making the throttle test
-independent of wall-clock time instead of racing it. Nothing here was weakened to get a
-green run, and the config change was reverted rather than trading one failing test for
-another.
+The blast radius is the finding. `signInBrowser` in `tests/e2e/seed.ts` carries the identical
+`waitForTimeout(1_500)`, and it is called from **16 sites across four specs** — `dashboard`,
+`price-history`, `cart-ux`, `diagnostics`. Each seeds through `signedInClient`, which emails
+the address, then signs the browser in, which emails it again seconds later. Raise the window
+and all sixteen begin failing.
+
+So the real fix is neither a longer sleep nor a shorter window: **`signInBrowser` should reuse
+the session `signedInClient` already holds** instead of requesting a second email for an
+address that has just received one. Once no test sends twice to one address in quick
+succession, `max_frequency` can move to the production default and the throttle test can
+assert the throttle with no clock to race.
+
+That is a change to shared end-to-end infrastructure and needs room to verify across repeated
+full runs, so it was left rather than half-landed. Nothing was weakened to get a green run,
+and every attempt was reverted rather than trading one failing test for another.
+
+Separately fixed: `scripts/with-supabase-env.mjs` sliced its JSON from the first `{` anywhere
+in the output. On any Node other than the pinned 22, pnpm prints its engine warning to
+_stdout_, so the slice began inside `{"node":">=22"}` and `pnpm test:e2e` died with
+"`supabase status -o json` did not return parseable JSON" — a message pointing at Supabase
+when the cause is a version warning. It now starts at the first line that is exactly `{`.
 
 After that, the next step is a staging deploy, which is configuration rather than code.
 
