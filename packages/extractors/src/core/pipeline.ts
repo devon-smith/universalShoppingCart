@@ -145,7 +145,13 @@ export function extractProductCapture(
     };
   }
 
-  const canonicalUrl = merged.source?.canonicalUrl ?? normalizeUrl(context.url) ?? null;
+  // Normalized whatever its source. An extractor reports the canonical link as the page
+  // wrote it — with `www.`, a trailing slash, whatever — while the fallback was already
+  // normalized, so the same page yielded a different shape depending on which layer spoke.
+  // The fingerprint normalizes again before hashing, so this is about the stored value being
+  // consistent rather than about duplicate detection.
+  const canonicalUrl =
+    normalizeUrl(merged.source?.canonicalUrl ?? context.url) ?? merged.source?.canonicalUrl ?? null;
 
   const draft = {
     schemaVersion: CAPTURE_SCHEMA_VERSION,

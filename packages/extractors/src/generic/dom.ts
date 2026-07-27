@@ -291,6 +291,22 @@ export const domExtractor: ProductExtractor = {
       capture.evidence.push(evidence('source.pageTitle', 'dom', 0.6, 'title'));
     }
 
+    // The canonical URL is read here, in the layer that always runs, because it is a fact
+    // about the page rather than a claim about the product. `metaExtractor` also reads it but
+    // declines pages carrying no product-ish meta — Amazon is one — so the canonical was
+    // being lost on exactly those pages. That matters beyond tidiness: the fingerprint is
+    // built from the canonical URL (BUILD_PLAN.md §9.1), so falling back to the visited URL
+    // hashes whatever tracking parameters it carried, and the same item saved from a search
+    // result and from a direct link becomes two items rather than one refresh.
+    const canonical = absoluteHttpUrl(
+      document.querySelector('link[rel="canonical" i]')?.getAttribute('href'),
+      url,
+    );
+    if (canonical) {
+      source.canonicalUrl = canonical;
+      capture.evidence.push(evidence('source.canonicalUrl', 'dom', 0.6, 'link[rel=canonical]'));
+    }
+
     const titleMatch = firstMatch(root, TITLE_SELECTORS);
     const title = titleMatch ? normalizeText(readValue(titleMatch.element)) : null;
     if (title && titleMatch) {

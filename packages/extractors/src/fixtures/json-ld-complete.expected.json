@@ -117,6 +117,12 @@
       "confidence": 0.6
     },
     {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
       "field": "product.title",
       "source": "dom",
       "selector": "main h1",

@@ -280,3 +280,28 @@ describe('domExtractor — evidence', () => {
     expect(domExtractor.supports({ document, url: 'https://shop.example/p' })).toBe(true);
   });
 });
+
+describe('domExtractor — canonical URL', () => {
+  it('reads the canonical link even on a page with no product markup', () => {
+    // The always-on layer has to read it: metaExtractor declines pages with no product-ish
+    // meta — Amazon is one — and the canonical is what the fingerprint is built from
+    // (BUILD_PLAN.md §9.1). Losing it there hashes the visited URL's tracking parameters.
+    const document = new DOMParser().parseFromString(
+      `<!doctype html><html><head><title>T</title>
+        <link rel="canonical" href="https://shop.example/p/1" />
+       </head><body><p>nothing product-ish at all</p></body></html>`,
+      'text/html',
+    );
+
+    const result = domExtractor.extract({
+      document,
+      url: 'https://shop.example/p/1?sr=8-1&qid=123',
+    });
+
+    expect(result.source?.canonicalUrl).toBe('https://shop.example/p/1');
+  });
+
+  it('claims nothing when the page declares no canonical', () => {
+    expect(extract('<p>x</p>').source?.canonicalUrl).toBeUndefined();
+  });
+});

@@ -5,7 +5,7 @@
     "canonicalUrl": "https://bergsport.example/alpenrose-daunenjacke.html",
     "domain": "bergsport.example",
     "retailerName": "Bergsport",
-    "pageTitle": "Alpenrose Daunenjacke \u2014 Bergsport"
+    "pageTitle": "Alpenrose Daunenjacke — Bergsport"
   },
   "product": {
     "title": "Alpenrose Daunenjacke",
@@ -24,7 +24,7 @@
     "availability": "in_stock"
   },
   "selectedVariant": {
-    "Gr\u00f6\u00dfe": "M",
+    "Größe": "M",
     "Farbe": "Preiselbeere"
   },
   "evidence": [
@@ -81,6 +81,12 @@
       "field": "source.pageTitle",
       "source": "dom",
       "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
       "confidence": 0.6
     },
     {
