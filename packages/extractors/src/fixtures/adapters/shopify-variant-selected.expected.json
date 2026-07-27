@@ -54,7 +54,8 @@
       "field": "offer.priceAmount",
       "source": "adapter",
       "selector": "ProductJson.variants[].price",
-      "confidence": 0.97
+      "confidence": 0.4,
+      "value": "108.00"
     },
     {
       "field": "offer.originalPriceAmount",
@@ -97,7 +98,8 @@
     {
       "field": "offer.priceAmount",
       "source": "json_ld",
-      "confidence": 0.9
+      "confidence": 0.4,
+      "value": "98.00"
     },
     {
       "field": "offer.currency",
@@ -158,7 +160,7 @@
   "extraction": {
     "extractorId": "shopify",
     "extractorVersion": "1.0.0",
-    "overallConfidence": 0.958,
+    "overallConfidence": 0.768,
     "observedAt": "2026-07-26T12:00:00.000Z"
   }
 }

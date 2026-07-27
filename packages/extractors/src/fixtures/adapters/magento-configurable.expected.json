@@ -48,7 +48,8 @@
       "field": "offer.priceAmount",
       "source": "adapter",
       "selector": "[data-price-type=\"finalPrice\"]",
-      "confidence": 0.96
+      "confidence": 0.4,
+      "value": "279.00"
     },
     {
       "field": "offer.originalPriceAmount",
@@ -99,13 +100,14 @@
       "field": "offer.priceAmount",
       "source": "dom",
       "selector": "[data-price-amount]",
-      "confidence": 0.55
+      "confidence": 0.4,
+      "value": "349.00"
     }
   ],
   "extraction": {
     "extractorId": "magento",
     "extractorVersion": "1.0.0",
-    "overallConfidence": 0.933,
+    "overallConfidence": 0.747,
     "observedAt": "2026-07-26T12:00:00.000Z"
   }
 }
