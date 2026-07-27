@@ -67,7 +67,8 @@ decides whether matching the selected variant is urgent or optional.
 
 ### Live-capture pass — what is still wrong across the sixteen saved pages
 
-Two confidently wrong values remain. Both are understood; neither is guessed at.
+Two confidently wrong values remain. Both are understood; neither is guessed at, and both
+trace to the same cause — see below.
 
 - **stockx** reports `76` against a true `78`. Waiting on disagreement-lowers-confidence,
   which is sequenced after the items below and accepted as wrong until then.
@@ -78,20 +79,38 @@ Fixed and measured in this pass: `oos` availability now reads the selected size 
 the style, and page controls (quantity, review sort and filter, fulfilment chooser) no longer
 land in `selectedVariant`.
 
-**Recommendation exclusion is unsolved, and the shape rule is not the answer.** Excluding
-regions by class name or test id fires on real product regions, because a clothing PDP _is_ a
-carousel. Excluding by shape — three or more sibling tiles each linking to a different product
-URL — is safe but cannot fire on Chewy, whose placement is a **single** card captioned "Try
-this similar item". Widening it to single tiles was measured and excluded Walmart's real buy
-box. Both attempts are reverted; the finding is that the distinguishing signal is neither
-markup nor tile count, and a third attempt needs a different one.
+### The DOM price layer is the real blocker, and three approaches have been closed
 
-`selectedVariant` still carries, in the order they are worth fixing: Shopify variant ids
-(`Variant: 47776291946739`) that belong in `identifiers`; spec rows (`Material`, `Pattern`)
-that are dropped per the composition ADR; and opaque option ids (lululemon `Color: 76616`
-where the page shows "Rumble Crumble"). Moving the Shopify id is not a key rename — it has to
-enter the fingerprint's identifier precedence above `sku`, or two sizes of one product start
-hashing alike.
+Three attempts to make the DOM pick the right price have each been measured and abandoned:
+
+1. **Exclude by class name or test id** — fires on real product regions. A clothing PDP _is_ a
+   carousel, so the markup of a recommendation strip and of Zara's own gallery is the same.
+2. **Exclude by shape** — three or more sibling tiles each linking to a different product URL.
+   Safe, but it cannot fire on Chewy, whose placement is a **single** card captioned "Try this
+   similar item". Widened to single tiles, it excluded Walmart's real buy box.
+3. **Anchor by distance** — rank candidates by DOM distance to the `h1` and the `og:image`.
+   Measured, and it inverts: Chewy's sponsored tile is _nearer_ the h1 (`d=10`) than Walmart's
+   genuine buy box (`d=20`), on both anchors independently. No threshold separates them.
+
+The measurement that explains all three: **the DOM price layer reaches a candidate on only 3
+of 16 real pages** — chewy, everlane, walmart. On the other thirteen the price comes from
+JSON-LD or meta and the DOM contributes nothing. Every one of Chewy's 38 candidates is a
+sponsored tile; its true `67.97` sits in `kib-product-price`, which no selector reaches.
+
+So the problem is not ranking or exclusion, it is **selector coverage**. Broad
+`[class*="price"]` scanning was deliberately avoided and should stay avoided, but the current
+hooks (`itemprop`, `data-price`, `current-price`) only match older markup conventions. Modern
+React/CSS-module retailers expose nothing: StockX renders `$78` in
+`<h2 class="chakra-heading css-1o2jc4i">`, so the DOM has no opinion there at all.
+
+That also bounds what disagreement-lowers-confidence can do. It is implemented and correct,
+and it flags **zero of sixteen** live pages — because on the page it was built for there is no
+second opinion to disagree with. StockX stays at 76 until a layer can see the 78.
+
+Remaining in `selectedVariant`: Shopify variant ids (`Variant: 47776291946739`) that belong in
+`identifiers`, and opaque option ids (lululemon `Color: 76616` where the page shows "Rumble
+Crumble"). Moving the Shopify id is not a key rename — it has to enter the fingerprint's
+identifier precedence above `sku`, or two sizes of one product start hashing alike.
 
 ## Phase 5 — Retailer adapters
 
