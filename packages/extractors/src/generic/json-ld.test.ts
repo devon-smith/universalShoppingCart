@@ -377,6 +377,28 @@ describe('jsonLdExtractor — product fields', () => {
 
     expect(result.selectedVariant).toEqual({ Color: 'Blue', Size: 'M', Storage: '256GB' });
   });
+
+  it('leaves composition and other described facts out of the variant map', () => {
+    // Zara publishes `Material` and `OUTER SHELL`, H&M `Material` and `Pattern`, Uniqlo its
+    // own contact details — all through schema.org properties, none of them chosen by anyone.
+    // selectedVariant is hashed into the fingerprint (BUILD_PLAN.md §9.1), so a spec table
+    // that renders on one visit and not the next hashes one product two ways.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'X',
+        color: 'Blue',
+        material: '100% cotton',
+        pattern: 'Ribbed',
+        additionalProperty: [
+          { '@type': 'PropertyValue', name: 'OUTER SHELL', value: '100% cotton' },
+          { '@type': 'PropertyValue', name: 'seller_name', value: 'UNIQLO US' },
+        ],
+      }),
+    );
+
+    expect(result.selectedVariant).toEqual({ Color: 'Blue' });
+  });
 });
 
 describe('jsonLdExtractor — support', () => {
