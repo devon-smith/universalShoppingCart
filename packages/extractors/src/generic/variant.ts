@@ -36,6 +36,35 @@ const VARIANT_PARAMETER_NAMES = new Set([
 /** Words that appear in option group labels but are not part of the option name. */
 const LABEL_NOISE = /\s*[:：]\s*$|\s*\(required\)\s*$|\s*\*\s*$/i;
 
+/**
+ * Controls that operate the page rather than describe the product.
+ *
+ * `selectedVariant` means "the options the user chose about this garment", and it is part of
+ * what the fingerprint is built from (BUILD_PLAN.md §9.1) — so a review sort order landing in
+ * it makes the same item hash two ways depending on how the page was left. Every entry here
+ * was captured from a real page: Chewy contributed `Quantity`, `Sort By`, and two review
+ * filters; Walmart contributed its shipping-versus-pickup chooser.
+ *
+ * Matched on the label the user reads rather than on class names or ids. That text is
+ * conventional across retailers — a quantity selector says "Quantity" everywhere — which is
+ * exactly what markup is not.
+ *
+ * Autoship-versus-buy-once is deliberately here too. It is a real choice and it changes the
+ * price, but it is a subscription term rather than an attribute of the product, and treating
+ * it as a variant would fingerprint one item as two.
+ */
+const CONTROL_LABELS: readonly RegExp[] = [
+  /^(quantity|qty|amount)$/i,
+  /^sort\b/i,
+  /^filter\b/i,
+  /^how do you want\b/i,
+  /\b(shipping|delivery|subscription) (frequency|option|method)\b/i,
+];
+
+function isPageControl(name: string): boolean {
+  return CONTROL_LABELS.some((pattern) => pattern.test(name));
+}
+
 function cleanLabel(raw: string | null | undefined): string | null {
   const text = normalizeText(raw);
   if (!text) return null;
@@ -133,7 +162,7 @@ export function extractSelectedVariantFromDom(root: ParentNode): Record<string, 
     if (!value || !normalizeText(chosen.value)) continue;
 
     const name = labelFor(select, document) ?? groupLabelFor(select, document);
-    if (name) variant[name] = value;
+    if (name && !isPageControl(name)) variant[name] = value;
   }
 
   for (const input of Array.from(root.querySelectorAll<HTMLInputElement>('input[type="radio"]'))) {
@@ -145,7 +174,7 @@ export function extractSelectedVariantFromDom(root: ParentNode): Record<string, 
       normalizeText(labelTextFor(input, document)) ??
       normalizeText(input.value);
 
-    if (name && value) variant[name] = value;
+    if (name && value && !isPageControl(name)) variant[name] = value;
   }
 
   for (const element of Array.from(
@@ -154,7 +183,7 @@ export function extractSelectedVariantFromDom(root: ParentNode): Record<string, 
     const name = groupLabelFor(element, document);
     const value =
       normalizeText(element.getAttribute('aria-label')) ?? normalizeText(element.textContent);
-    if (name && value && !(name in variant)) variant[name] = value;
+    if (name && value && !(name in variant) && !isPageControl(name)) variant[name] = value;
   }
 
   return variant;

@@ -150,6 +150,63 @@ describe('extractSelectedVariantFromUrl', () => {
   });
 });
 
+describe('extractSelectedVariantFromDom — page controls are not options', () => {
+  it('ignores a quantity selector', () => {
+    // Chewy and Weber both contributed `Quantity: 1`. Quantity is a real user choice, but it
+    // has its own column on the item; in selectedVariant it also enters the fingerprint, so
+    // the same product saved at quantity 1 and at quantity 2 would become two items.
+    const document = parse(`
+      <label for="qty">Quantity</label>
+      <select id="qty"><option value="1" selected>1</option><option value="2">2</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('ignores review sort and filter controls', () => {
+    const document = parse(`
+      <label for="sort">Sort By</label>
+      <select id="sort"><option value="helpful" selected>Most Helpful</option></select>
+      <label for="filter">Filter By</label>
+      <select id="filter"><option value="all" selected>All Stars</option></select>
+      <label for="mentions">Filter by reviews that mention</label>
+      <select id="mentions"><option value="all" selected>show all</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('ignores a fulfilment chooser', () => {
+    // Walmart: "How do you want your item?" — shipping versus pickup is about the order.
+    const document = parse(`
+      <label for="fulfil">How do you want your item?</label>
+      <select id="fulfil"><option value="ship" selected>Shipping</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('still reads the options that describe the garment', () => {
+    const document = parse(`
+      <label for="qty">Quantity</label>
+      <select id="qty"><option value="1" selected>1</option></select>
+      <label for="size">Size</label>
+      <select id="size"><option value="m" selected>Medium</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Size: 'Medium' });
+  });
+
+  it('does not reject an option whose name merely begins with the same letters', () => {
+    const document = parse(`
+      <label for="fit">Fit</label>
+      <select id="fit"><option value="reg" selected>Regular</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Fit: 'Regular' });
+  });
+});
+
 describe('mergeVariants', () => {
   it('lets the DOM win over the URL', () => {
     // A client-side variant switch updates the DOM before it updates the URL.
