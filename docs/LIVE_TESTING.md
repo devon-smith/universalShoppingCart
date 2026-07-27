@@ -25,6 +25,38 @@ panel, capture, check the preview against the page, save, then confirm it on
 <http://localhost:3000/app>. Afterwards open <http://localhost:3000/app/diagnostics> and
 copy the adapter and confidence for each domain.
 
+## Keeping a page for later
+
+Extraction changes are easier to judge across all ten pages at once than one recapture at a
+time, so keep each page you test in `.live/` — working files, never committed, never
+fixtures.
+
+With the variant selected, open DevTools and run in the Console:
+
+```js
+copy(document.documentElement.outerHTML);
+```
+
+Paste that into `.live/<name>.html`, and add `.live/<name>.json` holding
+`{"url": "<the page URL, with its variant parameters>"}`. The URL is not optional: the
+canonical URL and variant parameters both feed extraction, and the scorer refuses to guess
+one.
+
+**Capture the hydrated DOM, not the saved page.** Ctrl/Cmd+S → _Webpage, HTML only_ writes
+the HTML the server sent, which is not what the extension reads. On StockX the server
+response has the title and colourway but no size-dependent price — that arrives
+client-side.
+
+Then:
+
+```bash
+pnpm score:live --save .live/baseline.json   # record where extraction stands
+pnpm score:live --baseline .live/baseline.json   # after a change, see what moved
+```
+
+The scorer reports whether a field is **present**, not whether it is **right**. A confidently
+wrong price scores as a win. Read it against the ground-truth column above, never on its own.
+
 ## What to include
 
 A pass over ten easy pages proves less than a pass over five awkward ones. Try to cover:
@@ -141,8 +173,22 @@ is not.
 
 ### Should this become a fixture?
 
-If extraction was wrong, yes. Save the page (**Ctrl/Cmd+S** → _Webpage, HTML only_), strip
-it to the DOM the extractor reads, and drop it in
+If extraction was wrong, yes — but capture the **hydrated DOM**, not the saved page.
+
+Select the variant you are testing, open DevTools, and in the Console run:
+
+```js
+copy(document.documentElement.outerHTML);
+```
+
+Paste that into the file. **Do not use Ctrl/Cmd+S → _Webpage, HTML only_.** That saves the
+HTML as the server sent it, which is not what the extension reads: the extension runs
+against the DOM after the page has hydrated. StockX proved the difference — the server
+response carries the title and colourway but not the size-dependent price, which arrives
+client-side. A fixture built from the raw response reproduces a bug that does not exist and
+misses the one that does.
+
+Then strip it to the DOM the extractor reads and drop it in
 `packages/extractors/src/fixtures/adapters/`. **Sanitize first** — no account details, no
 order history, no cookies or tokens, nothing identifying. See the README there.
 

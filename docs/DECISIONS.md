@@ -467,3 +467,59 @@ enabling it later is policy and UI, not a migration. The RLS tests for editor pe
 are written in Phase 6 alongside the viewer ones even though the role is not yet reachable
 from the interface — an unreachable permission still needs to be correct before it becomes
 reachable.
+
+---
+
+## 2026-07-26 — The primary category is clothing, and the primary value is comparison
+
+**Decision.** Universal Cart is for deciding what to buy, primarily clothing, by putting
+candidates side by side. Comparison is the product. Storage and sync exist to serve it.
+Sharing is a nice-to-have.
+
+**Context.** The objective in `CLAUDE.md` read "stores, compares, and shares saved
+products" — comparison third in a list of three, with no category named at all. Nothing
+was wrong in that sentence, and that is the problem: it described a category-agnostic
+catalogue tool, and the plan drifted toward one. Phase 3 built search, filters, sorting,
+and status management before any comparison view existed, which is the right order for a
+catalogue and the wrong order for a decision aid.
+
+The use case has now been stated explicitly: clothing, compared across retailers, in one
+place.
+
+**Consequences.** Comparison stops being a Phase 6 deliverable bundled with sharing and
+becomes the next thing built. Feature proposals get judged against "does this help someone
+choose between three jackets", which most catalogue features do not. Category-specific
+attributes — size, colour, fit, material — matter more than a general attribute system.
+The existing dashboard work is not wasted; it is how you find the candidates you are about
+to compare.
+
+---
+
+## 2026-07-26 — Cross-retailer identifier matching is deprioritised
+
+**Decision.** Do not build the matching machinery in `BUILD_PLAN.md` §9.3 and Phase 8 —
+GTIN/UPC/EAN, brand + MPN, retailer identifier mapping, image perceptual hashing,
+embedding-assisted candidate scoring — on its current schedule. Comparison ships without it.
+
+**Context.** That machinery answers "is this the same product at two retailers", which is an
+electronics question. Identical SKUs are sold by many sellers, so matching them is both
+possible and the whole job.
+
+Clothing does not work that way. The same garment is generally not sold by both Zara and
+Gymshark; each retailer's line is its own. A clothing shopper is not looking for the same
+jacket cheaper elsewhere, they are choosing **between different jackets** for one purchase.
+So the expensive half of the plan — deciding whether two records denote one product — is
+mostly unnecessary, and the cheap half — showing attributes side by side and highlighting
+where they differ — is where the value is.
+
+Garments also lack the identifiers the plan leans on. GTINs are inconsistently published,
+MPNs are often absent, and "brand + model" is not how clothing is named.
+
+**Consequences.** Phase 8 is not built on the premise that matching is the hard problem. If
+a resale or marketplace use case later makes true cross-seller matching valuable, this is
+revisited with evidence — the deterministic identifier path in §9.3 stays a sound design for
+the goods it was written for. Comparison must therefore not assume matched pairs: it puts
+two to four **independently captured** items beside each other, which is simpler than the
+plan assumed. The "never auto-merge uncertain items" rule still stands and matters more, not
+less, because a false merge between two different garments would destroy the comparison
+rather than merely duplicate a card.

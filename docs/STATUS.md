@@ -18,18 +18,34 @@ and acceptance criteria.
 
 ## Roadmap from here
 
-Two departures from BUILD_PLAN.md §22, both recorded in [DECISIONS.md](DECISIONS.md):
-deployment splits into an early staging environment and later production hardening, and
-sharing ships viewer-first.
+Four departures from BUILD_PLAN.md §22, all recorded in [DECISIONS.md](DECISIONS.md):
+
+- The primary category is **clothing** and the primary value is **comparison**, not
+  storage. The plan drifted toward a category-agnostic catalogue because the objective
+  listed comparison third in a list of three.
+- **Comparison ships before sharing.** §22 bundles both into Phase 6. Comparison is the
+  product; sharing is a nice-to-have for a personal tool and should not carry comparison's
+  schedule.
+- **Cross-retailer identifier matching is deprioritised.** §9.3 and Phase 8 assume "the
+  same product at two retailers", which is an electronics problem. Clothing shoppers
+  compare _different_ candidates for one purchase.
+- Deployment splits into an early staging environment and later production hardening, and
+  when sharing does arrive it ships viewer-first.
 
 ```text
-Open draft PR                          ← done
+Open draft PR                                  ← done
     ↓
-Ten live captures against real retailers    ← next, see LIVE_TESTING.md
+Capture ten hydrated DOMs into .live/          ← next, see LIVE_TESTING.md
+    ↓
+pnpm score:live --save .live/baseline.json
+    ↓
+Read the baseline against the ground-truth column
     ↓
 Fix extraction · add sanitized regression fixtures
     ↓
 CI and security tests green
+    ↓
+Comparison: tray, compare view, open-all-by-retailer
     ↓
 Staging: hosted dev Supabase + Vercel, unpacked extension pointed at it
     ↓
@@ -37,12 +53,17 @@ One or two trusted testers
     ↓
 Merge the stable baseline
     ↓
-Phase 6, viewer-first
+Sharing, viewer-first
 ```
 
-Nothing between the draft PR and staging adds a feature. The live-capture pass measures
+Nothing between the draft PR and comparison adds a feature. The live-capture pass measures
 extraction against the pages that matter and the fixes are driven by what it finds — no
 speculative retailer adapters before then.
+
+The scorer reports whether a field is **present**, not whether it is **right**: a
+confidently wrong price scores as a win there. The baseline is read against the tester's
+ground-truth column, never on its own, and how many pages report a _wrong_ price is what
+decides whether matching the selected variant is urgent or optional.
 
 ## Phase 5 — Retailer adapters
 
