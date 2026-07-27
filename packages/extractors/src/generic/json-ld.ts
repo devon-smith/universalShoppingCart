@@ -276,11 +276,7 @@ function agreedValue<T>(values: ReadonlyArray<T | null | undefined>): T | null {
  * Matching the *selected* variant — by URL parameter, sku, or DOM state — is a separate
  * problem and deliberately not attempted here.
  */
-function consolidateVariantOffers(variants: readonly JsonObject[]): OfferFacts | null {
-  const facts = variants
-    .map((variant) => selectOffer(collectOffers(variant.offers), readString(variant.sku)))
-    .filter((entry): entry is OfferFacts => entry !== null);
-
+function consolidateFacts(facts: readonly OfferFacts[]): OfferFacts | null {
   if (facts.length === 0) return null;
 
   const availability = agreedValue(
@@ -294,6 +290,74 @@ function consolidateVariantOffers(variants: readonly JsonObject[]): OfferFacts |
     availability: availability ?? 'unknown',
     sku: null,
   };
+}
+
+function consolidateVariantOffers(variants: readonly JsonObject[]): OfferFacts | null {
+  return consolidateFacts(
+    variants
+      .map((variant) => selectOffer(collectOffers(variant.offers), readString(variant.sku)))
+      .filter((entry): entry is OfferFacts => entry !== null),
+  );
+}
+
+/**
+ * Are an aggregate's members competing sellers, or variants of one product?
+ *
+ * It decides whether disagreement is ambiguity or information. Many vendors quoting
+ * different prices for one book is the marketplace shape, and its `lowPrice` is a real
+ * answer. Many bag sizes quoting different prices is a range, and picking one is a guess.
+ *
+ * The signal is the sku: members that differ by sku are different things. Members sharing a
+ * sku and naming different sellers are the same thing from different vendors. Anything
+ * ambiguous is treated as variants, because under-reporting is the safe direction.
+ */
+function membersAreSellers(members: readonly JsonObject[]): boolean {
+  const skus = members.map((member) => readString(member.sku));
+  const stated = skus.filter((sku): sku is string => sku !== null);
+
+  // Distinct skus: different products, so variants.
+  if (new Set(stated).size > 1) return false;
+
+  const sellers = members
+    .map((member) => readName(member.seller) ?? readName(member.offeredBy))
+    .filter((seller): seller is string => seller !== null);
+
+  return new Set(sellers).size > 1;
+}
+
+/**
+ * The offer describing the item on screen, from a node's own `offers`.
+ *
+ * An `AggregateOffer` with several members is the case live pages actually broke on: Chewy
+ * ships one `ProductGroup` whose aggregate holds eight members, one per bag size. Taking
+ * the first member carrying a price reported 73.43 for a page selling the 67.97 bag — and
+ * did it at 0.9 confidence, so the DOM layer that had the right number never got a turn.
+ *
+ * A sku match still wins, because that identifies the offer for this exact item. Otherwise
+ * an aggregate of variants is treated like disagreeing variants everywhere else: say
+ * nothing. An aggregate of sellers keeps its `lowPrice`.
+ */
+function readNodeOffer(node: JsonObject, sku: string | null): OfferFacts | null {
+  const raw = node.offers;
+  const aggregate = isObject(raw) && hasType(raw, 'AggregateOffer') ? raw : null;
+  const members = collectOffers(raw);
+  if (members.length === 0) return null;
+
+  const facts = members.map(readOffer);
+
+  if (sku) {
+    const bySku = facts.find((entry) => entry.sku !== null && entry.sku === sku);
+    if (bySku) return bySku;
+  }
+
+  // Not an expanded aggregate: a single offer, or a plain array the page authored itself.
+  if (!aggregate || members.length < 2) {
+    return facts.find((entry) => entry.priceAmount !== null) ?? facts[0]!;
+  }
+
+  if (membersAreSellers(members)) return readOffer(aggregate);
+
+  return consolidateFacts(facts);
 }
 
 /** Read `additionalProperty` / `hasVariant` style option pairs into a variant map. */
@@ -421,7 +485,7 @@ export const jsonLdExtractor: ProductExtractor = {
     // A group's own offer wins. Only when it states none — the shape Zara and Nike both
     // ship — are its variants consulted, and then only where they agree.
     const variants = variantsOf(node);
-    const ownOffer = selectOffer(collectOffers(node.offers), sku);
+    const ownOffer = readNodeOffer(node, sku);
     const offer = ownOffer ?? consolidateVariantOffers(variants);
 
     // A value every variant agrees on is a real reading of the page, but it was inferred

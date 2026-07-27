@@ -116,6 +116,92 @@ describe('jsonLdExtractor — offers', () => {
     expect(result.offer?.priceAmount).toBe('30.00');
   });
 
+  it('says nothing when an AggregateOffer’s members disagree on price', () => {
+    // Chewy's dog food: one ProductGroup, an AggregateOffer whose 8 members are the bag
+    // sizes at 73.43 / 39.97 / 135.94 / 67.97 / 10.99. Taking the first priced member
+    // reported 73.43 for a page selling the 67.97 bag — a confident wrong number at 0.9,
+    // beating a DOM layer that had the right one.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Dog food',
+        offers: {
+          '@type': 'AggregateOffer',
+          lowPrice: '10.99',
+          highPrice: '135.94',
+          priceCurrency: 'USD',
+          offers: [
+            { '@type': 'Offer', sku: 'BAG-4', price: '73.43', priceCurrency: 'USD' },
+            { '@type': 'Offer', sku: 'BAG-15', price: '39.97', priceCurrency: 'USD' },
+            { '@type': 'Offer', sku: 'BAG-30', price: '67.97', priceCurrency: 'USD' },
+          ],
+        },
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBeUndefined();
+    // The currency is not in dispute, so it survives.
+    expect(result.offer?.currency).toBe('USD');
+  });
+
+  it('takes an AggregateOffer member when the product’s sku names it', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Dog food',
+        sku: 'BAG-30',
+        offers: {
+          '@type': 'AggregateOffer',
+          lowPrice: '10.99',
+          priceCurrency: 'USD',
+          offers: [
+            { '@type': 'Offer', sku: 'BAG-4', price: '73.43', priceCurrency: 'USD' },
+            { '@type': 'Offer', sku: 'BAG-30', price: '67.97', priceCurrency: 'USD' },
+          ],
+        },
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBe('67.97');
+  });
+
+  it('uses the low price when an AggregateOffer’s members are competing sellers', () => {
+    // The marketplace shape: one product, many vendors. Members sharing a sku and differing
+    // by seller are not variants, so disagreement is expected rather than ambiguous, and the
+    // aggregate's own lowPrice is a real answer.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'A book',
+        offers: {
+          '@type': 'AggregateOffer',
+          lowPrice: '18.00',
+          highPrice: '24.00',
+          priceCurrency: 'USD',
+          offers: [
+            {
+              '@type': 'Offer',
+              sku: 'ISBN-1',
+              price: '24.00',
+              priceCurrency: 'USD',
+              seller: { '@type': 'Organization', name: 'Shop A' },
+            },
+            {
+              '@type': 'Offer',
+              sku: 'ISBN-1',
+              price: '18.00',
+              priceCurrency: 'USD',
+              seller: { '@type': 'Organization', name: 'Shop B' },
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBe('18.00');
+    expect(result.offer?.originalPriceAmount).toBeUndefined();
+  });
+
   it('expands an AggregateOffer into its members', () => {
     const result = extract(
       JSON.stringify({
