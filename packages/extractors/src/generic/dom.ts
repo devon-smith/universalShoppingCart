@@ -6,6 +6,7 @@ import { absoluteHttpUrl, normalizeText, unique } from '../normalizers/text';
 import type { ExtractionContext, ProductExtractor } from '../core/types';
 import { evidence } from '../core/types';
 
+import { offerPriceSet } from './json-ld';
 import {
   extractSelectedVariantFromDom,
   extractSelectedVariantFromUrl,
@@ -180,6 +181,34 @@ export function findProductRoot(document: Document): Element | null {
   return null;
 }
 
+/**
+ * Extra places a price may sit, searched **only** when structured data can vouch for the
+ * value found there.
+ *
+ * Broadening the selectors above would be a mistake on its own: a retailer's design system
+ * uses the same class for its sponsored tiles as for its buy box, so more coverage means more
+ * candidates from other products — and ranking those apart has been tried three ways and does
+ * not work (docs/STATUS.md). Coverage is safe only with a discriminator attached. On Chewy
+ * this selector matches 516 elements and exactly two survive corroboration, both the real
+ * price.
+ */
+const CORROBORATED_ONLY_SELECTORS: ReadonlyArray<readonly [selector: string, confidence: number]> =
+  [['[class*="product-price"]', 0.5]];
+
+/**
+ * Confidence for a price two layers agree on — the ceiling for this extractor.
+ *
+ * Agreement between the rendered page and the page's own structured data is the strongest
+ * signal the DOM layer can produce, because the two fail in unrelated ways: markup drift does
+ * not move a JSON-LD price, and a stale JSON-LD price is not what gets rendered. It stays
+ * inside the DOM range so structured data still wins the merge outright — this raises how sure
+ * the layer is, not how loud.
+ *
+ * It also has to clear the review threshold. Asking the user to confirm a value both layers
+ * agree on is the noise that teaches people to dismiss warnings.
+ */
+const CORROBORATED_CONFIDENCE = 0.6;
+
 /** How much a document-wide search discounts every claim made from it. */
 const UNSCOPED_PENALTY = 0.8;
 
@@ -206,6 +235,36 @@ function firstMatch(
     const element = root.querySelector(selector);
     if (element) return { element, selector, confidence };
   }
+  return null;
+}
+
+/**
+ * The first price on the page that the page's own structured data also claims.
+ *
+ * A sponsored placement's price belongs to a different product, so it is absent from this
+ * product's offer set however product-ish its markup looks. That is the discriminator the
+ * ranking attempts lacked: Chewy's real 67.97 is one of nine prices in its `AggregateOffer`
+ * members, and the sponsored 49.99 is in none of them.
+ *
+ * Strictly a tiebreaker among values the DOM actually found. It never introduces a price from
+ * structured data — that is the JSON-LD layer's job, and on a page like Chewy's it correctly
+ * declines, because an offer spanning 10.99 to 145.94 does not say which one you are buying.
+ */
+function corroboratedPrice(
+  root: ParentNode,
+  known: ReadonlySet<string>,
+): { element: Element; selector: string; confidence: number; amount: string } | null {
+  if (known.size === 0) return null;
+
+  for (const [selector] of [...PRICE_SELECTORS, ...CORROBORATED_ONLY_SELECTORS]) {
+    for (const element of root.querySelectorAll(selector)) {
+      const amount = normalizePrice(readValue(element)).amount;
+      if (amount !== null && known.has(amount)) {
+        return { element, selector, confidence: CORROBORATED_CONFIDENCE, amount };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -381,7 +440,11 @@ export const domExtractor: ProductExtractor = {
       capture.evidence.push(evidence('product.selectedImageUrl', 'dom', confidence));
     }
 
-    const priceMatch = firstMatch(root, PRICE_SELECTORS);
+    // A corroborated candidate wins outright, whatever its selector's tier: agreement between
+    // two layers that fail in unrelated ways is worth more than one layer's markup preference.
+    const corroborated = corroboratedPrice(root, offerPriceSet(document));
+    const priceMatch = corroborated ?? firstMatch(root, PRICE_SELECTORS);
+
     if (priceMatch) {
       const parsed = normalizePrice(readValue(priceMatch.element));
       if (parsed.amount) {
@@ -391,7 +454,7 @@ export const domExtractor: ProductExtractor = {
             'offer.priceAmount',
             'dom',
             rank(priceMatch.confidence),
-            mark(priceMatch.selector),
+            mark(corroborated ? `${priceMatch.selector} (corroborated)` : priceMatch.selector),
           ),
         );
       }

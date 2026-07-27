@@ -113,6 +113,78 @@ describe('domExtractor — the product root', () => {
   });
 });
 
+describe('domExtractor — corroboration by structured data', () => {
+  const withJsonLd = (ld: object, body: string) =>
+    extract(`<script type="application/ld+json">${JSON.stringify(ld)}</script>${body}`);
+
+  it("prefers a price the page's own structured data also claims", () => {
+    // Chewy: every [data-price] on the page belongs to a sponsored tile, and the real price
+    // sits in a class no selector reached. Broadening the selectors alone would add more
+    // sponsored candidates; the offer set is what tells them apart, because a sponsored
+    // product's price is not among this product's offers.
+    const result = withJsonLd(
+      {
+        '@type': 'Product',
+        name: 'Dog food',
+        offers: { '@type': 'AggregateOffer', lowPrice: 10.99, highPrice: 135.94 },
+      },
+      `<main>
+         <h1 class="product-title">Dog food</h1>
+         <div data-price="49.99">Sponsored — a different product</div>
+         <div class="kib-product-price">$135.94</div>
+       </main>`,
+    );
+
+    expect(result.offer?.priceAmount).toBe('135.94');
+  });
+
+  it('says so in the evidence, and trusts a corroborated value more', () => {
+    const result = withJsonLd(
+      { '@type': 'Product', name: 'X', offers: { price: '135.94', priceCurrency: 'USD' } },
+      `<main>
+         <h1 class="product-title">X</h1>
+         <div data-price="49.99">Sponsored</div>
+         <div class="kib-product-price">$135.94</div>
+       </main>`,
+    );
+
+    const item = result.evidence.find((entry) => entry.field === 'offer.priceAmount');
+    expect(item?.selector).toContain('corroborated');
+    // Has to clear the review threshold: asking about a value both layers agree on is the
+    // noise that teaches people to dismiss warnings.
+    expect(item!.confidence).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it('never invents a price structured data knows but the page does not show', () => {
+    // Corroboration breaks ties between things the DOM found. It is not a source.
+    const result = withJsonLd(
+      { '@type': 'Product', name: 'X', offers: { price: '135.94' } },
+      '<main><h1 class="product-title">X</h1><p>No price rendered anywhere</p></main>',
+    );
+
+    expect(result.offer?.priceAmount).toBeUndefined();
+  });
+
+  it('falls back to selector order when nothing is corroborated', () => {
+    const result = withJsonLd(
+      { '@type': 'Product', name: 'X', offers: { price: '999.00' } },
+      '<main><h1 class="product-title">X</h1><span itemprop="price" content="80.00">$80</span></main>',
+    );
+
+    expect(result.offer?.priceAmount).toBe('80.00');
+  });
+
+  it('does not reach into the broad selector without corroboration', () => {
+    // [class*="product-price"] matches 516 elements on a real Chewy page. It is only ever
+    // consulted when structured data can vouch for what it found.
+    const result = extract(
+      '<main><h1 class="product-title">X</h1><div class="kib-product-price">$47.97</div></main>',
+    );
+
+    expect(result.offer?.priceAmount).toBeUndefined();
+  });
+});
+
 describe('domExtractor — title and brand', () => {
   it('prefers an itemprop name over an h1', () => {
     const result = extract('<h1>Wrong</h1><span itemprop="name">Right</span>');

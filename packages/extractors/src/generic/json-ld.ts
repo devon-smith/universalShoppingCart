@@ -428,6 +428,51 @@ export function readJsonLdNodes(document: Document): JsonObject[] {
   return scripts.flatMap((script) => findProductNodes(parseJsonLdBlock(script.textContent ?? '')));
 }
 
+/** Keys whose value is a price belonging to the product this page is about. */
+const PRICE_KEYS = /^(price|lowPrice|highPrice)$/;
+
+function collectPrices(node: unknown, found: Set<string>): void {
+  if (Array.isArray(node)) {
+    for (const entry of node) collectPrices(entry, found);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+
+  for (const [key, value] of Object.entries(node)) {
+    if (PRICE_KEYS.test(key) && (typeof value === 'string' || typeof value === 'number')) {
+      const amount = normalizePrice(String(value)).amount;
+      if (amount) found.add(amount);
+    } else {
+      collectPrices(value, found);
+    }
+  }
+}
+
+/**
+ * Every price the page's structured data attributes to this product.
+ *
+ * Not an extraction — a corroboration set. JSON-LD knows which prices legitimately belong to
+ * this product but often not which one is selected; the DOM knows what is on screen but not
+ * this product from a sponsored one beside it. Each covers the other's blind spot, so the DOM
+ * layer uses this to tell its own candidates apart (see `dom.ts`).
+ *
+ * Deliberately unfiltered by offer shape: aggregate members, `hasVariant` offers and plain
+ * offers are all legitimate prices for the product. Chewy's bag of dog food publishes nine —
+ * one per size — including the 67.97 on screen, and excluding the 49.99 of the sponsored
+ * product sitting in the middle of the page.
+ */
+export function offerPriceSet(document: Document): ReadonlySet<string> {
+  const found = new Set<string>();
+
+  for (const script of Array.from(
+    document.querySelectorAll<HTMLScriptElement>('script[type="application/ld+json"]'),
+  )) {
+    collectPrices(parseJsonLdBlock(script.textContent ?? ''), found);
+  }
+
+  return found;
+}
+
 export const jsonLdExtractor: ProductExtractor = {
   id: JSON_LD_EXTRACTOR_ID,
   version: JSON_LD_EXTRACTOR_VERSION,
