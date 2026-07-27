@@ -65,6 +65,34 @@ confidently wrong price scores as a win there. The baseline is read against the 
 ground-truth column, never on its own, and how many pages report a _wrong_ price is what
 decides whether matching the selected variant is urgent or optional.
 
+### Live-capture pass — what is still wrong across the sixteen saved pages
+
+Two confidently wrong values remain. Both are understood; neither is guessed at.
+
+- **stockx** reports `76` against a true `78`. Waiting on disagreement-lowers-confidence,
+  which is sequenced after the items below and accepted as wrong until then.
+- **chewy** reports `49.99` against a true `67.97`, read from a sponsored placement inside
+  the product region. Two exclusion attempts have been reverted; see the note below.
+
+Fixed and measured in this pass: `oos` availability now reads the selected size rather than
+the style, and page controls (quantity, review sort and filter, fulfilment chooser) no longer
+land in `selectedVariant`.
+
+**Recommendation exclusion is unsolved, and the shape rule is not the answer.** Excluding
+regions by class name or test id fires on real product regions, because a clothing PDP _is_ a
+carousel. Excluding by shape — three or more sibling tiles each linking to a different product
+URL — is safe but cannot fire on Chewy, whose placement is a **single** card captioned "Try
+this similar item". Widening it to single tiles was measured and excluded Walmart's real buy
+box. Both attempts are reverted; the finding is that the distinguishing signal is neither
+markup nor tile count, and a third attempt needs a different one.
+
+`selectedVariant` still carries, in the order they are worth fixing: Shopify variant ids
+(`Variant: 47776291946739`) that belong in `identifiers`; spec rows (`Material`, `Pattern`)
+that are dropped per the composition ADR; and opaque option ids (lululemon `Color: 76616`
+where the page shows "Rumble Crumble"). Moving the Shopify id is not a key rename — it has to
+enter the fingerprint's identifier precedence above `sku`, or two sizes of one product start
+hashing alike.
+
 ## Phase 5 — Retailer adapters
 
 **Complete.** Five platform adapters, a versioned registry, ten sanitized fixtures, and an
