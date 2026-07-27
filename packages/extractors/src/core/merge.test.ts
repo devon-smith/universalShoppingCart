@@ -206,3 +206,87 @@ describe('overallConfidence', () => {
     );
   });
 });
+
+describe('mergeCaptures — disagreement lowers confidence', () => {
+  const priceFrom = (
+    source: 'json_ld' | 'dom' | 'meta' | 'adapter',
+    amount: string,
+    confidence: number,
+  ) => ({
+    offer: { priceAmount: amount },
+    evidence: [evidence('offer.priceAmount', source, confidence)],
+  });
+
+  it('keeps the higher-ranked value but stops trusting it', () => {
+    // StockX publishes 76 in JSON-LD and renders 78. Structured data is evidence, not
+    // absolute truth (BUILD_PLAN.md §10.3) — a rendered page contradicting it is precisely
+    // the evidence that it is stale.
+    const { capture, winners } = mergeCaptures([
+      priceFrom('json_ld', '76.00', 0.9),
+      priceFrom('dom', '78.00', 0.5),
+    ]);
+
+    expect(capture.offer?.priceAmount).toBe('76.00');
+    expect(winners.get('offer.priceAmount')!.confidence).toBeLessThan(0.6);
+  });
+
+  it('records what each source claimed, so diagnostics can show the argument', () => {
+    const { capture } = mergeCaptures([
+      priceFrom('json_ld', '76.00', 0.9),
+      priceFrom('dom', '78.00', 0.5),
+    ]);
+
+    const claims = capture.evidence
+      .filter((item) => item.field === 'offer.priceAmount')
+      .map((item) => `${item.source}=${item.value}`);
+
+    expect(claims).toEqual(['json_ld=76.00', 'dom=78.00']);
+  });
+
+  it('says nothing when the sources agree', () => {
+    const { capture, winners } = mergeCaptures([
+      priceFrom('json_ld', '76.00', 0.9),
+      priceFrom('dom', '76.00', 0.5),
+    ]);
+
+    expect(winners.get('offer.priceAmount')!.confidence).toBe(0.9);
+    expect(capture.evidence.every((item) => item.value === undefined)).toBe(true);
+  });
+
+  it('does not treat one layer being imprecise as a contradiction', () => {
+    // Two DOM heuristics differing is a weak layer, not two witnesses disagreeing.
+    const { winners } = mergeCaptures([
+      { offer: { priceAmount: '10.00' }, evidence: [evidence('offer.priceAmount', 'dom', 0.5)] },
+      { offer: { priceAmount: '12.00' }, evidence: [evidence('offer.priceAmount', 'dom', 0.4)] },
+    ]);
+
+    expect(winners.get('offer.priceAmount')!.confidence).toBe(0.5);
+  });
+
+  it('never second-guesses a value the user supplied', () => {
+    const { capture, winners } = mergeCaptures([
+      { offer: { priceAmount: '99.00' }, evidence: [evidence('offer.priceAmount', 'user', 1)] },
+      priceFrom('json_ld', '76.00', 0.9),
+    ]);
+
+    expect(capture.offer?.priceAmount).toBe('99.00');
+    expect(winners.get('offer.priceAmount')!.confidence).toBe(1);
+  });
+
+  it('leaves free-text fields alone, so the warning stays meaningful', () => {
+    // JSON-LD's name and the <h1> differ on most pages as a matter of punctuation. Flagging
+    // that would put a warning on nearly every capture and teach the user to dismiss them.
+    const { winners } = mergeCaptures([
+      {
+        product: { title: 'Nike Dunk Low Retro' },
+        evidence: [evidence('product.title', 'json_ld', 0.95)],
+      },
+      {
+        product: { title: "Nike Dunk Low Retro Men's Shoes" },
+        evidence: [evidence('product.title', 'dom', 0.45)],
+      },
+    ]);
+
+    expect(winners.get('product.title')!.confidence).toBe(0.95);
+  });
+});

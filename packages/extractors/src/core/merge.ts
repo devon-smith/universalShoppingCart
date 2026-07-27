@@ -69,16 +69,86 @@ function isEmptyValue(value: unknown): boolean {
   return false;
 }
 
+/**
+ * Fields where two sources reporting different values means one of them is wrong.
+ *
+ * Deliberately narrow. Titles, descriptions and image URLs differ between layers as a matter
+ * of course — JSON-LD's name is punctuated differently from the `<h1>`, a gallery URL carries
+ * a different size suffix — and flagging those would put a warning on nearly every capture,
+ * which trains the user to dismiss warnings. These four are exact values where a difference is
+ * a genuine contradiction.
+ */
+const CONTESTABLE_FIELDS: ReadonlySet<string> = new Set([
+  'offer.priceAmount',
+  'offer.originalPriceAmount',
+  'offer.currency',
+  'offer.availability',
+]);
+
+/**
+ * Confidence assigned to a contested field, below the 0.6 review threshold in
+ * `fieldsNeedingReview` so the preview asks the user before saving.
+ */
+const CONTESTED_CONFIDENCE = 0.4;
+
+interface Observation {
+  item: Evidence;
+  value: unknown;
+}
+
+/**
+ * Fields where two *independent* sources made different claims.
+ *
+ * Independence is what makes a difference meaningful: two DOM heuristics disagreeing is one
+ * layer being imprecise, while JSON-LD and the rendered page disagreeing means the structured
+ * data is stale or describes something else. StockX publishes 76 in JSON-LD and renders 78,
+ * and 78 is the price you pay.
+ *
+ * A field the user has corrected is never contested — their answer is the answer.
+ */
+function contestedFields(observations: readonly Observation[]): Set<string> {
+  const claims = new Map<string, Map<string, Set<string>>>();
+  const corrected = new Set<string>();
+
+  for (const { item, value } of observations) {
+    if (!CONTESTABLE_FIELDS.has(item.field)) continue;
+    if (item.source === 'user') {
+      corrected.add(item.field);
+      continue;
+    }
+    if (isEmptyValue(value)) continue;
+
+    const byValue = claims.get(item.field) ?? new Map<string, Set<string>>();
+    const sources = byValue.get(String(value)) ?? new Set<string>();
+    sources.add(item.source);
+    byValue.set(String(value), sources);
+    claims.set(item.field, byValue);
+  }
+
+  const contested = new Set<string>();
+  for (const [field, byValue] of claims) {
+    if (corrected.has(field) || byValue.size < 2) continue;
+
+    // Two different values are only a contradiction if they came from different layers.
+    const sources = new Set<string>();
+    for (const claimants of byValue.values()) {
+      for (const source of claimants) sources.add(source);
+    }
+    if (sources.size >= 2) contested.add(field);
+  }
+
+  return contested;
+}
+
 export function mergeCaptures(candidates: readonly PartialCapture[]): MergeResult {
   const capture: PartialCapture = { evidence: [] };
   const winners = new Map<string, Evidence>();
-  const allEvidence: Evidence[] = [];
+  const observations: Observation[] = [];
 
   for (const candidate of candidates) {
     for (const item of candidate.evidence) {
-      allEvidence.push(item);
-
       const value = readPath(candidate, item.field);
+      observations.push({ item, value });
       if (isEmptyValue(value)) continue;
 
       const incumbent = winners.get(item.field);
@@ -89,9 +159,30 @@ export function mergeCaptures(candidates: readonly PartialCapture[]): MergeResul
     }
   }
 
-  // Every candidate's evidence is kept, not just the winning entries: the losing entries
-  // are what make a disagreement between extractors visible in diagnostics.
-  capture.evidence = allEvidence;
+  // Which source wins is unchanged: structured data is still the better guess, and swapping
+  // the ranking on a disagreement would just make the DOM authoritative instead. What changes
+  // is how sure the capture claims to be — BUILD_PLAN.md §10.3 calls structured data evidence,
+  // not absolute truth, and a layer contradicting it is exactly the evidence that it is wrong.
+  const contested = contestedFields(observations);
+
+  // Every candidate's evidence is kept, not just the winning entries: the losing entries are
+  // what make a disagreement visible in diagnostics. Contested entries are rewritten rather
+  // than edited in place, because these objects belong to the extractors that returned them.
+  capture.evidence = observations.map(({ item, value }) => {
+    if (!contested.has(item.field)) return item;
+    return {
+      ...item,
+      confidence: Math.min(item.confidence, CONTESTED_CONFIDENCE),
+      ...(isEmptyValue(value) ? {} : { value: String(value) }),
+    };
+  });
+
+  for (const item of capture.evidence) {
+    const winner = winners.get(item.field);
+    if (winner && contested.has(item.field) && winner.source === item.source) {
+      winners.set(item.field, item);
+    }
+  }
 
   return { capture, winners };
 }

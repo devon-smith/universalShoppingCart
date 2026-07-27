@@ -54,6 +54,13 @@ export const evidenceSchema = z.object({
   /** Optional CSS selector or JSON pointer, for diagnosing a regression. */
   selector: z.string().optional(),
   confidence: z.number().min(0).max(1),
+  /**
+   * What this source actually claimed, recorded only when sources disagreed.
+   *
+   * Present on every entry for a contested field so diagnostics can show the argument —
+   * "JSON-LD said 76, the page said 78" — rather than only the value that won.
+   */
+  value: z.string().optional(),
 });
 export type Evidence = z.infer<typeof evidenceSchema>;
 
