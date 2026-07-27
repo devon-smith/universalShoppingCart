@@ -4,7 +4,20 @@
 
 ## Project objective
 
-Build a personal, cloud-synced shopping list. A Manifest V3 browser extension captures the product on the current page, and a Next.js dashboard stores, compares, and shares saved products.
+Help one person decide what to buy — primarily **clothing** — by putting candidates from
+different retailers side by side in one place.
+
+A Manifest V3 browser extension captures the garment on the current page; a Next.js
+dashboard **compares** those candidates, and stores them so the comparison survives across
+devices and sessions. Comparison is the point. Storage and sync serve it. Sharing is a
+nice-to-have.
+
+The primary category is clothing, and that shapes what is worth building. Shoppers compare
+**different candidates for one purchase** — three jackets, two pairs of running shoes —
+rather than the same item at competing sellers. The same garment is generally not sold by
+both Zara and Gymshark. So side-by-side attributes, price, and variant are the whole value,
+while cross-retailer identifier matching (GTIN, MPN, brand+model) is an electronics problem
+and is deprioritised accordingly — see `docs/DECISIONS.md`.
 
 This is not a universal checkout system. Never store retailer credentials, cookies, payment data, or unrelated browsing history.
 

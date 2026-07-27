@@ -176,10 +176,14 @@ const files = readdirSync(liveDir).filter((file) => file.endsWith('.html'));
 
 if (files.length === 0) {
   console.error(
-    '.live/ holds no .html pages yet.\n' +
-      'Save a product page from Chrome (Cmd+S -> "Webpage, HTML only") into .live/,\n' +
-      'and add .live/<name>.json with {"url": "<the page URL>"} so extraction sees the\n' +
-      'canonical URL and any variant parameters.',
+    '.live/ holds no .html pages yet.\n\n' +
+      'For each page: select the variant, open DevTools, and run in the Console\n' +
+      '  copy(document.documentElement.outerHTML)\n' +
+      'then paste it into .live/<name>.html.\n\n' +
+      'Add .live/<name>.json holding {"url": "<the page URL, with variant parameters>"},\n' +
+      'so extraction sees the canonical URL and anything that selects a variant.\n\n' +
+      'Do not use Cmd+S — it saves the HTML the server sent, not the DOM after hydration,\n' +
+      'which is not what the extension reads.',
   );
   process.exit(1);
 }
