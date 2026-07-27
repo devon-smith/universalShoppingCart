@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { shopifyAdapter } from './shopify';
+
 import {
   humanizeAttributeCode,
   minorUnitsToDecimal,
@@ -103,5 +105,35 @@ describe('humanizeAttributeCode', () => {
   it('refuses anything that is not a label', () => {
     expect(humanizeAttributeCode('attribute_pa_')).toBeNull();
     expect(humanizeAttributeCode('a'.repeat(60))).toBeNull();
+  });
+});
+
+describe('shopifyAdapter.supports — the data has to be there', () => {
+  function page(body: string): Document {
+    return new DOMParser().parseFromString(
+      `<!doctype html><html><head><link rel="preconnect" href="https://cdn.shopify.com/" />
+       </head><body>${body}</body></html>`,
+      'text/html',
+    );
+  }
+
+  it('declines a headless storefront that only preconnects to the Shopify CDN', () => {
+    // Gymshark's shape. Matching on the platform signal alone claimed the page and then
+    // returned nothing, which is worse than never claiming it.
+    const document = page('<h1>Sport 7" Shorts</h1>');
+    expect(shopifyAdapter.supports({ document, url: 'https://shop.example/products/x' })).toBe(
+      false,
+    );
+  });
+
+  it('claims a page that carries the product JSON it reads', () => {
+    const document = page(
+      `<script type="application/json" id="ProductJson-product-template">
+         {"title":"A shirt","variants":[{"id":1,"price":1999,"available":true}]}
+       </script>`,
+    );
+    expect(shopifyAdapter.supports({ document, url: 'https://shop.example/products/x' })).toBe(
+      true,
+    );
   });
 });

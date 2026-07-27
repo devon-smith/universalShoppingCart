@@ -124,6 +124,17 @@ export const shopifyAdapter: ProductExtractor = {
 
   supports(context: ExtractionContext): boolean {
     const { document } = context;
+
+    // The platform signals say the store runs on Shopify; they do not say this page exposes
+    // Shopify's product JSON. Gymshark satisfies them with a `<link rel="preconnect">` to
+    // the Shopify CDN while being a headless storefront whose product data lives in an RSC
+    // payload, so the adapter matched, found nothing, and contributed nothing — worse than
+    // no adapter, because a matched-but-empty adapter is recorded as having handled the
+    // page. Probing for the data the adapter actually reads makes the check self-correcting:
+    // every headless Shopify store falls straight through to the generic pipeline, which
+    // already gets Gymshark's price right.
+    if (productJson(document) === null) return false;
+
     if (document.querySelector(PLATFORM_SIGNALS.join(', ')) !== null) return true;
 
     // Themes that host their own assets still declare the global.
