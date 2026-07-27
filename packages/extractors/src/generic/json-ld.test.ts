@@ -436,6 +436,166 @@ describe('jsonLdExtractor — price ranges and variant groups', () => {
     expect(result.offer?.priceAmount).toBe('89.00');
   });
 
+  it('reads the price out of hasVariant when the group carries no offers of its own', () => {
+    // Zara and Nike both ship exactly one block, a ProductGroup, with the price only inside
+    // hasVariant. Descending into @graph alone never reached it, so both pages extracted no
+    // price at all while the number sat in machine-readable markup.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Merino crew',
+        hasVariant: [
+          {
+            '@type': 'Product',
+            sku: 'CREW-BLUE-M',
+            offers: { '@type': 'Offer', price: '89.00', priceCurrency: 'USD' },
+          },
+          {
+            '@type': 'Product',
+            sku: 'CREW-BLUE-L',
+            offers: { '@type': 'Offer', price: '89.00', priceCurrency: 'USD' },
+          },
+        ],
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBe('89.00');
+    expect(result.offer?.currency).toBe('USD');
+    expect(result.evidence.find((item) => item.field === 'offer.priceAmount')?.source).toBe(
+      'json_ld',
+    );
+  });
+
+  it('reports no price when variants disagree and nothing says which is selected', () => {
+    // Picking the first variant carrying a price would show a confident wrong number. A
+    // missing price is recoverable — the panel flags it and the user corrects it — while a
+    // plausible wrong one is not noticed at all (BUILD_PLAN.md §10.3).
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Merino crew',
+        hasVariant: [
+          {
+            '@type': 'Product',
+            sku: 'CREW-S',
+            offers: { '@type': 'Offer', price: '89.00', priceCurrency: 'USD' },
+          },
+          {
+            '@type': 'Product',
+            sku: 'CREW-XL',
+            offers: { '@type': 'Offer', price: '119.00', priceCurrency: 'USD' },
+          },
+        ],
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBeUndefined();
+    expect(result.evidence.find((item) => item.field === 'offer.priceAmount')).toBeUndefined();
+
+    // The currency is not in dispute, so it survives.
+    expect(result.offer?.currency).toBe('USD');
+  });
+
+  it('consolidates availability and declared options the same way', () => {
+    const agreeing = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Merino crew',
+        hasVariant: [
+          {
+            '@type': 'Product',
+            color: 'Navy',
+            offers: {
+              '@type': 'Offer',
+              price: '89.00',
+              priceCurrency: 'USD',
+              availability: 'https://schema.org/OutOfStock',
+            },
+          },
+          {
+            '@type': 'Product',
+            color: 'Navy',
+            offers: {
+              '@type': 'Offer',
+              price: '89.00',
+              priceCurrency: 'USD',
+              availability: 'https://schema.org/OutOfStock',
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(agreeing.offer?.availability).toBe('out_of_stock');
+    expect(agreeing.selectedVariant).toEqual({ Color: 'Navy' });
+
+    const disagreeing = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Merino crew',
+        hasVariant: [
+          { '@type': 'Product', color: 'Navy', offers: { '@type': 'Offer', price: '89.00' } },
+          { '@type': 'Product', color: 'Rust', offers: { '@type': 'Offer', price: '89.00' } },
+        ],
+      }),
+    );
+
+    // Two colours and no signal which is on screen: say nothing rather than guess.
+    expect(disagreeing.selectedVariant).toBeUndefined();
+    expect(disagreeing.offer?.priceAmount).toBe('89.00');
+  });
+
+  it('prefers the group’s own offers over its variants', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Merino crew',
+        offers: { '@type': 'Offer', price: '79.00', priceCurrency: 'USD' },
+        hasVariant: [
+          {
+            '@type': 'Product',
+            offers: { '@type': 'Offer', price: '89.00', priceCurrency: 'USD' },
+          },
+        ],
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBe('79.00');
+  });
+
+  it('still refuses to turn a group’s aggregate range into a discount', () => {
+    // The 9b03646 rule has to keep holding through the hasVariant path.
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Merino crew',
+        offers: {
+          '@type': 'AggregateOffer',
+          lowPrice: '89.00',
+          highPrice: '119.00',
+          priceCurrency: 'USD',
+        },
+      }),
+    );
+
+    expect(result.offer?.priceAmount).toBe('89.00');
+    expect(result.offer?.originalPriceAmount).toBeUndefined();
+  });
+
+  it('leaves a plain Product untouched', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'Merino crew',
+        offers: { '@type': 'Offer', price: '89.00', priceCurrency: 'USD', availability: 'InStock' },
+      }),
+    );
+
+    expect(result.product?.title).toBe('Merino crew');
+    expect(result.offer?.priceAmount).toBe('89.00');
+    expect(result.offer?.availability).toBe('in_stock');
+  });
+
   it('takes the offer for the selected variant even when other variants are in stock', () => {
     // The product is generally available; the size on screen is not. Reporting the family's
     // availability would tell the user something false about what they are looking at.
