@@ -242,6 +242,60 @@ export function selectOffer(
   return facts.find((entry) => entry.priceAmount !== null) ?? facts[0]!;
 }
 
+/** The variant `Product` nodes a `ProductGroup` declares. */
+export function variantsOf(node: JsonObject): JsonObject[] {
+  const raw = node.hasVariant;
+  const entries = Array.isArray(raw) ? raw : [raw];
+  return entries.filter((entry): entry is JsonObject => isObject(entry));
+}
+
+/**
+ * The one value every variant states, or null when they disagree.
+ *
+ * Variants that say nothing are not treated as disagreeing — partial markup is common, and
+ * silence is not a competing claim. Two different stated values are, and that is the case
+ * that must produce nothing.
+ */
+function agreedValue<T>(values: ReadonlyArray<T | null | undefined>): T | null {
+  const stated = values.filter((value): value is T => value !== null && value !== undefined);
+  if (stated.length === 0) return null;
+
+  const first = stated[0]!;
+  return stated.every((value) => value === first) ? first : null;
+}
+
+/**
+ * An offer derived from a group's variants.
+ *
+ * Used only when the group states no offer of its own. Where the variants agree there is
+ * one true answer and reporting it is safe; where they disagree and nothing on the page
+ * says which one is on screen, this reports nothing. Taking the first variant that happens
+ * to carry a price would put a confident wrong number in front of the user, which is worse
+ * than an empty field the correction UI flags (BUILD_PLAN.md §10.3).
+ *
+ * Matching the *selected* variant — by URL parameter, sku, or DOM state — is a separate
+ * problem and deliberately not attempted here.
+ */
+function consolidateVariantOffers(variants: readonly JsonObject[]): OfferFacts | null {
+  const facts = variants
+    .map((variant) => selectOffer(collectOffers(variant.offers), readString(variant.sku)))
+    .filter((entry): entry is OfferFacts => entry !== null);
+
+  if (facts.length === 0) return null;
+
+  const availability = agreedValue(
+    facts.map((entry) => (entry.availability === 'unknown' ? null : entry.availability)),
+  );
+
+  return {
+    priceAmount: agreedValue(facts.map((entry) => entry.priceAmount)),
+    originalPriceAmount: agreedValue(facts.map((entry) => entry.originalPriceAmount)),
+    currency: agreedValue(facts.map((entry) => entry.currency)),
+    availability: availability ?? 'unknown',
+    sku: null,
+  };
+}
+
 /** Read `additionalProperty` / `hasVariant` style option pairs into a variant map. */
 function readSelectedVariant(node: JsonObject): Record<string, string> {
   const variant: Record<string, string> = {};
@@ -263,6 +317,25 @@ function readSelectedVariant(node: JsonObject): Record<string, string> {
   }
 
   return variant;
+}
+
+/**
+ * The options every variant in a group shares.
+ *
+ * A group whose variants are all Navy is stating the colour; one offering Navy and Rust is
+ * stating the range, not the selection. Only the former belongs in `selectedVariant`, which
+ * by contract holds what is currently selected and nothing else (BUILD_PLAN.md §6.2).
+ */
+function consolidateVariantOptions(variants: readonly JsonObject[]): Record<string, string> {
+  const maps = variants.map(readSelectedVariant);
+  const shared: Record<string, string> = {};
+
+  for (const key of new Set(maps.flatMap((map) => Object.keys(map)))) {
+    const agreed = agreedValue(maps.map((map) => map[key] ?? null));
+    if (agreed) shared[key] = agreed;
+  }
+
+  return shared;
 }
 
 export const JSON_LD_EXTRACTOR_ID = 'json-ld';
@@ -345,27 +418,45 @@ export const jsonLdExtractor: ProductExtractor = {
       capture.evidence.push(evidence('product.identifiers', 'json_ld', 0.9));
     }
 
-    const offer = selectOffer(collectOffers(node.offers), sku);
+    // A group's own offer wins. Only when it states none — the shape Zara and Nike both
+    // ship — are its variants consulted, and then only where they agree.
+    const variants = variantsOf(node);
+    const ownOffer = selectOffer(collectOffers(node.offers), sku);
+    const offer = ownOffer ?? consolidateVariantOffers(variants);
+
+    // A value every variant agrees on is a real reading of the page, but it was inferred
+    // across the family rather than stated for the item on screen. The slightly lower
+    // confidence keeps a directly-stated offer ahead of it when both exist.
+    const offerConfidence = ownOffer ? 1 : 0.9;
+
     if (offer) {
       if (offer.priceAmount) {
         offerFields.priceAmount = offer.priceAmount;
-        capture.evidence.push(evidence('offer.priceAmount', 'json_ld', 0.9));
+        capture.evidence.push(evidence('offer.priceAmount', 'json_ld', 0.9 * offerConfidence));
       }
       if (offer.originalPriceAmount) {
         offerFields.originalPriceAmount = offer.originalPriceAmount;
-        capture.evidence.push(evidence('offer.originalPriceAmount', 'json_ld', 0.8));
+        capture.evidence.push(
+          evidence('offer.originalPriceAmount', 'json_ld', 0.8 * offerConfidence),
+        );
       }
       if (offer.currency) {
         offerFields.currency = offer.currency;
-        capture.evidence.push(evidence('offer.currency', 'json_ld', 0.9));
+        capture.evidence.push(evidence('offer.currency', 'json_ld', 0.9 * offerConfidence));
       }
       if (offer.availability !== 'unknown') {
         offerFields.availability = offer.availability;
-        capture.evidence.push(evidence('offer.availability', 'json_ld', 0.85));
+        capture.evidence.push(evidence('offer.availability', 'json_ld', 0.85 * offerConfidence));
       }
     }
 
-    const selectedVariant = readSelectedVariant(node);
+    // Options the node declares directly, falling back to the ones every variant shares —
+    // a group whose variants are all Navy is telling us the colour, while a group offering
+    // Navy and Rust is not telling us which one is on screen.
+    const ownVariant = readSelectedVariant(node);
+    const selectedVariant =
+      Object.keys(ownVariant).length > 0 ? ownVariant : consolidateVariantOptions(variants);
+
     if (Object.keys(selectedVariant).length > 0) {
       capture.selectedVariant = selectedVariant;
       capture.evidence.push(evidence('selectedVariant', 'json_ld', 0.7));
