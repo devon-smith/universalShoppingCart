@@ -14,24 +14,40 @@ import { normalizeText } from '../normalizers/text';
  * 4. URL parameters whose names look like option names
  */
 
-/** Query parameters that are option-like rather than tracking or routing. */
-const VARIANT_PARAMETER_NAMES = new Set([
+/**
+ * Names that denote an option a shopper picks, rather than a fact about the goods.
+ *
+ * Used wherever a name arrives with **no evidence that anything was selected** — a URL
+ * parameter, a schema.org `additionalProperty` — because there the name is all we have. A DOM
+ * control is different and is not filtered by this list: a `<select>` the user operated is
+ * itself the evidence, whatever its label says.
+ *
+ * `material` is deliberately absent. It reads like an option and is almost always a
+ * characteristic: Zara, H&M and Uniqlo all publish composition this way. It gets a real field
+ * at the comparison milestone (docs/DECISIONS.md, 2026-07-27) rather than a guessed slot here.
+ */
+const OPTION_NAMES = new Set([
   'color',
   'colour',
   'size',
   'style',
   'storage',
   'capacity',
-  'material',
   'finish',
   'length',
   'width',
+  'fit',
   'flavor',
   'flavour',
   'scent',
   'variant',
   'variation',
 ]);
+
+/** Does this name denote something chosen, rather than something measured or described? */
+export function isOptionName(name: string): boolean {
+  return OPTION_NAMES.has(name.trim().toLowerCase());
+}
 
 /** Words that appear in option group labels but are not part of the option name. */
 const LABEL_NOISE = /\s*[:：]\s*$|\s*\(required\)\s*$|\s*\*\s*$/i;
@@ -58,11 +74,24 @@ const CONTROL_LABELS: readonly RegExp[] = [
   /^sort\b/i,
   /^filter\b/i,
   /^how do you want\b/i,
-  /\b(shipping|delivery|subscription) (frequency|option|method)\b/i,
+  /^(shipping|delivery|pickup|subscription)\b/i,
 ];
+
+/**
+ * Values that are a widget's state rather than an answer.
+ *
+ * An unvalued checkbox reports `on` when ticked, which says only that a box is ticked. H&M's
+ * "Shipping online" toggle arrived as `on` and was invisible until the composition rows above
+ * stopped outranking it.
+ */
+const CONTROL_VALUES = new Set(['on', 'off', 'true', 'false', 'checked', 'unchecked', 'yes', 'no']);
 
 function isPageControl(name: string): boolean {
   return CONTROL_LABELS.some((pattern) => pattern.test(name));
+}
+
+function isControlState(value: string): boolean {
+  return CONTROL_VALUES.has(value.trim().toLowerCase());
 }
 
 function cleanLabel(raw: string | null | undefined): string | null {
@@ -162,7 +191,7 @@ export function extractSelectedVariantFromDom(root: ParentNode): Record<string, 
     if (!value || !normalizeText(chosen.value)) continue;
 
     const name = labelFor(select, document) ?? groupLabelFor(select, document);
-    if (name && !isPageControl(name)) variant[name] = value;
+    if (name && !isPageControl(name) && !isControlState(value)) variant[name] = value;
   }
 
   for (const input of Array.from(root.querySelectorAll<HTMLInputElement>('input[type="radio"]'))) {
@@ -174,7 +203,7 @@ export function extractSelectedVariantFromDom(root: ParentNode): Record<string, 
       normalizeText(labelTextFor(input, document)) ??
       normalizeText(input.value);
 
-    if (name && value && !isPageControl(name)) variant[name] = value;
+    if (name && value && !isPageControl(name) && !isControlState(value)) variant[name] = value;
   }
 
   for (const element of Array.from(
@@ -183,7 +212,9 @@ export function extractSelectedVariantFromDom(root: ParentNode): Record<string, 
     const name = groupLabelFor(element, document);
     const value =
       normalizeText(element.getAttribute('aria-label')) ?? normalizeText(element.textContent);
-    if (name && value && !(name in variant) && !isPageControl(name)) variant[name] = value;
+    if (name && value && !(name in variant) && !isPageControl(name) && !isControlState(value)) {
+      variant[name] = value;
+    }
   }
 
   return variant;
@@ -214,7 +245,7 @@ export function extractSelectedVariantFromUrl(url: string): Record<string, strin
 
   for (const [rawName, rawValue] of parsed.searchParams) {
     const name = rawName.toLowerCase();
-    if (!VARIANT_PARAMETER_NAMES.has(name)) continue;
+    if (!isOptionName(name)) continue;
 
     const value = normalizeText(rawValue);
     if (!value) continue;

@@ -197,6 +197,18 @@ describe('extractSelectedVariantFromDom — page controls are not options', () =
     expect(extractSelectedVariantFromDom(document)).toEqual({ Size: 'Medium' });
   });
 
+  it('ignores a checkbox whose value is only its own state', () => {
+    // H&M's "Shipping online" toggle reports `on`, which says a box is ticked and nothing
+    // about the garment. It was invisible until composition rows stopped outranking it.
+    const document = parse(`
+      <div role="radiogroup" aria-label="Shipping online">
+        <input type="radio" checked value="on" />
+      </div>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
   it('does not reject an option whose name merely begins with the same letters', () => {
     const document = parse(`
       <label for="fit">Fit</label>

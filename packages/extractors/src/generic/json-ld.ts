@@ -6,6 +6,8 @@ import { absoluteHttpUrl, normalizeText, normalizeTextCapped, unique } from '../
 import type { ExtractionContext, ProductExtractor } from '../core/types';
 import { evidence } from '../core/types';
 
+import { isOptionName } from './variant';
+
 /**
  * schema.org Product/Offer extraction from `<script type="application/ld+json">`.
  *
@@ -360,11 +362,23 @@ function readNodeOffer(node: JsonObject, sku: string | null): OfferFacts | null 
   return consolidateFacts(facts);
 }
 
-/** Read `additionalProperty` / `hasVariant` style option pairs into a variant map. */
+/**
+ * Read `additionalProperty` / `hasVariant` style option pairs into a variant map.
+ *
+ * Structured data describes a product; it does not report what the visitor clicked. So only
+ * names that denote a choice are taken, and `material` and `pattern` are not among them even
+ * though schema.org gives them dedicated properties.
+ *
+ * The reason is the fingerprint. `selectedVariant` is hashed into it (BUILD_PLAN.md §9.1), and
+ * a spec table that renders on one visit and not the next then hashes one product two ways —
+ * so the duplicate-refresh in §9.2 stops firing and the user collects near-identical cards.
+ * Zara publishes `Material` and `OUTER SHELL`, H&M `Material` and `Pattern`, Uniqlo its own
+ * seller contact details, all through the same door. None is a thing anyone selected.
+ */
 function readSelectedVariant(node: JsonObject): Record<string, string> {
   const variant: Record<string, string> = {};
 
-  for (const key of ['color', 'size', 'material', 'pattern'] as const) {
+  for (const key of ['color', 'size'] as const) {
     const value = readName(node[key]);
     if (value) {
       variant[key.charAt(0).toUpperCase() + key.slice(1)] = value;
@@ -377,7 +391,7 @@ function readSelectedVariant(node: JsonObject): Record<string, string> {
     if (!isObject(entry)) continue;
     const name = readString(entry.name);
     const value = readString(entry.value);
-    if (name && value) variant[name] = value;
+    if (name && value && isOptionName(name)) variant[name] = value;
   }
 
   return variant;
