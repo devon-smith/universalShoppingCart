@@ -523,3 +523,39 @@ two to four **independently captured** items beside each other, which is simpler
 plan assumed. The "never auto-merge uncertain items" rule still stands and matters more, not
 less, because a false merge between two different garments would destroy the comparison
 rather than merely duplicate a card.
+
+---
+
+## 2026-07-27 — Availability describes the selected variant, not the product
+
+**Decision.** `items.availability` is the availability of the **variant the user selected**.
+Product-level availability is kept only as a weaker fallback, used when nothing identifies a
+selected option.
+
+**Context.** Nike's Dunk Low Retro is in stock. The size on screen — M 6.5 / W 8 — is not.
+The capture said `in_stock`, which is true of the product and false of the only thing the
+user cares about. It is the worst shape of wrong value we have found: the price is right and
+the title is right, so nothing on the card looks suspicious.
+
+Nobody buys "the product", they buy a size. For a clothing tool a product-level availability
+field is close to useless — a garment is almost always in stock in _some_ size, so the field
+is nearly always `in_stock` and nearly always uninformative.
+
+It also blocks the feature most worth having. Back-in-stock alerts are scheduled for Phase 7
+(BUILD_PLAN.md §15) and, for clothing, "back in stock" means _in my size_. Built on a
+product-level field, that alert can only ever fire on the rare occasion an entire style sells
+out, and would stay silent in the common case it exists for.
+
+The signal is frequently visual rather than textual: on the page above, the sold-out size is
+conveyed by a `selected disabled` class, a strikethrough, and a disabled Add to Bag, with no
+text anywhere saying so.
+
+**Consequences.** A variant-level reading from the DOM has to be able to outrank a
+product-level claim from JSON-LD, which inverts the usual source ranking — structured data
+is normally more trustworthy, but here it is answering a different and less useful question.
+That inversion is narrow and applies to availability alone.
+
+Where no variant is identifiable the product-level value still stands, so pages without
+option controls are unaffected. Observation history records whatever was observed at the
+time, so a variant-level reading changes the meaning of the series going forward; existing
+rows are not rewritten, and history predating this is product-level.
