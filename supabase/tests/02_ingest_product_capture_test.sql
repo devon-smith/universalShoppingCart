@@ -24,6 +24,30 @@ values
   ('11110000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000002', 'editor'),
   ('11110000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000003', 'viewer');
 
+-- Observation timestamps are anchored to now(), not to a fixed date.
+--
+-- `ingest_product_capture` suppresses an unchanged observation only while the previous one
+-- is inside `observation_refresh_interval()` — twelve hours. A hardcoded date therefore
+-- makes these assertions pass on the day they were written and fail forever after, which is
+-- exactly what happened: the suite went red overnight with no code change. Anchoring to
+-- now() tests the rule instead of the calendar.
+--
+-- now() is the transaction timestamp, so every call below sees the same anchor.
+create or replace function pg_temp.anchor()
+returns timestamptz
+language sql
+stable
+as $$ select date_trunc('second', now()) - interval '8 hours' $$;
+
+-- An ISO-8601 UTC instant, offset from the anchor.
+create or replace function pg_temp.at(p_offset interval)
+returns text
+language sql
+stable
+as $$
+  select to_char((pg_temp.anchor() + p_offset) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+$$;
+
 -- A capture payload builder, so each test states only what it varies.
 create or replace function pg_temp.capture(
   p_title text default 'Meridian Wool Runner',
@@ -31,7 +55,7 @@ create or replace function pg_temp.capture(
   p_original text default null,
   p_currency text default 'USD',
   p_availability text default 'in_stock',
-  p_observed_at text default '2026-07-26T12:00:00.000Z'
+  p_observed_at text default null
 )
 returns jsonb
 language sql
@@ -65,7 +89,7 @@ as $$
       'extractorId', 'generic',
       'extractorVersion', '1.0.0',
       'overallConfidence', 0.9,
-      'observedAt', p_observed_at
+      'observedAt', coalesce(p_observed_at, pg_temp.at(interval '0'))
     )
   );
 $$;
@@ -163,7 +187,7 @@ set local request.jwt.claims = '{"sub": "a0000000-0000-4000-8000-000000000001", 
 select is(
   (public.ingest_product_capture(
     pg_temp.capture(p_price => '88.00', p_original => '98.00',
-                    p_observed_at => '2026-07-26T13:00:00.000Z'),
+                    p_observed_at => pg_temp.at(interval '1 hour')),
     '11110000-0000-4000-8000-000000000001',
     pg_temp.fp(),
     '{}'::jsonb,
@@ -233,7 +257,7 @@ set local request.jwt.claims = '{"sub": "a0000000-0000-4000-8000-000000000001", 
 select is(
   (public.ingest_product_capture(
     pg_temp.capture(p_price => '88.00', p_original => '98.00',
-                    p_observed_at => '2026-07-26T13:05:00.000Z'),
+                    p_observed_at => pg_temp.at(interval '1 hour 5 minutes')),
     '11110000-0000-4000-8000-000000000001',
     pg_temp.fp(),
     '{}'::jsonb,
