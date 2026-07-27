@@ -559,3 +559,40 @@ Where no variant is identifiable the product-level value still stands, so pages 
 option controls are unaffected. Observation history records whatever was observed at the
 time, so a variant-level reading changes the meaning of the series going forward; existing
 rows are not rewritten, and history predating this is product-level.
+
+---
+
+## 2026-07-27 — Composition is a real field, deferred, not junk
+
+**Decision.** Material and fabric composition warrant a first-class field on an item, and
+will get one at the comparison milestone. Until then the extractors do not collect them.
+Specification rows such as `Material: Merino wool` and `Pattern: Ribbed` are removed from
+`selectedVariant`, where they are currently landing.
+
+**Context.** This entry exists because of what that removal would otherwise look like later.
+Reading the diff alone, dropping `Material` from a capture is indistinguishable from deciding
+the data is worthless — and it is close to the opposite. "Is the expensive one actually
+merino" is one of the questions a clothing comparison exists to answer. Fibre content
+separates two otherwise similar garments more reliably than almost anything else on the page,
+and unlike price it barely changes, so it is worth storing once.
+
+The reason to remove it now is the slot, not the value. `selectedVariant` means _the options
+the user chose_ — size M, colour Black — and it is part of what the fingerprint is built from
+(BUILD_PLAN.md §9.1). Composition is not chosen; it is a property of the garment. Putting it
+there makes the fingerprint depend on whether a spec table happened to render, so the same
+product could hash two ways and defeat the duplicate-refresh behaviour in §9.2. It also fills
+the preview's variant chips with rows the user cannot select.
+
+**Consequences.** The field arrives with comparison, because that is where it pays off — a
+composition string on a card nobody is comparing is decoration. It belongs with the
+normalized attributes in the compare view (§12.5), not in `selectedVariant`, and not in
+`identifiers`, which is for values that denote the product.
+
+Waiting costs little: the data is on the retailer page and is re-read on the next capture.
+It avoids storing a free-text blob before knowing what comparison needs from it — "100%
+merino wool", "Merino Wool 100%", and "Shell: 100% wool; Lining: 52% polyester" all have to
+reduce to something comparable, and that normalization is the actual work. Guessing its shape
+now, with no consumer, is how a field ends up wrong in a way that later needs a migration.
+
+Until then the rule in `CLAUDE.md` holds and is the point: never invent missing product
+facts. A composition we do not have is shown as missing.
