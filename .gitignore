@@ -36,6 +36,11 @@ blob-report/
 .playwright/
 playwright/.cache/
 
+# Retailer pages saved into the repository root by a browser. Chrome wrote ten unsanitized
+# product pages here once, and only a working-tree check caught them before they were
+# committed. Root level only — nothing under apps/ or packages/ is affected.
+/*.html
+
 # Live-testing scratch space. Raw saved pages, screenshots, and notes taken while
 # testing against real retailers — working files, not fixtures. A fixture is sanitized,
 # minimized, and committed under packages/extractors/src/fixtures/; anything here has not
