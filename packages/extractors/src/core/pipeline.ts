@@ -153,6 +153,18 @@ export function extractProductCapture(
   const canonicalUrl =
     normalizeUrl(merged.source?.canonicalUrl ?? context.url) ?? merged.source?.canonicalUrl ?? null;
 
+  // Two different facts, resolved rather than ranked. The selected option's availability is
+  // what the user is buying, so it wins where the page identifies one; the product-level
+  // claim stands otherwise, which is every page without option controls. Where they disagree
+  // both are kept — "Nike still sells this shoe, your 6.5 is gone" beats either half alone.
+  const variantAvailability = merged.offer?.variantAvailability;
+  const claimedAvailability = merged.offer?.availability;
+  const availability = variantAvailability ?? claimedAvailability ?? 'unknown';
+  const productAvailability =
+    claimedAvailability !== undefined && claimedAvailability !== availability
+      ? claimedAvailability
+      : undefined;
+
   const draft = {
     schemaVersion: CAPTURE_SCHEMA_VERSION,
     source: {
@@ -174,7 +186,8 @@ export function extractProductCapture(
       priceAmount: merged.offer?.priceAmount ?? null,
       originalPriceAmount: merged.offer?.originalPriceAmount ?? null,
       currency: merged.offer?.currency ?? null,
-      availability: merged.offer?.availability ?? 'unknown',
+      availability,
+      ...(productAvailability === undefined ? {} : { productAvailability }),
     },
     selectedVariant: merged.selectedVariant ?? {},
     evidence: merged.evidence,

@@ -223,6 +223,47 @@ function isVariantOptionControl(element: Element): boolean {
   return element.closest('[role="radiogroup"], [role="listbox"], fieldset, select') !== null;
 }
 
+/** Ways a page says "this is the option currently chosen". */
+const SELECTED_OPTION =
+  '[aria-checked="true"], [aria-selected="true"], [data-selected="true"], option[selected], [class*="selected" i]';
+
+/**
+ * Is this option marked unbuyable?
+ *
+ * Nike carries the whole fact visually — `class="selected disabled"`, a strikethrough, and a
+ * disabled Add to Bag — with no text anywhere saying the size is gone. So this reads the
+ * markers rather than looking for words.
+ */
+function isUnavailableOption(element: Element): boolean {
+  if (element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true') {
+    return true;
+  }
+  if (/(^|[\s-])(disabled|sold-?out|out-of-stock|unavailable)/i.test(element.className)) {
+    return true;
+  }
+  return element.querySelector('input[disabled], s, del, [class*="strike" i]') !== null;
+}
+
+/**
+ * Availability of the option the user has actually selected (docs/DECISIONS.md, 2026-07-27).
+ *
+ * Nobody buys "the product", they buy a size. A sold-out marker on an *unselected* option
+ * says nothing about what the user is looking at — that case is already handled below — but
+ * the same marker on the selected one is the whole answer, and it is the answer structured
+ * data cannot give, because JSON-LD describes the product.
+ *
+ * Only `out_of_stock` is reported. A selected option carrying no unavailable marker is not
+ * evidence that it is buyable; that stays a product-level question.
+ */
+function selectedOptionAvailability(root: ParentNode) {
+  for (const option of root.querySelectorAll(SELECTED_OPTION)) {
+    if (!isVariantOptionControl(option)) continue;
+    if (!isUnavailableOption(option)) continue;
+    return { availability: 'out_of_stock' as const, confidence: 0.5, selector: 'option.selected' };
+  }
+  return null;
+}
+
 function availabilityFromControls(root: ParentNode): {
   availability: ReturnType<typeof normalizeAvailability>;
   confidence: number;
@@ -379,6 +420,21 @@ export const domExtractor: ProductExtractor = {
           ),
         );
       }
+    }
+
+    // Reported on its own path so it never argues with the product-level claim. The pipeline
+    // resolves the two; see docs/DECISIONS.md, 2026-07-27.
+    const selectedOption = selectedOptionAvailability(root);
+    if (selectedOption) {
+      offer.variantAvailability = selectedOption.availability;
+      capture.evidence.push(
+        evidence(
+          'offer.variantAvailability',
+          'dom',
+          rank(selectedOption.confidence),
+          mark(selectedOption.selector),
+        ),
+      );
     }
 
     const itempropAvailability = root.querySelector('[itemprop="availability"]');

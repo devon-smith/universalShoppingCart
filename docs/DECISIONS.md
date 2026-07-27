@@ -550,15 +550,30 @@ The signal is frequently visual rather than textual: on the page above, the sold
 conveyed by a `selected disabled` class, a strikethrough, and a disabled Add to Bag, with no
 text anywhere saying so.
 
-**Consequences.** A variant-level reading from the DOM has to be able to outrank a
-product-level claim from JSON-LD, which inverts the usual source ranking — structured data
-is normally more trustworthy, but here it is answering a different and less useful question.
-That inversion is narrow and applies to availability alone.
+**Consequences.** The first design made the variant-level DOM reading outrank the
+product-level JSON-LD claim — an inversion of the usual source ranking, narrowed to
+availability alone. That was rejected, and the field is split instead.
+
+Ranking the two against each other is a category error: `availability` was one field carrying
+two facts, and "is this product sold" and "is this size available" are not competing answers
+to one question. An exception encodes the error rather than removing it.
+
+So the capture carries `offer.variantAvailability` — DOM-only, pre-merge, the selected
+option — beside the product-level claim that structured data makes on `offer.availability`.
+Each is merged normally among the sources that speak to it, and the pipeline then resolves
+`availability = variant ?? product`. No contest, no exception, no inverted ranking. Where the
+two disagree the product-level value is preserved as `offer.productAvailability`, so both
+facts reach the UI: Nike still sells this shoe, your 6.5 is gone.
+
+`availability` therefore changes MEANING for rows already stored under product-level
+semantics. That is dev data only today, which makes this the cheapest moment the change will
+ever be. Observation history is not rewritten; series predating this are product-level.
 
 Where no variant is identifiable the product-level value still stands, so pages without
-option controls are unaffected. Observation history records whatever was observed at the
-time, so a variant-level reading changes the meaning of the series going forward; existing
-rows are not rewritten, and history predating this is product-level.
+option controls are unaffected — measured across sixteen live pages, exactly one value moved.
+`productAvailability` is not yet persisted: the columns on `items` and `item_observations`,
+and the UI that shows both, are a follow-on. Until then the capture carries the second fact
+and ingestion drops it.
 
 ---
 

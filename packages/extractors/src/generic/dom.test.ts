@@ -194,6 +194,80 @@ describe('domExtractor — availability', () => {
   });
 });
 
+describe('domExtractor — the selected variant is what the user is buying', () => {
+  it('reports the selected size as sold out from markers alone', () => {
+    // Nike's Dunk Low Retro: the product is in stock, the size on screen is not, and nothing
+    // on the page says so in words. The state is carried by `class="selected disabled"`, a
+    // strikethrough, and a disabled Add to Bag.
+    const result = extract(`
+      <main>
+        <h1 class="product-title">Nike Dunk Low Retro</h1>
+        <div class="nds-grid pdp-grid-selector-grid">
+          <div class="css-ovr0gm nds-grid-item"><input type="radio" />M 6 / W 7.5</div>
+          <div class="selected disabled css-ovr0gm nds-grid-item"><input type="radio" />M 6.5 / W 8</div>
+          <div class="css-ovr0gm nds-grid-item"><input type="radio" />M 7 / W 8.5</div>
+        </div>
+      </main>
+    `);
+
+    expect(result.offer?.variantAvailability).toBe('out_of_stock');
+  });
+
+  it('keeps the variant reading off the product-level field', () => {
+    // The two are different claims and must not compete: `availability` is merged against
+    // JSON-LD, which only ever speaks about the product and would win on source rank.
+    const result = extract(`
+      <main>
+        <h1 class="product-title">Shoes</h1>
+        <div role="radiogroup" aria-label="Size">
+          <label class="selected disabled">6.5</label>
+        </div>
+      </main>
+    `);
+
+    expect(result.offer?.availability).toBeUndefined();
+    expect(result.offer?.variantAvailability).toBe('out_of_stock');
+  });
+
+  it('ignores a sold-out marker on an option the user has not selected', () => {
+    const result = extract(`
+      <main>
+        <h1 class="product-title">Shorts</h1>
+        <div role="radiogroup" aria-label="Size">
+          <label class="size size--out-of-stock">L</label>
+          <label class="selected">M</label>
+        </div>
+      </main>
+    `);
+
+    expect(result.offer?.variantAvailability).toBeUndefined();
+  });
+
+  it('does not treat a selected-and-buyable option as evidence of anything', () => {
+    // A selected option with no unavailable marker says nothing: plenty of pages mark
+    // nothing until checkout. Claiming in_stock from it would invent a fact.
+    const result = extract(`
+      <main>
+        <h1 class="product-title">Shorts</h1>
+        <div role="radiogroup" aria-label="Size"><label class="selected">M</label></div>
+      </main>
+    `);
+
+    expect(result.offer?.variantAvailability).toBeUndefined();
+  });
+
+  it('does not read a "selected" class on something that is not an option control', () => {
+    const result = extract(`
+      <main>
+        <h1 class="product-title">Shorts</h1>
+        <div class="tab selected disabled">Reviews</div>
+      </main>
+    `);
+
+    expect(result.offer?.variantAvailability).toBeUndefined();
+  });
+});
+
 describe('domExtractor — images', () => {
   it('resolves relative gallery images', () => {
     const result = extract('<div class="product-gallery"><img src="/a.jpg" /></div>');

@@ -86,7 +86,21 @@ export const captureOfferSchema = z.object({
   priceAmount: decimalStringSchema.nullable(),
   originalPriceAmount: decimalStringSchema.nullable(),
   currency: currencyCodeSchema.nullable(),
+  /**
+   * Availability of the thing the user is buying: the selected variant where one can be
+   * identified, the product otherwise. This is the field that gets saved and shown.
+   */
   availability: availabilitySchema,
+  /**
+   * What the page says about the *product*, when that is a different claim.
+   *
+   * "Is this product sold" and "is this size available" are two facts, and a garment is
+   * almost always in stock in some size — so a single field collapsing them is nearly always
+   * `in_stock` and nearly always uninformative. Kept separate so both survive: Nike still
+   * sells this shoe, your 6.5 is gone. Absent when nothing product-level was claimed, or
+   * when it agrees with `availability`.
+   */
+  productAvailability: availabilitySchema.optional(),
 });
 
 export const captureExtractionSchema = z.object({
@@ -122,7 +136,18 @@ export type CaptureExtraction = z.infer<typeof captureExtractionSchema>;
 export interface PartialCapture {
   source?: Partial<CaptureSource>;
   product?: Partial<CaptureProduct>;
-  offer?: Partial<CaptureOffer>;
+  offer?: Partial<CaptureOffer> & {
+    /**
+     * Availability of the *selected option*, when the page identifies one.
+     *
+     * Pre-merge only: the pipeline resolves it into `availability` and it never reaches a
+     * saved capture. It is a separate path rather than a competing claim on `availability`
+     * because the two answer different questions, and ranking them against each other would
+     * have structured data — which only ever speaks about the product — win an argument it
+     * is not having.
+     */
+    variantAvailability?: Availability;
+  };
   selectedVariant?: Record<string, string>;
   evidence: Evidence[];
 }
