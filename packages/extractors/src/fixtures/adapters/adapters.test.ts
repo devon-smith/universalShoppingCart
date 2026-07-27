@@ -28,6 +28,18 @@ interface Fixture {
 
 export const ADAPTER_FIXTURES: Fixture[] = [
   {
+    name: 'StockX — Buy Now for the selected size, not the lowest ask',
+    file: 'stockx-size-selected.html',
+    url: 'https://stockx.com/vantage-court-low-sail-cobalt',
+    adapter: 'stockx',
+  },
+  {
+    name: 'StockX — a size nobody is selling, so there is no Buy Now price',
+    file: 'stockx-no-buy-now.html',
+    url: 'https://stockx.com/halyard-mid-bracken',
+    adapter: 'stockx',
+  },
+  {
     name: 'Shopify — the variant in the URL, not the default one',
     file: 'shopify-variant-selected.html',
     url: 'https://shop.northwind.example/products/meridian-wool-runner?variant=4400220002',

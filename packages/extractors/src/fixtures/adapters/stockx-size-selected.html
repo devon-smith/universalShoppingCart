@@ -1,0 +1,111 @@
+<!doctype html>
+<!--
+  StockX — a size selected and a Buy Now price available.
+
+  Sanitized and hand-built from the structure of a real product page: the `data-testid`
+  hooks, the nested primary/secondary title, the hashed `css-*` classes, and the trait rows
+  are reproduced; the product, prices and images are invented. No account data, no cookies,
+  no tokens, no real listing.
+
+  The two prices are the point of this fixture. The JSON-LD says 76 — the lowest ask, across
+  every size — while the page renders 84 as Buy Now for the size on screen. Both are real
+  prices for this product; only one is the price of the thing being bought.
+-->
+<html lang="en">
+  <head>
+    <title>Vantage Court Low Sail Cobalt | Example</title>
+    <link rel="canonical" href="https://stockx.com/vantage-court-low-sail-cobalt" />
+    <meta property="og:title" content="Vantage Court Low Sail Cobalt" />
+    <script type="application/ld+json" data-testid="product-schema">
+      {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": "Vantage Court Low Sail Cobalt",
+        "brand": { "@type": "Brand", "name": "Vantage" },
+        "color": "Sail/Cobalt-Sail",
+        "offers": {
+          "@type": "Offer",
+          "price": 76,
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <nav data-testid="SiteHeader"><a href="/">Example</a></nav>
+
+    <div data-testid="pdp-hero">
+      <div data-testid="pdp-hero-media">
+        <img
+          class="chakra-image css-vu90sb"
+          alt="Vantage Court Low Sail Cobalt"
+          src="https://images.example.com/360/Vantage-Court-Low-Sail-Cobalt/Images/hero.jpg?w=1000"
+        />
+      </div>
+
+      <div data-testid="pdp-hero-title" class="css-hfp9tp">
+        <div data-component="Header" data-testid="header" class="css-or1ilu">
+          <h1 class="chakra-heading css-k15mlv" data-component="primary-product-title">
+            Vantage Court Low<span
+              class="chakra-heading css-k15mlv"
+              data-component="secondary-product-title"
+              >Sail Cobalt</span
+            >
+          </h1>
+        </div>
+      </div>
+
+      <div data-testid="pdp-hero-buysell">
+        <div data-testid="BuySellContainerStandard">
+          <span class="css-xl71ch">
+            <button type="button" class="chakra-menu__menu-button">
+              <div class="css-2lhf4t">
+                <p class="chakra-text css-fz9sby">Size:</p>
+                <div class="css-pi696t"><p class="chakra-text css-1ek241l">US Men's 10.5</p></div>
+              </div>
+            </button>
+          </span>
+
+          <div data-testid="BuyContainer">
+            <p>Buy Now for</p>
+            <h2 class="chakra-heading css-1o2jc4i" data-testid="trade-box-buy-amount">$84</h2>
+            <div data-testid="PDPBadge">$36 Below Retail Price</div>
+          </div>
+        </div>
+      </div>
+
+      <div data-component="ProductTraits" data-testid="product-traits" class="css-17w8l66">
+        <div data-component="product-trait" class="css-101wtdy">
+          <span class="chakra-text css-1m3qoev">Style</span>
+          <p class="chakra-text css-1wfxafd">VC1234-101</p>
+        </div>
+        <div data-component="product-trait" class="css-101wtdy">
+          <span class="chakra-text css-1m3qoev">Colorway</span>
+          <p class="chakra-text css-1wfxafd">Sail/Cobalt-Sail</p>
+        </div>
+        <div data-component="product-trait" class="css-101wtdy">
+          <span class="chakra-text css-1m3qoev">Retail Price</span>
+          <p class="chakra-text css-1wfxafd">$120</p>
+        </div>
+        <div data-component="product-trait" class="css-101wtdy">
+          <span class="chakra-text css-1m3qoev">Release Date</span>
+          <p class="chakra-text css-1wfxafd">02/02/2025</p>
+        </div>
+      </div>
+    </div>
+
+    <!--
+      A sponsored tile for a different product, below the hero. Its price is plausible and
+      belongs to something else entirely — the reason every read above is scoped to the hero.
+    -->
+    <section>
+      <div data-testid="productTile">
+        <p data-testid="product-tile-title">Meridian Runner Ash Grey</p>
+        <p data-testid="product-tile-size-display">US 8</p>
+        <p data-testid="product-tile-lowest-ask-amount">$59</p>
+        <span data-testid="sponsored-tag">Sponsored</span>
+      </div>
+    </section>
+  </body>
+</html>

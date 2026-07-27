@@ -4,6 +4,7 @@ import { bigCommerceAdapter } from './bigcommerce';
 import { magentoAdapter } from './magento';
 import { salesforceCommerceCloudAdapter } from './salesforce-commerce-cloud';
 import { shopifyAdapter } from './shopify';
+import { stockxAdapter } from './stockx';
 import { wooCommerceAdapter } from './woocommerce';
 
 /**
@@ -13,6 +14,12 @@ import { wooCommerceAdapter } from './woocommerce';
  * the thousands of storefronts running it, so one adapter with two fixtures covers far more
  * real pages than one adapter per shop — and it can be written and regression-tested
  * without ever fetching a live retailer page.
+ *
+ * `stockx` is the deliberate exception, and the bar it had to clear is written in its own
+ * file: the site runs its own front end, hashed CSS-module classes leave no generic selector
+ * anything to match, and its `data-testid` hooks are load-bearing for its engineers. A brand
+ * adapter needs that much justification, or the registry turns into a list of every shop
+ * anyone has ever visited.
  *
  * Every adapter is versioned and bundled. Nothing here is downloaded at runtime and nothing
  * is evaluated from a string (BUILD_PLAN.md §10.7, §17.4).
@@ -24,6 +31,7 @@ import { wooCommerceAdapter } from './woocommerce';
  * than taking the capture down with it.
  */
 export const RETAILER_ADAPTERS: readonly ProductExtractor[] = [
+  stockxAdapter,
   shopifyAdapter,
   wooCommerceAdapter,
   magentoAdapter,
