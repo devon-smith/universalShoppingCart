@@ -1,19 +1,26 @@
-:root {
-  color-scheme: light dark;
-  --panel-ink: #10141a;
-  --panel-ink-muted: #5b6472;
-  --panel-line: #e3e6ec;
-  --panel-surface: #ffffff;
-  --panel-accent: #2f6df6;
-}
+/**
+ * Side panel shell.
+ *
+ * The colours, radii, spacing and motion now come from `@universal-cart/ui`, the same set the
+ * dashboard uses, so the two clients are one design at two sizes rather than two designs that
+ * happen to look similar. Both stylesheets are bundled — the extension makes no remote
+ * requests of any kind, fonts included (BUILD_PLAN.md §17.4).
+ *
+ * The `--panel-*` names below are kept as aliases onto the semantic tokens. Every existing
+ * rule in this file keeps working while its colours come from the new system, which is what
+ * makes this a token migration that can be reviewed on its own rather than a rewrite of the
+ * panel's layout. The panel's own components move in phases 2 to 4, and the aliases go with
+ * the last of them.
+ */
+@import '@universal-cart/ui/tokens.css';
+@import '@universal-cart/ui/components.css';
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --panel-ink: #eef1f6;
-    --panel-ink-muted: #9aa4b4;
-    --panel-line: #2a303a;
-    --panel-surface: #0d1015;
-  }
+:root {
+  --panel-ink: var(--uc-foreground);
+  --panel-ink-muted: var(--uc-foreground-muted);
+  --panel-line: var(--uc-border);
+  --panel-surface: var(--uc-surface);
+  --panel-accent: var(--uc-primary);
 }
 
 * {
@@ -22,13 +29,9 @@
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
-  background: var(--panel-surface);
-  color: var(--panel-ink);
+  font-family: var(--uc-font-sans);
+  background: var(--uc-background);
+  color: var(--uc-foreground);
 }
 
 .panel {

@@ -1,0 +1,153 @@
+/**
+ * Universal Cart design tokens — one semantic set, shared by the web app and the extension.
+ *
+ * Light and dark are the same design at two luminances, not two designs: every rule below
+ * consumes a `--uc-*` name and never a literal colour, so a component written once behaves
+ * in both. The extension imports this file directly; the web app imports it ahead of
+ * Tailwind's own layer.
+ *
+ * Dark mode follows the operating system by default and can be forced either way with
+ * `data-theme` on the root element, which is what the screenshot script uses.
+ *
+ * ## Colour discipline
+ *
+ * Green, amber and red are **semantic only**. Green means an observed price fell, or an
+ * action succeeded. Amber means a field needs review. Red means destructive, or an error.
+ * None of them ever means "good product" or "good price" — that is a judgement the data
+ * cannot support, and dressing a thin capture in reassuring colour is how an interface
+ * starts lying. It matters here more than most: across sixteen live pages an original price
+ * is present on two, and availability is unknown on seven.
+ *
+ * ## Contrast
+ *
+ * Every pair below was measured rather than assumed, and two values moved as a result:
+ *
+ * - `success` and `warning` in light mode were `#15803D` and `#B45309`. Against
+ *   `surfaceMuted` they measured 4.37 and 4.38 — under the 4.5 that normal-size text needs,
+ *   and a status badge on a muted surface is exactly that. Darkened to `#166534` (6.22) and
+ *   `#92400E` (6.18), which also lifts them on every other surface.
+ * - `border` measures 1.27 against white. That is right for a decorative separator and
+ *   wrong for the outline of a control, which WCAG 1.4.11 requires to reach 3:1 against its
+ *   surroundings. `borderStrong` exists for anything a user is meant to click or type into.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --uc-background: #faf9f7;
+  --uc-surface: #ffffff;
+  --uc-surface-elevated: #ffffff;
+  --uc-surface-muted: #f2efea;
+  --uc-foreground: #1a1917;
+  --uc-foreground-muted: #6b6862;
+  --uc-border: #e8e4de;
+  --uc-border-strong: #8a847a;
+  --uc-primary: #4338ca;
+  --uc-primary-foreground: #ffffff;
+  --uc-success: #166534;
+  --uc-warning: #92400e;
+  --uc-danger: #b91c1c;
+
+  /* Elevation is a shadow, never a border: a bordered card inside a bordered list reads as
+     a table, which is the database-interface look this redesign is moving away from. */
+  --uc-shadow-raised: 0 1px 2px rgb(26 25 23 / 6%), 0 1px 3px rgb(26 25 23 / 4%);
+  --uc-shadow-overlay: 0 8px 24px rgb(26 25 23 / 12%), 0 2px 6px rgb(26 25 23 / 8%);
+
+  /* 14px for surfaces, 9px for controls, full for pills. Two radii and a pill is enough
+     vocabulary; a third invites arbitrary choices. */
+  --uc-radius-surface: 14px;
+  --uc-radius-control: 9px;
+  --uc-radius-pill: 999px;
+
+  /* An 8 grid, with 4 for pairs that belong together — a label and its value. */
+  --uc-space-1: 4px;
+  --uc-space-2: 8px;
+  --uc-space-3: 16px;
+  --uc-space-4: 24px;
+  --uc-space-5: 32px;
+  --uc-space-6: 48px;
+
+  --uc-duration-standard: 160ms;
+  --uc-duration-enter: 220ms;
+  --uc-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(67 56 202 / 40%);
+
+  /* System stack for interface text. No web font is fetched, in either client: the
+     extension must make no remote requests at all (BUILD_PLAN.md §17.4), and a dashboard
+     that blocks on a font is slower than one that does not. */
+  --uc-font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Wordmark only. Serifs are bundled with the OS or absent; nothing is downloaded. */
+  --uc-font-serif: ui-serif, Georgia, 'Times New Roman', serif;
+  --uc-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --uc-background: #1a1917;
+    --uc-surface: #232220;
+    --uc-surface-elevated: #2b2a27;
+    --uc-surface-muted: #2b2a27;
+    --uc-foreground: #f5f3f0;
+    --uc-foreground-muted: #a8a49c;
+    --uc-border: #35332f;
+    --uc-border-strong: #837f77;
+    --uc-primary: #818cf8;
+    --uc-primary-foreground: #1a1917;
+    --uc-success: #4ade80;
+    --uc-warning: #fbbf24;
+    --uc-danger: #f87171;
+
+    --uc-shadow-raised: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
+    --uc-shadow-overlay: 0 8px 24px rgb(0 0 0 / 50%), 0 2px 6px rgb(0 0 0 / 40%);
+    --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(129 140 248 / 40%);
+  }
+}
+
+/* An explicit choice wins over the system preference, in both directions. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --uc-background: #faf9f7;
+  --uc-surface: #ffffff;
+  --uc-surface-elevated: #ffffff;
+  --uc-surface-muted: #f2efea;
+  --uc-foreground: #1a1917;
+  --uc-foreground-muted: #6b6862;
+  --uc-border: #e8e4de;
+  --uc-border-strong: #8a847a;
+  --uc-primary: #4338ca;
+  --uc-primary-foreground: #ffffff;
+  --uc-success: #166534;
+  --uc-warning: #92400e;
+  --uc-danger: #b91c1c;
+  --uc-shadow-raised: 0 1px 2px rgb(26 25 23 / 6%), 0 1px 3px rgb(26 25 23 / 4%);
+  --uc-shadow-overlay: 0 8px 24px rgb(26 25 23 / 12%), 0 2px 6px rgb(26 25 23 / 8%);
+  --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(67 56 202 / 40%);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --uc-background: #1a1917;
+  --uc-surface: #232220;
+  --uc-surface-elevated: #2b2a27;
+  --uc-surface-muted: #2b2a27;
+  --uc-foreground: #f5f3f0;
+  --uc-foreground-muted: #a8a49c;
+  --uc-border: #35332f;
+  --uc-border-strong: #837f77;
+  --uc-primary: #818cf8;
+  --uc-primary-foreground: #1a1917;
+  --uc-success: #4ade80;
+  --uc-warning: #fbbf24;
+  --uc-danger: #f87171;
+  --uc-shadow-raised: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
+  --uc-shadow-overlay: 0 8px 24px rgb(0 0 0 / 50%), 0 2px 6px rgb(0 0 0 / 40%);
+  --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(129 140 248 / 40%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --uc-duration-standard: 0ms;
+    --uc-duration-enter: 0ms;
+  }
+}
