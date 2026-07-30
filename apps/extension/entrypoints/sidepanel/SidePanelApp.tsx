@@ -23,12 +23,13 @@ export function SidePanelApp() {
 
   return (
     <main className="panel">
-      <header>
-        <h1 className="panel__title">Universal Cart</h1>
-        <p className="panel__subtitle">
-          This build reads no page content and requests no host permissions.
-        </p>
-      </header>
+      {/* Signed in, the header is `PanelHeader` — it needs the cart list, so `SignedInPanel`
+          renders it. Before that there is nothing to select, so the wordmark stands alone. */}
+      {session.status === 'signed-in' && configured ? null : (
+        <header className="panel-header">
+          <h1 className="panel-header__wordmark uc-wordmark">Universal Cart</h1>
+        </header>
+      )}
 
       {!configured ? <NotConfigured /> : null}
       {configured && session.status === 'loading' ? (

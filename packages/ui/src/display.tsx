@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactElement, ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { cn } from './cn';
 
@@ -58,6 +58,14 @@ export interface ProductImageProps {
   /** Rendered width. The box is square regardless, so nothing reflows when a src fails. */
   width?: number;
   className?: string;
+  /**
+   * Called once when there is no usable image — none given, or the given one failed to load.
+   *
+   * A caller that lays out image-first needs to know, because a frame that has quietly become
+   * a placeholder is worse than no frame: it takes the space the price should have had. The
+   * component still renders its own fallback, so a caller that ignores this is not broken.
+   */
+  onUnavailable?: () => void;
 }
 
 /**
@@ -69,9 +77,20 @@ export interface ProductImageProps {
  * inside it — a missing or broken source costs no layout shift, and never gets the browser's
  * broken-image glyph.
  */
-export function ProductImage({ src, alt, width, className }: ProductImageProps): ReactElement {
+export function ProductImage({
+  src,
+  alt,
+  width,
+  className,
+  onUnavailable,
+}: ProductImageProps): ReactElement {
   const [failed, setFailed] = useState(false);
   const showImage = src !== null && src.length > 0 && !failed;
+
+  const missing = src === null || src.length === 0;
+  useEffect(() => {
+    if (missing) onUnavailable?.();
+  }, [missing, onUnavailable]);
 
   return (
     <div
@@ -85,7 +104,10 @@ export function ProductImage({ src, alt, width, className }: ProductImageProps):
           alt={alt}
           loading="lazy"
           decoding="async"
-          onError={() => setFailed(true)}
+          onError={() => {
+            setFailed(true);
+            onUnavailable?.();
+          }}
         />
       ) : (
         <span

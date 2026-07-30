@@ -35,7 +35,7 @@ async function signIn(panel: Page, email: string) {
   await panel.getByLabel(/6-digit code sent to/).fill(code);
   await panel.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-  await expect(panel.getByRole('heading', { name: 'Save a product' })).toBeVisible();
+  await expect(panel.getByRole('heading', { name: 'Save this product' })).toBeVisible();
 }
 
 test.describe('capture and save', () => {
@@ -59,18 +59,21 @@ test.describe('capture and save', () => {
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
 
     // Extraction filled the preview from the page's structured data.
-    await expect(panel.getByLabel('Title')).toHaveValue('Meridian Wool Runner');
-    await expect(panel.getByLabel('Price')).toHaveValue('98.00');
-    await expect(panel.getByLabel('Currency')).toHaveValue('USD');
+    await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
+    await expect(panel.getByTestId('preview-price')).toContainText('$98.00');
     await expect(panel.getByRole('list', { name: 'Selected options' })).toContainText(
       'Color: Natural Black',
     );
 
     // Correct a field and add a note before saving.
+    await panel.getByRole('button', { name: 'Edit title' }).click();
     await panel.getByLabel('Title').fill('Meridian Wool Runner (my pick)');
+    // Quantity and note now live behind "Add details": they are the two fields nobody needs to
+    // see to answer "is this the right thing at the right price".
+    await clickWithoutFocus(panel, 'summary:has-text("Add details")');
     await panel.getByLabel('Note').fill('for the trip');
     await panel.getByLabel('Quantity').fill('2');
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await panel.getByRole('button', { name: 'Save item' }).click();
 
     await expect(panel.getByRole('status')).toContainText('Saved');
     await expect(panel.getByRole('status')).toContainText('Meridian Wool Runner (my pick)');
@@ -83,8 +86,8 @@ test.describe('capture and save', () => {
     // Saving the same page again refreshes rather than duplicating.
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
-    await expect(panel.getByLabel('Title')).toHaveValue('Meridian Wool Runner');
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
+    await panel.getByRole('button', { name: 'Save item' }).click();
 
     await expect(panel.getByRole('status')).toContainText('Already saved');
     await expect(panel.getByRole('status')).toContainText('refreshed');
@@ -108,7 +111,7 @@ test.describe('capture and save', () => {
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
 
     await expect(panel.getByLabel('Title')).toHaveValue('Solstice Desk Lamp');
-    await expect(panel.getByLabel('Price')).toHaveValue('129.00');
+    await expect(panel.getByTestId('preview-price')).toContainText('$129.00');
     // The variant came from both the DOM and the URL.
     await expect(panel.getByRole('list', { name: 'Selected options' })).toContainText('Finish');
   });
@@ -127,13 +130,13 @@ test.describe('capture and save', () => {
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
 
     // Nothing was extractable, so the panel asks rather than inventing.
-    await expect(panel.getByRole('note')).toContainText('Check the highlighted fields');
+    await expect(panel.getByRole('status')).toContainText('Check the highlighted fields');
     await expect(panel.getByLabel('Title')).toHaveValue('');
 
     await panel.getByLabel('Title').fill('Something I typed myself');
     await panel.getByLabel('Price').fill('12.34');
     await panel.getByLabel('Currency').fill('USD');
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await panel.getByRole('button', { name: 'Save item' }).click();
 
     await expect(panel.getByRole('status')).toContainText('Something I typed myself');
   });

@@ -54,6 +54,18 @@ describe('domainFromUrl', () => {
 });
 
 describe('retailerNameFromDomain', () => {
+  it('shows a bare IP host rather than one of its numbers', () => {
+    // The rule takes the second-to-last label, and every label in an address is a number, so
+    // 127.0.0.1 became "0". It surfaced in the panel's recent list looking like a rendering
+    // bug — "0 · $98.00 · Saved" — which is how a fixture-server host got there.
+    expect(retailerNameFromDomain('127.0.0.1')).toBe('127.0.0.1');
+    expect(retailerNameFromDomain('192.168.0.10')).toBe('192.168.0.10');
+  });
+
+  it('still names a host whose label merely contains digits', () => {
+    expect(retailerNameFromDomain('shop4less.example')).toBe('Shop4less');
+  });
+
   it('uses the registrable label', () => {
     expect(retailerNameFromDomain('example.com')).toBe('Example');
     expect(retailerNameFromDomain('shop.example.com')).toBe('Example');
