@@ -8,7 +8,18 @@ Phase 1 — this change — establishes tokens and primitives and migrates the t
 No feature layout moves, so the token migration is reviewable on its own.
 
 Baseline screenshots live in `.screenshots/` (gitignored, `pnpm screenshots:baseline`). They
-carry most of the argument below; this document is the short version.
+carry most of the argument below; this document is the short version. **21 states, 161 images**
+— every panel state and every populated dashboard state, at four widths each, in light and
+dark. Both clients are driven through their real flows: the panel signs in and captures fixture
+product pages, the dashboard runs against a seeded account.
+
+Two notes on how they are produced. The panel is photographed from the **end-to-end** bundle,
+which differs from the release bundle in exactly one respect — `WXT_E2E=1` grants
+`http://127.0.0.1/*`, because a script-dispatched click cannot confer `activeTab`, which is
+Chrome's decision and needs a human pressing the toolbar button (VALIDATION.md, tier 4).
+Nothing visual differs; the release build's authorization is verified by hand, which is where
+that belongs. And every frame masks the signed-in address **and the dashboard greeting**, which
+is built from its local part and leaks it even when the address below is covered.
 
 ## What is wrong now
 
@@ -32,6 +43,52 @@ and all three exist in the live captures.
 **Missing data is rendered as absence rather than as a state.** Original price is present on
 2 of 16 live pages and availability is unknown on 7, so "thin" is the normal case, not the
 edge. Blank cells read as a broken interface rather than an honest one.
+
+### What the capture preview actually is
+
+Phase 2's brief — turn the long form into a product-first confirmation view — is justified by
+one screenshot. `panel-capture-preview` is a stack of seven labelled form controls: Title,
+Price, Currency, variant chips, Quantity, Note, destination, button. **There is no product
+image anywhere in it.** The thing being confirmed is represented by a text input containing
+its name.
+
+That inverts what the moment is for. The user has just looked at a product page; what they
+need is "is this the right thing, and is the price right", answerable in a glance from a
+photograph and a number. Instead they get a form to audit, in which the title — the field
+least likely to be wrong — is given the most prominent control, and the price sits third in a
+column of identical boxes.
+
+The low-confidence variant is the one part that already works. `panel-low-confidence-preview`,
+captured from a genuinely uncertain extraction rather than a forced flag — `dom-only.html`
+scores 0.55 with `product.title` under the review threshold — puts an amber callout above the
+form and a `⚠` against the field itself. Tone and placement are right; the redesign should keep
+both and inherit them into the new layout rather than reinvent them.
+
+### What the populated dashboard reveals
+
+- **The image placeholder dominates the card.** Seed captures carry no image, and a card is
+  then a large grey rectangle with four lines of text beneath it. Real captures often have no
+  image either. The placeholder currently occupies more of the card than the price does.
+- **Retailer and brand are both rendered, and are usually the same string.** Cards read
+  "Northwind · Northwind". Two fields, one fact, twice the space.
+- **Price change uses green correctly.** "▼ $4.05 (5%) since you saved it" — an observed fall,
+  which is the one thing green is allowed to mean. Worth preserving exactly.
+- **The detail drawer's split is right and should be kept.** "What the retailer says" against
+  "Yours", with the observed fields explicitly not editable and a sentence explaining why.
+  That distinction is the product's central idea and the drawer is the only place it is
+  currently stated.
+- **Price history is a list, not a chart** — by decision (DECISIONS.md). Seven observations
+  render as seven rows of `$79.95 · In stock · 7/29/2026, 6:49:20 PM · revisited`. The rows are
+  legible but the series has no shape: the reader cannot see the trend without reading every
+  row, and the full timestamp dominates the price. A sparkline beside the list, not instead of
+  it, is the phase 4 question.
+- **Filters are a permanent bar, not a disclosure**, and at 375px the search field and three
+  selects wrap into a block as tall as the first card — so the narrow-width dashboard opens on
+  its controls rather than on its contents.
+- **A stray value leaks into the panel's recent list.** `panel-low-confidence-preview` shows
+  `0 · $98.00 · Saved`. The leading `0` appears to be a quantity or price-delta rendering
+  through an empty branch. Logged here because the screenshots found it; it is a defect for the
+  queue, not a redesign decision.
 
 **Accessibility gaps.** No consistent focus treatment; the browser default outline disappears
 against several backgrounds. Icon-only controls rely on each call site remembering a label.
@@ -130,8 +187,8 @@ Not built in this phase; recorded so the primitives are shaped for it.
 
 ## Scope
 
-**This phase:** tokens, thirteen primitives with tests, both shells migrated, baseline
-screenshots, this document.
+**This phase:** tokens, thirteen primitives with tests, both shells migrated, the full baseline
+capture (21 states, 161 images), this document.
 
 **Phases 2 to 4:** side panel states, dashboard cards and list, item detail, price history,
 filters, empty and error states.
