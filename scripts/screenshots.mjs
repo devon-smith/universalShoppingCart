@@ -111,7 +111,7 @@ async function signInPanel(panel, email) {
   const code = signInCodeFrom(await waitForEmail(email));
   await panel.getByLabel(/6-digit code sent to/).fill(code);
   await panel.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await panel.getByRole('heading', { name: 'Save a product' }).waitFor();
+  await panel.getByRole('heading', { name: 'Save this product' }).waitFor();
 }
 
 async function capturePanel() {
@@ -159,13 +159,13 @@ async function capturePanel() {
       console.log(stamp('panel-reading (best effort, one frame)'));
     }
 
-    await panel.getByRole('button', { name: 'Save to cart' }).waitFor({ timeout: 20_000 });
+    await panel.getByRole('button', { name: 'Save item' }).waitFor({ timeout: 20_000 });
     await shootAll(panel, name, PANEL_WIDTHS, 720);
   }
 
   // A confident capture: JSON-LD with a complete offer.
   await previewFor('json-ld-complete.html', 'panel-capture-preview', { shootReading: true });
-  await clickWithoutFocus(panel, 'button:has-text("Save to cart")');
+  await clickWithoutFocus(panel, 'button:has-text("Save item")');
   await panel
     .getByRole('status')
     .filter({ hasText: /Saved|Already saved/ })
@@ -174,7 +174,7 @@ async function capturePanel() {
 
   // The same page again — the duplicate-refresh path, not a second item.
   await previewFor('json-ld-complete.html', 'panel-already-saved-preview');
-  await clickWithoutFocus(panel, 'button:has-text("Save to cart")');
+  await clickWithoutFocus(panel, 'button:has-text("Save item")');
   await panel
     .getByRole('status')
     .filter({ hasText: /Already saved/ })
@@ -185,7 +185,7 @@ async function capturePanel() {
   // 0.55 and puts `product.title` under the review threshold. The amber treatment has to be
   // judged against a real one of these.
   await previewFor('dom-only.html', 'panel-low-confidence-preview');
-  await clickWithoutFocus(panel, 'button:has-text("Save to cart")');
+  await clickWithoutFocus(panel, 'button:has-text("Save item")');
   await panel
     .getByRole('status')
     .filter({ hasText: /Saved|Already saved/ })
@@ -193,7 +193,7 @@ async function capturePanel() {
 
   // A third product, so "recent items" has more than a pair in it.
   await previewFor('meta-only.html', 'panel-third-preview');
-  await clickWithoutFocus(panel, 'button:has-text("Save to cart")');
+  await clickWithoutFocus(panel, 'button:has-text("Save item")');
   await panel
     .getByRole('status')
     .filter({ hasText: /Saved|Already saved/ })
@@ -204,7 +204,7 @@ async function capturePanel() {
   await product.bringToFront();
   await panel.bringToFront();
   await panel.reload();
-  await panel.getByRole('heading', { name: 'Save a product' }).waitFor();
+  await panel.getByRole('heading', { name: 'Save this product' }).waitFor();
   await shootAll(panel, 'panel-recent-items', PANEL_WIDTHS, 720);
 
   await context.close();

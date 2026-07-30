@@ -24,8 +24,11 @@ test.describe('side panel sign-in', () => {
     await page.getByLabel(/6-digit code sent to/).fill(code);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-    // Signed in: the capture surface and the account section appear.
-    await expect(page.getByRole('heading', { name: 'Save a product' })).toBeVisible();
+    // Signed in: the capture surface appears, and the account menu holds the identity. The
+    // header used to carry the address; it now carries the cart selector and the way out, and
+    // identity moved behind the menu so the panel's most valuable space is the product's.
+    await expect(page.getByRole('heading', { name: 'Save this product' })).toBeVisible();
+    await page.getByRole('button', { name: 'Account and settings' }).click();
     await expect(page.getByText(email)).toBeVisible();
     await expect(page.getByText('Nothing saved yet')).toBeVisible();
 
@@ -38,6 +41,7 @@ test.describe('side panel sign-in', () => {
 
     // Reopening the panel recovers the session rather than asking again.
     await page.reload();
+    await page.getByRole('button', { name: 'Account and settings' }).click();
     await expect(page.getByText(email)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeHidden();
 

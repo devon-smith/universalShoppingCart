@@ -91,6 +91,8 @@ export interface TextInputProps extends Omit<
   message?: string;
   invalid?: boolean;
   className?: string;
+  /** React 19 takes `ref` as an ordinary prop; the capture preview focuses a flagged field. */
+  ref?: React.Ref<HTMLInputElement>;
 }
 
 export function TextInput({
@@ -99,6 +101,7 @@ export function TextInput({
   message,
   invalid = false,
   className,
+  ref,
   ...rest
 }: TextInputProps): ReactElement {
   // A generated id keeps label and input tied together without every call site inventing
@@ -113,6 +116,7 @@ export function TextInput({
       </label>
       <input
         id={id}
+        ref={ref}
         className={cn('uc-input uc-focusable', invalid && 'uc-input--invalid')}
         aria-invalid={invalid || undefined}
         aria-describedby={message ? messageId : undefined}

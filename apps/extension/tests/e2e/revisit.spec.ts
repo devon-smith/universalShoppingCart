@@ -34,7 +34,7 @@ async function signIn(panel: Page, email: string) {
   await panel.getByLabel(/6-digit code sent to/).fill(code);
   await panel.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-  await expect(panel.getByRole('heading', { name: 'Save a product' })).toBeVisible();
+  await expect(panel.getByRole('heading', { name: 'Save this product' })).toBeVisible();
 }
 
 /**
@@ -63,8 +63,8 @@ test.describe('revisit refresh', () => {
 
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
-    await expect(panel.getByLabel('Title')).toHaveValue('Meridian Wool Runner');
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
+    await panel.getByRole('button', { name: 'Save item' }).click();
     await expect(panel.getByRole('status')).toContainText('Saved');
 
     await reopenPanel(panel, product);
@@ -89,10 +89,10 @@ test.describe('revisit refresh', () => {
 
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
-    await expect(panel.getByLabel('Title')).toHaveValue('Meridian Wool Runner');
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
+    await panel.getByRole('button', { name: 'Save item' }).click();
     await expect(panel.getByRole('status')).toContainText('Saved');
-    await expect(panel.getByText('$98.00')).toBeVisible();
+    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$98.00' })).toBeVisible();
 
     // Same product, same variant, lower price.
     await product.goto(`${fixtureOrigin}/json-ld-complete.html?price=88.00`);
@@ -100,7 +100,7 @@ test.describe('revisit refresh', () => {
 
     await expect(panel.getByRole('status')).toContainText('price and availability updated');
     // One item, at the new price — a refresh, not a second card.
-    await expect(panel.getByText('$88.00')).toBeVisible();
+    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$88.00' })).toBeVisible();
     await expect(panel.getByRole('listitem')).toHaveCount(1);
   });
 
@@ -116,7 +116,7 @@ test.describe('revisit refresh', () => {
 
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await panel.getByRole('button', { name: 'Save item' }).click();
     await expect(panel.getByRole('status')).toContainText('Saved');
 
     // A different product entirely. The panel is demonstrably working — it just saved
@@ -140,8 +140,8 @@ test.describe('revisit refresh', () => {
 
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
-    await expect(panel.getByLabel('Title')).toHaveValue('Meridian Wool Runner');
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
+    await panel.getByRole('button', { name: 'Save item' }).click();
     await expect(panel.getByRole('status')).toContainText('Saved');
 
     await reopenPanel(panel, product);
@@ -153,6 +153,6 @@ test.describe('revisit refresh', () => {
     await clickWithoutFocus(panel, 'button:has-text("Refresh from this page")');
 
     await expect(panel.getByRole('status')).toContainText('price and availability updated');
-    await expect(panel.getByText('$79.50')).toBeVisible();
+    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$79.50' })).toBeVisible();
   });
 });

@@ -30,7 +30,7 @@ async function signIn(panel: Page, email: string) {
   await panel.getByLabel(/6-digit code sent to/).fill(code);
   await panel.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-  await expect(panel.getByRole('heading', { name: 'Save a product' })).toBeVisible();
+  await expect(panel.getByRole('heading', { name: 'Save this product' })).toBeVisible();
 }
 
 test.describe('retailer adapters', () => {
@@ -54,17 +54,19 @@ test.describe('retailer adapters', () => {
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
 
-    await expect(panel.getByLabel('Title')).toHaveValue('Meridian Wool Runner');
-    await expect(panel.getByLabel('Price')).toHaveValue('108.00');
-    await expect(panel.getByLabel('Currency')).toHaveValue('USD');
+    await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
+    // Shown as a field to confirm, not as settled information: the adapter says 108.00 and the
+    // page's own JSON-LD says 98.00, so the merge marks it for review rather than picking
+    // silently. 108.00 still wins — it is the selected variant's price.
+    await expect(panel.getByLabel(/^Price/)).toHaveValue('108.00');
 
     const chips = panel.getByRole('list', { name: 'Selected options' });
     await expect(chips).toContainText('Size: 41');
     await expect(chips).toContainText('Colour: Slate');
 
-    await panel.getByRole('button', { name: 'Save to cart' }).click();
+    await panel.getByRole('button', { name: 'Save item' }).click();
     await expect(panel.getByRole('status')).toContainText('Saved');
-    await expect(panel.getByText('$108.00')).toBeVisible();
+    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$108.00' })).toBeVisible();
   });
 
   test('falls back to the generic pipeline on a page no adapter claims', async ({
@@ -84,8 +86,8 @@ test.describe('retailer adapters', () => {
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
 
     // Adapters loaded, none matched, and the page still captured from structured data.
-    await expect(panel.getByLabel('Title')).toHaveValue('Meridian Wool Runner');
-    await expect(panel.getByLabel('Price')).toHaveValue('98.00');
+    await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
+    await expect(panel.getByTestId('preview-price')).toContainText('$98.00');
   });
 
   test('reports a WooCommerce variation price rather than the range in the heading', async ({
@@ -106,9 +108,8 @@ test.describe('retailer adapters', () => {
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
 
-    await expect(panel.getByLabel('Title')).toHaveValue('Alder Cutting Board');
-    await expect(panel.getByLabel('Price')).toHaveValue('68.00');
-    await expect(panel.getByLabel('Currency')).toHaveValue('GBP');
+    await expect(panel.getByTestId('preview-title')).toHaveText('Alder Cutting Board');
+    await expect(panel.getByTestId('preview-price')).toContainText('£68.00');
     await expect(panel.getByRole('list', { name: 'Selected options' })).toContainText(
       'Finish: Oiled',
     );

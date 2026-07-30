@@ -1,3 +1,4 @@
+import { Price, StatusBadge } from '@universal-cart/ui';
 import { useEffect, useState } from 'react';
 
 import { getSupabase } from '@/lib/supabase/client';
@@ -29,17 +30,6 @@ const NEXT_STATUS: Partial<Record<ItemStatus, { to: ItemStatus; label: string }>
   saved: { to: 'cart', label: 'Move to cart' },
   cart: { to: 'purchased', label: 'Purchased' },
 };
-
-/** Format money for display. The value is a decimal string and is never used for maths. */
-function formatPrice(amount: string | number | null, currency: string | null): string | null {
-  if (amount === null) return null;
-  const value = Number(amount);
-  if (!Number.isFinite(value)) return String(amount);
-
-  return currency
-    ? new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value)
-    : value.toFixed(2);
-}
 
 export function RecentItems({ reloadKey }: { reloadKey: number }) {
   const [state, setState] = useState<State>({ name: 'loading' });
@@ -109,7 +99,6 @@ export function RecentItems({ reloadKey }: { reloadKey: number }) {
       {state.name === 'ready' && state.items.length > 0 ? (
         <ul className="panel__list">
           {state.items.map((item) => {
-            const price = formatPrice(item.current_price, item.currency);
             const next = NEXT_STATUS[item.status];
 
             return (
@@ -118,8 +107,16 @@ export function RecentItems({ reloadKey }: { reloadKey: number }) {
                   {item.title}
                 </a>
                 <span className="panel__meta">
-                  {item.retailer_name}
-                  {price ? ` · ${price}` : ''} · {STATUS_LABELS[item.status]}
+                  <Price
+                    cadence="one_time"
+                    value={
+                      item.current_price === null
+                        ? null
+                        : { amount: String(item.current_price), currency: item.currency }
+                    }
+                    unknownLabel="No price"
+                  />
+                  <StatusBadge tone="neutral">{STATUS_LABELS[item.status]}</StatusBadge>
                 </span>
                 {next ? (
                   <button
