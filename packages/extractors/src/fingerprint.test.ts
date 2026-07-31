@@ -23,10 +23,24 @@ describe('primaryIdentifier', () => {
     expect(primaryIdentifier({ gtin: '012', mpn: 'M', sku: 'S' })).toBe('gtin:012');
   });
 
-  it('falls through GTIN → MPN → SKU → product id', () => {
+  it('falls through GTIN → variant id → MPN → SKU → product id', () => {
+    expect(primaryIdentifier({ variantId: 'V', mpn: 'M', sku: 'S' })).toBe('variantId:V');
     expect(primaryIdentifier({ mpn: 'M', sku: 'S' })).toBe('mpn:M');
     expect(primaryIdentifier({ sku: 'S', productId: 'P' })).toBe('sku:S');
     expect(primaryIdentifier({ productId: 'P' })).toBe('productId:P');
+  });
+
+  it('GTIN still beats the variant id', () => {
+    expect(primaryIdentifier({ gtin: '012', variantId: 'V' })).toBe('gtin:012');
+  });
+
+  it('ranks the variant id above a product-level SKU', () => {
+    // The false merge this ordering prevents (BUILD_PLAN.md §9.3): on Shopify the sku is
+    // frequently shared by every size of a garment, and the variant id is the only
+    // per-variant identifier. Ranked below sku, two sizes would hash alike.
+    const sizeM = primaryIdentifier({ sku: 'CREW-UNIFORM', variantId: '43742060085334' });
+    const sizeL = primaryIdentifier({ sku: 'CREW-UNIFORM', variantId: '43742060118102' });
+    expect(sizeM).not.toBe(sizeL);
   });
 
   it('ignores blank values', () => {
@@ -119,6 +133,49 @@ describe('computeFingerprint', () => {
     const large = await computeFingerprint(input({ selectedVariant: { Size: 'L' } }));
 
     expect(small).not.toBe(large);
+  });
+
+  it('distinguishes two variant ids when the options went undetected', async () => {
+    // The regression 4b guards against: a Shopify canonical drops `?variant=`, the DOM
+    // heuristics find no size control, and the sku is product-level. The variant id is
+    // then the only thing standing between two sizes and one fingerprint.
+    const canonical = 'https://shop.example/products/crew';
+    const sizeM = await computeFingerprint(
+      input({
+        canonicalUrl: canonical,
+        url: `${canonical}?variant=43742060085334`,
+        identifiers: { sku: 'CREW-UNIFORM', variantId: '43742060085334' },
+      }),
+    );
+    const sizeL = await computeFingerprint(
+      input({
+        canonicalUrl: canonical,
+        url: `${canonical}?variant=43742060118102`,
+        identifiers: { sku: 'CREW-UNIFORM', variantId: '43742060118102' },
+      }),
+    );
+
+    expect(sizeM).not.toBe(sizeL);
+  });
+
+  it('is stable for the same variant id across a tracked and a direct visit', async () => {
+    const canonical = 'https://shop.example/products/crew';
+    const direct = await computeFingerprint(
+      input({
+        canonicalUrl: canonical,
+        url: `${canonical}?variant=43742060085334`,
+        identifiers: { variantId: '43742060085334' },
+      }),
+    );
+    const shared = await computeFingerprint(
+      input({
+        canonicalUrl: canonical,
+        url: `${canonical}?variant=43742060085334&utm_source=share`,
+        identifiers: { variantId: '43742060085334' },
+      }),
+    );
+
+    expect(direct).toBe(shared);
   });
 
   it('distinguishes two products on the same site', async () => {

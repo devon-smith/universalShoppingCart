@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractSelectedVariantFromDom,
   extractSelectedVariantFromUrl,
+  extractVariantIdFromUrl,
   mergeVariants,
 } from './variant';
 
@@ -147,6 +148,49 @@ describe('extractSelectedVariantFromUrl', () => {
 
   it('returns nothing for an unparseable URL', () => {
     expect(extractSelectedVariantFromUrl('not a url')).toEqual({});
+  });
+
+  it('routes an opaque ?variant= token to the id, not the options', () => {
+    // AeroPress and Everlane both contributed `Variant=47776291946739` — Shopify's row id
+    // wearing an option's clothes. It identifies the variant, it does not describe it.
+    const url = 'https://shop.example/products/crew?variant=47776291946739';
+    expect(extractSelectedVariantFromUrl(url)).toEqual({});
+    expect(extractVariantIdFromUrl(url)).toBe('47776291946739');
+  });
+
+  it('keeps a readable ?variant= value as an option', () => {
+    // `?variant=harbour-blue` genuinely names what the shopper picked.
+    const url = 'https://shop.example/p?variant=harbour-blue';
+    expect(extractSelectedVariantFromUrl(url)).toEqual({ Variant: 'harbour-blue' });
+    expect(extractVariantIdFromUrl(url)).toBeNull();
+  });
+
+  it('leaves an opaque value under a non-variant name alone', () => {
+    // Lululemon's ?color=76616 stays an option: dropping it would silently remove the
+    // colour from the fingerprint, and recovering its label is deferred hasVariant work.
+    const url = 'https://shop.example/p?color=76616';
+    expect(extractSelectedVariantFromUrl(url)).toEqual({ Color: '76616' });
+    expect(extractVariantIdFromUrl(url)).toBeNull();
+  });
+});
+
+describe('extractVariantIdFromUrl', () => {
+  it('reads variation= as well as variant=', () => {
+    expect(extractVariantIdFromUrl('https://shop.example/p?variation=99887766')).toBe('99887766');
+  });
+
+  it('requires the value to be opaque', () => {
+    expect(extractVariantIdFromUrl('https://shop.example/p?variant=red')).toBeNull();
+    // Six hex letters spell a word; without a digit it is not a token.
+    expect(extractVariantIdFromUrl('https://shop.example/p?variant=defaced')).toBeNull();
+  });
+
+  it('accepts hex-ish ids that contain a digit', () => {
+    expect(extractVariantIdFromUrl('https://shop.example/p?variant=a1b2c3d4e5')).toBe('a1b2c3d4e5');
+  });
+
+  it('returns null for an unparseable URL', () => {
+    expect(extractVariantIdFromUrl('not a url')).toBeNull();
   });
 });
 

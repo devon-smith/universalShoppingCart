@@ -73,6 +73,7 @@ export { DOM_EXTRACTOR_ID, DOM_EXTRACTOR_VERSION, domExtractor } from './generic
 export {
   extractSelectedVariantFromDom,
   extractSelectedVariantFromUrl,
+  extractVariantIdFromUrl,
   mergeVariants,
 } from './generic/variant';
 

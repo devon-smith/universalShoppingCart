@@ -232,6 +232,51 @@ function labelTextFor(input: HTMLInputElement, document: Document): string | nul
   return normalizeText(wrapping?.textContent);
 }
 
+/**
+ * Parameter names that carry a retailer's variant id rather than a chosen option.
+ *
+ * Narrower than `OPTION_NAMES` on purpose: `?size=9` is an option whatever its value
+ * looks like, but `?variant=47776291946739` is Shopify's row id for the selected
+ * variant. Lululemon's `?color=76616` stays an (opaque) option for now — recovering its
+ * human label needs `hasVariant` matching, which is deferred work, and moving it here
+ * without that would silently drop the colour from the fingerprint.
+ */
+const VARIANT_ID_PARAMS = new Set(['variant', 'variation']);
+
+/**
+ * A value that identifies rather than describes: a long run of digits, or a hex-ish
+ * token with at least one digit. "red", "36w-34l" and "harbour-blue" all fail this test
+ * and stay readable options.
+ */
+function isOpaqueToken(value: string): boolean {
+  return /^\d{6,}$/.test(value) || (/^[0-9a-f-]{8,}$/i.test(value) && /\d/.test(value));
+}
+
+/**
+ * The retailer's id for the selected variant, when the URL carries one.
+ *
+ * This is the value that used to land in `selectedVariant` as `Variant=47776291946739` —
+ * an identifier wearing an option's clothes. It belongs in `identifiers.variantId`,
+ * where the fingerprint ranks it above a product-level `sku` (see fingerprint.ts), so
+ * removing it from the variant map cannot make two sizes of one garment hash alike.
+ */
+export function extractVariantIdFromUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  for (const [rawName, rawValue] of parsed.searchParams) {
+    if (!VARIANT_ID_PARAMS.has(rawName.toLowerCase())) continue;
+    const value = normalizeText(rawValue);
+    if (value && isOpaqueToken(value)) return value;
+  }
+
+  return null;
+}
+
 /** Read option-like parameters out of the page URL. */
 export function extractSelectedVariantFromUrl(url: string): Record<string, string> {
   const variant: Record<string, string> = {};
@@ -249,6 +294,11 @@ export function extractSelectedVariantFromUrl(url: string): Record<string, strin
 
     const value = normalizeText(rawValue);
     if (!value) continue;
+
+    // An opaque token under `variant`/`variation` is the retailer's variant id, routed
+    // to `identifiers.variantId` by the pipeline instead. A readable value stays an
+    // option: `?variant=harbour-blue` genuinely names what the shopper picked.
+    if (VARIANT_ID_PARAMS.has(name) && isOpaqueToken(value)) continue;
 
     variant[titleCase(name)] = value;
   }

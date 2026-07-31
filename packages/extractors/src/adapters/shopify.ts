@@ -214,6 +214,13 @@ export const shopifyAdapter: ProductExtractor = {
       const barcode = stringProp(variant, 'barcode');
       if (barcode) identifiers.gtin = barcode;
 
+      // The variant's own row id. On stores whose `sku` is product-level this is the only
+      // per-variant identifier, and the fingerprint ranks it above `sku` for that reason.
+      const variantId = variant.id;
+      if (typeof variantId === 'number' || typeof variantId === 'string') {
+        identifiers.variantId = String(variantId);
+      }
+
       const variantImage =
         absoluteHttpUrl(stringProp(variant, 'featured_image'), url) ??
         absoluteHttpUrl(stringProp(variant.featured_image, 'src'), url) ??
