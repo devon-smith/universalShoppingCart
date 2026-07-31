@@ -671,6 +671,45 @@ true of _something_, ask which question it answers before fixing the extractor. 
 answer is "a question we have no field for", the extractor is not broken — the contract is
 narrow, and ranking, suppressing, or "fixing" the value hides real data. No new fields are
 added by this entry; it is the diagnostic rule for the next occurrence.
+---
+
+## 2026-07-31 — Comparison is side-by-side candidates; cross-retailer matching is cut
+
+**Decision.** Comparison means putting **two to four different saved items** beside each other
+for one buying decision. It does not mean recognising the same product at two retailers.
+Cross-retailer identifier matching — GTIN/UPC/EAN, brand + MPN, retailer identifier mapping,
+image perceptual hashing, embedding-assisted candidate scoring, the whole of the old Phase 8
+(BUILD_PLAN.md §9.3) — is **cut**, not deferred.
+
+**Context.** An earlier entry deprioritised that machinery. This one removes it, because
+"deferred" keeps inviting the question and something downstream will eventually re-derive it.
+
+Matching answers "is this the same product at another seller". That question has a subject in
+electronics, where one SKU is stocked by many sellers. It has almost no subject in clothing.
+Zara does not sell Gymshark's shorts; each retailer's line is its own. Garments also lack the
+identifiers the plan leans on — GTINs are inconsistently published, MPNs are usually absent,
+and "brand + model" is not how clothing is named. Sixteen live captures bear this out: the
+identifiers we do extract are retailer-local (`sku`, a Shopify variant id, a style code), and
+no two pages describe the same garment.
+
+The question a clothing shopper actually has is "which of these three jackets", where the
+three are different products. Nothing needs matching to answer it — they are already distinct
+saved items, and the work is showing their attributes side by side and marking where they
+differ.
+
+**Consequences.** The comparison tray is the product's core feature, and it is a selection
+model plus a side-by-side view. No identifier graph, no `product_groups`, no
+`match_candidates`, no embeddings, no confirmation UI for medium-confidence matches — none of
+those tables or surfaces get built.
+
+The "never auto-merge uncertain items" rule survives and matters more than before, because
+without a matching system the only way two records merge is the fingerprint, which is exact by
+construction. Two garments must never collapse into one card; the comparison depends on them
+staying separate.
+
+If a resale or marketplace use case later makes true cross-seller matching valuable, this is
+reopened with evidence. The design in §9.3 stays a sound design — for the goods it was written
+for.
 
 ## 2026-08-02 — Composition lands, raw, now that comparison has a consumer for it
 

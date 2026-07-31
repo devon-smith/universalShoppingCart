@@ -225,6 +225,14 @@ export interface CalloutProps {
   title?: string;
   children: ReactNode;
   className?: string;
+  /**
+   * Whether this callout is its own live region.
+   *
+   * Default true. Set false when the surrounding surface already announces the same thing —
+   * two live regions saying one sentence make a screen reader repeat it, and they collide as
+   * two `status` roles for anything querying by role.
+   */
+  announce?: boolean;
 }
 
 /**
@@ -233,12 +241,18 @@ export interface CalloutProps {
  * `warning` is the tone for "this field needs your eye before saving", which is the most
  * common case in this product and the reason the component exists.
  */
-export function Callout({ tone, title, children, className }: CalloutProps): ReactElement {
+export function Callout({
+  tone,
+  title,
+  children,
+  className,
+  announce = true,
+}: CalloutProps): ReactElement {
   return (
     <div
       className={cn('uc-callout', tone !== 'neutral' && `uc-callout--${tone}`, className)}
       // Errors interrupt; everything else waits for a pause.
-      role={tone === 'danger' ? 'alert' : 'status'}
+      role={announce ? (tone === 'danger' ? 'alert' : 'status') : undefined}
     >
       {title ? <span className="uc-callout__title">{title}</span> : null}
       <span>{children}</span>

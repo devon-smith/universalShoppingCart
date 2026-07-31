@@ -69,12 +69,15 @@ test.describe('revisit refresh', () => {
 
     await reopenPanel(panel, product);
 
-    const status = panel.getByRole('status');
-    await expect(status).toContainText('already saved');
-    await expect(status).toContainText('Meridian Wool Runner');
-    // Nothing changed between the two visits, and it says so rather than implying the
-    // check found something.
-    await expect(status).toContainText('nothing has changed');
+    // The already-saved state is a product summary now, not a sentence. It names the cart the
+    // item is in and shows the item itself.
+    await expect(panel.getByRole('status')).toContainText('already in My cart');
+    await expect(panel.getByText('Already in your cart', { exact: true })).toBeVisible();
+    await expect(panel.getByRole('heading', { name: 'Meridian Wool Runner' })).toBeVisible();
+    // Nothing was recorded on this visit, so nothing is claimed. The old copy said "nothing
+    // has changed", which asserts a comparison the panel had not necessarily made — an
+    // unchanged page and a page that was never re-read look identical from here.
+    await expect(panel.getByText('This visit recorded')).toHaveCount(0);
   });
 
   test('re-observes a price that changed since it was saved', async ({ context, extensionId }) => {
@@ -98,7 +101,8 @@ test.describe('revisit refresh', () => {
     await product.goto(`${fixtureOrigin}/json-ld-complete.html?price=88.00`);
     await reopenPanel(panel, product);
 
-    await expect(panel.getByRole('status')).toContainText('price and availability updated');
+    // Phrased as what happened rather than as a claim about monitoring.
+    await expect(panel.getByRole('status')).toContainText('recorded a new price or availability');
     // One item, at the new price — a refresh, not a second card.
     await expect(panel.locator('.uc-price__amount').filter({ hasText: '$88.00' })).toBeVisible();
     await expect(panel.getByRole('listitem')).toHaveCount(1);
@@ -145,14 +149,14 @@ test.describe('revisit refresh', () => {
     await expect(panel.getByRole('status')).toContainText('Saved');
 
     await reopenPanel(panel, product);
-    await expect(panel.getByRole('status')).toContainText('nothing has changed');
+    await expect(panel.getByText('Already in your cart', { exact: true })).toBeVisible();
 
     // The price moves while the panel is open; the manual refresh picks it up.
     await product.goto(`${fixtureOrigin}/json-ld-complete.html?price=79.50`);
     await product.bringToFront();
-    await clickWithoutFocus(panel, 'button:has-text("Refresh from this page")');
+    await clickWithoutFocus(panel, 'button:has-text("Refresh details")');
 
-    await expect(panel.getByRole('status')).toContainText('price and availability updated');
+    await expect(panel.getByRole('status')).toContainText('recorded a new price or availability');
     await expect(panel.locator('.uc-price__amount').filter({ hasText: '$79.50' })).toBeVisible();
   });
 });

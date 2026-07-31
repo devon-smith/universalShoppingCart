@@ -199,6 +199,19 @@ async function capturePanel() {
     .filter({ hasText: /Saved|Already saved/ })
     .waitFor({ timeout: 20_000 });
 
+  // The already-saved state: reopen the panel on a page that is already in a cart, which is
+  // how a user meets it — they come back to a product they saved earlier.
+  await product.goto(`${fixtureOrigin}/json-ld-complete.html`);
+  await product.bringToFront();
+  await panel.reload();
+  await panel
+    .getByText('Already in your cart', { exact: true })
+    .waitFor({ timeout: 20_000 })
+    .catch(() => console.log(stamp('panel-known-item SKIPPED — revisit did not recognise it')));
+  if (await panel.getByText('Already in your cart', { exact: true }).isVisible().catch(() => false)) {
+    await shootAll(panel, 'panel-known-item', PANEL_WIDTHS, 720);
+  }
+
   // Back to a blank tab so the panel shows its recent list rather than a live preview.
   await product.goto('about:blank');
   await product.bringToFront();

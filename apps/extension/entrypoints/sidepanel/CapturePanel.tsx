@@ -14,6 +14,9 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Cart } from './PanelHeader';
+import type { PriceSummary, SavedItem } from './ItemSummary';
+import { KnownItemState } from './KnownItemState';
+import { SavedState } from './SavedState';
 
 import { takePendingCapture } from '@/lib/capture/pending';
 import { PERMISSION_HELP, requestCapture } from '@/lib/capture/request';
@@ -29,8 +32,8 @@ type Stage =
   | { name: 'extracting' }
   | { name: 'preview'; capture: ProductCaptureV1; needsReview: string[] }
   | { name: 'saving'; capture: ProductCaptureV1 }
-  | { name: 'saved'; title: string; created: boolean }
-  | { name: 'refreshed'; title: string; changed: boolean }
+  | { name: 'saved'; item: SavedItem; created: boolean; summary: PriceSummary | null }
+  | { name: 'known'; item: SavedItem; changed: boolean; summary: PriceSummary | null }
   | { name: 'error'; message: string }
   /** The page cannot be read from here. Not a failure — a different gesture is needed. */
   | { name: 'blocked'; message: string };
@@ -224,16 +227,35 @@ export function CapturePanel({
     }
   }, [readPage]);
 
+  const loadSummary = useCallback(async (itemId: string): Promise<PriceSummary | null> => {
+    const { data } = await getSupabase()
+      .from('item_price_summary')
+      .select('latest_price::text, latest_observed_at, previous_price::text, previous_observed_at')
+      .eq('item_id', itemId)
+      .maybeSingle();
+
+    return (data as PriceSummary | null) ?? null;
+  }, []);
+
   const showRefreshed = useCallback(
     (result: RevisitResult) => {
       setStage({
-        name: 'refreshed',
-        title: result.match.title,
+        name: 'known',
+        item: result.item,
         changed: result.observationInserted,
+        summary: null,
       });
       onSaved();
+
+      void loadSummary(result.item.id).then((summary) => {
+        setStage((current) =>
+          current.name === 'known' && current.item.id === result.item.id
+            ? { ...current, summary }
+            : current,
+        );
+      });
     },
-    [onSaved],
+    [onSaved, loadSummary],
   );
 
   useEffect(() => {
@@ -267,12 +289,16 @@ export function CapturePanel({
         userFields: userFieldsFrom(draft, capturePayload),
       });
 
-      setStage({
-        name: 'saved',
-        title: result.item.title,
-        created: result.created,
-      });
+      setStage({ name: 'saved', item: result.item, created: result.created, summary: null });
       onSaved();
+
+      void loadSummary(result.item.id).then((summary) => {
+        setStage((current) =>
+          current.name === 'saved' && current.item.id === result.item.id
+            ? { ...current, summary }
+            : current,
+        );
+      });
     } catch (error) {
       setStage({
         name: 'error',
@@ -316,19 +342,26 @@ export function CapturePanel({
       ) : null}
 
       {stage.name === 'saved' ? (
-        <Callout tone="success">
-          {stage.created
-            ? `Saved “${stage.title}”.`
-            : `Already saved — “${stage.title}” refreshed.`}
-        </Callout>
+        <SavedState
+          item={stage.item}
+          created={stage.created}
+          summary={stage.summary}
+          cartName={carts.find((cart) => cart.id === stage.item.cart_id)?.name}
+          onCaptureAnother={() => void capture()}
+          onUndone={onSaved}
+        />
       ) : null}
 
-      {stage.name === 'refreshed' ? (
-        <Callout tone="success">
-          {stage.changed
-            ? `“${stage.title}” is already saved — price and availability updated.`
-            : `“${stage.title}” is already saved — nothing has changed.`}
-        </Callout>
+      {stage.name === 'known' ? (
+        <KnownItemState
+          item={stage.item}
+          summary={stage.summary}
+          changed={stage.changed}
+          carts={carts}
+          onRefresh={revisit}
+          onCaptureAnother={() => void capture()}
+          onMoved={onSaved}
+        />
       ) : null}
 
       {stage.name === 'extracting' ? (
@@ -373,7 +406,7 @@ export function CapturePanel({
           onSubmit={() => void save(stage.capture)}
           onCancel={() => setStage({ name: 'idle' })}
         />
-      ) : stage.name === 'extracting' ? null : (
+      ) : stage.name === 'extracting' || stage.name === 'saved' || stage.name === 'known' ? null : (
         <div className="capture__idle">
           {stage.name === 'blocked' ? null : (
             <h2 id="capture-heading" className="capture__title">
@@ -398,12 +431,6 @@ export function CapturePanel({
           <p className="capture__hint">
             or press <kbd className="capture__kbd">⌘⇧U</kbd>
           </p>
-
-          {stage.name === 'refreshed' ? (
-            <Button fullWidth onClick={() => void revisit()}>
-              Refresh from this page
-            </Button>
-          ) : null}
         </div>
       )}
     </section>
