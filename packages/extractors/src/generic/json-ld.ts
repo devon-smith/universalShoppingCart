@@ -6,7 +6,9 @@ import { absoluteHttpUrl, normalizeText, normalizeTextCapped, unique } from '../
 import type { ExtractionContext, ProductExtractor } from '../core/types';
 import { evidence } from '../core/types';
 
-import { isOptionName } from './variant';
+import { normalizeUrl } from '../normalize-url';
+
+import { extractVariantIdFromUrl, isOptionName } from './variant';
 
 /**
  * schema.org Product/Offer extraction from `<script type="application/ld+json">`.
@@ -302,6 +304,104 @@ function consolidateVariantOffers(variants: readonly JsonObject[]): OfferFacts |
   );
 }
 
+/** URL-shaped strings a variant node may carry, in decreasing order of intent. */
+function variantUrlCandidates(variant: JsonObject): string[] {
+  const candidates: string[] = [];
+  for (const value of [variant.url, variant['@id']]) {
+    const url = readString(value);
+    if (url) candidates.push(url);
+  }
+  for (const offer of Array.isArray(variant.offers) ? variant.offers : [variant.offers]) {
+    if (isObject(offer)) {
+      const url = readString(offer.url);
+      if (url) candidates.push(url);
+    }
+  }
+  return candidates;
+}
+
+/** Lower-cased query keys to raw values, for the first candidate URL that has any. */
+function variantUrlParams(
+  variant: JsonObject,
+  baseUrl: string,
+): ReadonlyMap<string, string> | null {
+  for (const candidate of variantUrlCandidates(variant)) {
+    let parsed: URL;
+    try {
+      parsed = new URL(candidate, baseUrl);
+    } catch {
+      continue;
+    }
+    const params = new Map<string, string>();
+    for (const [key, value] of parsed.searchParams) {
+      const trimmed = value.trim();
+      if (trimmed) params.set(key.toLowerCase(), trimmed);
+    }
+    if (params.size > 0) return params;
+  }
+  return null;
+}
+
+/**
+ * The variants whose own URLs are consistent with the page URL.
+ *
+ * This is how an opaque option code becomes a label. Lululemon's page URL says
+ * `?color=76616` and displays "Rumble Crumble"; the mapping between the two exists only in
+ * `hasVariant`, where each variant's URL carries the same parameters. Filtering the family
+ * down to the variants that could be the one on screen, then requiring agreement within
+ * that subset (the existing rule), recovers "Rumble Crumble" without ever guessing: the
+ * variants of another colour are excluded by their own URLs, and where the survivors still
+ * disagree the consolidators still say nothing.
+ *
+ * A variant matches when every query key its URL shares with the page URL agrees on the
+ * value, and at least one key is shared — the same path with no shared keys says nothing.
+ * A `?variant=` id from the page may also match a variant's `sku` directly, the Shopify
+ * shape. When nothing matches — no variant carries a URL, or the page URL has no signal —
+ * the whole family is returned and behaviour is exactly as before: this narrows readings,
+ * it never invents them.
+ */
+export function variantsConsistentWithUrl(
+  variants: readonly JsonObject[],
+  pageUrl: string,
+): { variants: readonly JsonObject[]; narrowed: boolean } {
+  const whole = { variants, narrowed: false };
+  if (variants.length < 2) return whole;
+
+  let pageParams: Map<string, string>;
+  try {
+    pageParams = new Map(
+      [...new URL(normalizeUrl(pageUrl) ?? pageUrl).searchParams].map(([key, value]) => [
+        key.toLowerCase(),
+        value.trim(),
+      ]),
+    );
+  } catch {
+    return whole;
+  }
+
+  const wantedId = extractVariantIdFromUrl(pageUrl);
+  if (pageParams.size === 0 && !wantedId) return whole;
+
+  const matched = variants.filter((variant) => {
+    if (wantedId && readString(variant.sku) === wantedId) return true;
+
+    const params = variantUrlParams(variant, pageUrl);
+    if (!params) return false;
+
+    let shared = 0;
+    for (const [key, value] of params) {
+      const pageValue = pageParams.get(key);
+      if (pageValue === undefined) continue;
+      if (pageValue !== value) return false;
+      shared += 1;
+    }
+    return shared > 0;
+  });
+
+  if (matched.length === 0 || matched.length === variants.length) return whole;
+  return { variants: matched, narrowed: true };
+}
+
 /**
  * Are an aggregate's members competing sellers, or variants of one product?
  *
@@ -542,15 +642,19 @@ export const jsonLdExtractor: ProductExtractor = {
     }
 
     // A group's own offer wins. Only when it states none — the shape Zara and Nike both
-    // ship — are its variants consulted, and then only where they agree.
-    const variants = variantsOf(node);
+    // ship — are its variants consulted: first narrowed to the ones whose own URLs are
+    // consistent with the page URL, then only where the survivors agree.
+    const family = variantsOf(node);
+    const { variants, narrowed } = variantsConsistentWithUrl(family, context.url);
     const ownOffer = readNodeOffer(node, sku);
     const offer = ownOffer ?? consolidateVariantOffers(variants);
 
     // A value every variant agrees on is a real reading of the page, but it was inferred
-    // across the family rather than stated for the item on screen. The slightly lower
-    // confidence keeps a directly-stated offer ahead of it when both exist.
-    const offerConfidence = ownOffer ? 1 : 0.9;
+    // across the family rather than stated for the item on screen. A URL-narrowed subset
+    // sits between the two: the page's own URL says these are the candidates for what is
+    // on screen, which is more than family-wide agreement claims and less than a stated
+    // offer. The ordering keeps a directly-stated offer ahead of both.
+    const offerConfidence = ownOffer ? 1 : narrowed ? 0.95 : 0.9;
 
     if (offer) {
       if (offer.priceAmount) {
@@ -575,14 +679,25 @@ export const jsonLdExtractor: ProductExtractor = {
 
     // Options the node declares directly, falling back to the ones every variant shares —
     // a group whose variants are all Navy is telling us the colour, while a group offering
-    // Navy and Rust is not telling us which one is on screen.
+    // Navy and Rust is not telling us which one is on screen. The URL-narrowed subset is
+    // what turns an opaque code into a label: the survivors of `?color=76616` all say
+    // "Rumble Crumble", so agreement inside the subset names the colour on screen.
     const ownVariant = readSelectedVariant(node);
     const selectedVariant =
       Object.keys(ownVariant).length > 0 ? ownVariant : consolidateVariantOptions(variants);
 
     if (Object.keys(selectedVariant).length > 0) {
       capture.selectedVariant = selectedVariant;
-      capture.evidence.push(evidence('selectedVariant', 'json_ld', 0.7));
+      capture.evidence.push(
+        evidence(
+          'selectedVariant',
+          'json_ld',
+          narrowed && Object.keys(ownVariant).length === 0 ? 0.8 : 0.7,
+          narrowed && Object.keys(ownVariant).length === 0
+            ? 'hasVariant consistent with page URL'
+            : undefined,
+        ),
+      );
     }
 
     if (Object.keys(product).length > 0) capture.product = product;
