@@ -63,6 +63,23 @@ function stamp(label) {
   return `screenshots: ${label}`;
 }
 
+/**
+ * Wait for every product image to have resolved one way or the other.
+ *
+ * A frame whose source is still in flight looks like a frame that loaded. Measured, the
+ * fixtures' `cdn.example.com` fails in 1–65ms while the settle below waits 140ms, so the two
+ * are close enough that the same state photographs differently between runs — `panel-saved`
+ * won that race and `panel-known-item` lost it. Waiting on the DOM instead of the clock makes
+ * the shot describe the component rather than the machine it ran on.
+ */
+async function settleImages(page) {
+  await page
+    .waitForFunction(() => [...document.images].every((img) => img.complete), undefined, {
+      timeout: 5000,
+    })
+    .catch(() => {});
+}
+
 /** Photograph the current state at every width and in both themes. */
 async function shootAll(page, name, widths, height = 900) {
   const original = page.viewportSize();
@@ -74,6 +91,7 @@ async function shootAll(page, name, widths, height = 900) {
       await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
       // Let the token switch and the reflow settle before the shutter.
       await page.waitForTimeout(140);
+      await settleImages(page);
       await page.screenshot({
         path: join(outDir, `${name}--${width}--${theme}.png`),
         fullPage: true,
@@ -104,16 +122,6 @@ async function clickWithoutFocus(page, selector) {
   await page.locator(selector).dispatchEvent('click');
 }
 
-async function signInPanel(panel, email) {
-  await panel.getByLabel('Email address').fill(email);
-  await panel.getByRole('button', { name: 'Email me a code' }).click();
-
-  const code = signInCodeFrom(await waitForEmail(email));
-  await panel.getByLabel(/6-digit code sent to/).fill(code);
-  await panel.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await panel.getByRole('heading', { name: 'Save this product' }).waitFor();
-}
-
 async function capturePanel() {
   const userDataDir = join(outDir, '.chrome-profile');
   // Fresh either side of the run: a reused profile carries a session, and a session in a
@@ -133,11 +141,56 @@ async function capturePanel() {
   const panel = await context.newPage();
   await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
-  // Signed out, before a single keystroke.
+  // Signed out, before a single keystroke. This is the onboarding screen: what the product is
+  // and what it does, above the form rather than behind it.
   await shootAll(panel, 'panel-signed-out', PANEL_WIDTHS, 720);
 
-  await signInPanel(panel, uniqueEmail('panel'));
+  // The privacy disclosure open, which is where the copy 2A removed from the header now lives.
+  await panel
+    .getByRole('group')
+    .first()
+    .evaluate((details) => details.setAttribute('open', ''));
+  await shootAll(panel, 'panel-signed-out-privacy', PANEL_WIDTHS, 720);
+  await panel
+    .getByRole('group')
+    .first()
+    .evaluate((details) => details.removeAttribute('open'));
+
+  // A rejected address, to photograph the error treatment without sending anything anywhere.
+  await panel.locator('form').evaluate((form) => {
+    form.noValidate = true;
+  });
+  await panel.getByLabel('Email address').fill('not-an-email');
+  await panel.getByRole('button', { name: 'Email me a code' }).click();
+  await panel.getByRole('alert').waitFor({ timeout: 10_000 });
+  await shootAll(panel, 'panel-signin-error', PANEL_WIDTHS, 720);
+  await panel.reload();
+
+  // Waiting on a code. The address is real seed data, so the mask in `shootAll` covers it.
+  const panelEmail = uniqueEmail('panel');
+  await panel.getByLabel('Email address').fill(panelEmail);
+  await panel.getByRole('button', { name: 'Email me a code' }).click();
+  await panel.getByLabel(/6-digit code sent to/).waitFor({ timeout: 20_000 });
+  await shootAll(panel, 'panel-code-sent', PANEL_WIDTHS, 720);
+
+  const panelCode = signInCodeFrom(await waitForEmail(panelEmail));
+  await panel.getByLabel(/6-digit code sent to/).fill(panelCode);
+  await panel.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await panel.getByRole('heading', { name: 'Save this product' }).waitFor();
   await shootAll(panel, 'panel-idle', PANEL_WIDTHS, 720);
+
+  // Settings and the privacy view, both reached the way a user reaches them.
+  await panel.getByRole('button', { name: 'Account and settings' }).click();
+  await panel.getByRole('heading', { level: 1, name: 'Settings' }).waitFor();
+  await shootAll(panel, 'panel-settings', PANEL_WIDTHS, 720);
+
+  await panel.getByRole('button', { name: 'What Universal Cart can see' }).click();
+  await panel.getByRole('heading', { name: 'What it never touches' }).waitFor();
+  await shootAll(panel, 'panel-privacy', PANEL_WIDTHS, 720);
+
+  await panel.getByRole('button', { name: 'Settings' }).click();
+  await panel.getByRole('button', { name: 'Back' }).click();
+  await panel.getByRole('heading', { name: 'Save this product' }).waitFor();
 
   const product = await context.newPage();
 
@@ -208,7 +261,12 @@ async function capturePanel() {
     .getByText('Already in your cart', { exact: true })
     .waitFor({ timeout: 20_000 })
     .catch(() => console.log(stamp('panel-known-item SKIPPED — revisit did not recognise it')));
-  if (await panel.getByText('Already in your cart', { exact: true }).isVisible().catch(() => false)) {
+  if (
+    await panel
+      .getByText('Already in your cart', { exact: true })
+      .isVisible()
+      .catch(() => false)
+  ) {
     await shootAll(panel, 'panel-known-item', PANEL_WIDTHS, 720);
   }
 
