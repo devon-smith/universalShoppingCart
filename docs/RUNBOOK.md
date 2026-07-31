@@ -104,24 +104,101 @@ land.
 Extraction against real retailers is not covered by CI and is recorded by hand. See
 [LIVE_TESTING.md](LIVE_TESTING.md) for the procedure and the log template.
 
-## Staging deployment
+## Staging
 
-**Not yet configured.** This is the next environment to exist, after live-page extraction
-validation — see [DECISIONS.md](DECISIONS.md) for why it comes before Phase 9 rather than
-during it. Staging is an integration environment: hosted backend and dashboard, extension
-still loaded unpacked, a couple of trusted testers, and data nobody would miss.
+The staging Supabase project exists and its schema is applied.
 
-What it needs, in order:
+|         |                                            |
+| ------- | ------------------------------------------ |
+| Project | `universal-cart-staging`                   |
+| Ref     | `udusjjvhkqogbzejtjkl`                     |
+| URL     | `https://udusjjvhkqogbzejtjkl.supabase.co` |
+| Region  | us-west-2, free tier                       |
 
-1. **A hosted Supabase project** on the free tier, named for development rather than
-   production. Push the committed migrations to it — never apply schema by hand:
+### Applying migrations
 
-   ```bash
-   pnpm exec supabase link --project-ref <ref>
-   pnpm exec supabase db push
-   ```
+Schema reaches staging one way only: the committed migrations, pushed against the linked
+project. Never by hand in the dashboard — a hand-applied change exists in no migration file,
+so the next `db push` does not know about it and local, staging and production drift apart
+silently.
 
-2. **Vercel**, pointed at this repository with the root directory set to `apps/web`.
+```bash
+node scripts/supabase.mjs link --project-ref udusjjvhkqogbzejtjkl
+node scripts/supabase.mjs db push
+```
+
+`link` prompts for the database password. It is not stored in this repository, in
+`.env`, or anywhere else in the working tree — type it at the prompt. On a project with no
+migration history table, `push` creates one.
+
+### The check to repeat after every migration
+
+A staging database with tables and RLS switched off is worse than no staging at all: it looks
+finished while being wide open, and the way you find out is somebody else's data. So this is
+not a one-time verification — run it after **any** future `db push`.
+
+```sql
+-- Every table in public, and whether row security is actually on.
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public'
+order by tablename;
+
+-- The policies behind those tables. An empty result with rowsecurity = true means the
+-- table is locked to everyone, which is its own kind of broken.
+select tablename, policyname, cmd
+from pg_policies
+where schemaname = 'public'
+order by tablename, policyname;
+
+-- Views must run as the caller, not the owner. `item_price_summary` reads
+-- `item_observations`; without security_invoker it would return every user's price history.
+select relname, reloptions
+from pg_class
+where relname = 'item_price_summary';
+```
+
+Expected: `cart_members`, `carts`, `item_observations`, `items`, `profiles` — five tables,
+`rowsecurity = true` on all five, each with policies, and `item_price_summary` carrying
+`security_invoker=on`. Anything showing `rowsecurity = false` is a stop-and-fix, not a note
+for later.
+
+Worth confirming once per environment as well: a first sign-in creates exactly one profile
+and exactly one default cart. Two carts means the bootstrap trigger fired twice.
+
+### The service-role key
+
+`SUPABASE_SERVICE_ROLE_KEY` lives **only in Vercel**, on Production and Preview, marked
+Sensitive. It is not in this repository, not in `.env`, not in `.env.example` beyond its
+name, and not on any developer machine. It bypasses Row Level Security completely, so a copy
+of it in a local file is a copy of every user's data.
+
+Nothing server-side uses it yet. It must never be given a `NEXT_PUBLIC_` or `WXT_PUBLIC_`
+prefix, which would inline it into a browser bundle.
+
+### Generated types are built from local, not from staging
+
+`pnpm db:types` regenerates `packages/contracts/src/database.types.ts` from the **local**
+stack, and CI checks the committed file against local. Generating against the hosted project
+produces one extra block that local does not emit:
+
+```ts
+__InternalSupabase: {
+  PostgrestVersion: '14.5';
+}
+```
+
+That is the hosted platform's PostgREST version, not schema. Committing the hosted output
+would make the CI check fail on every run. Compare the two if you want to confirm staging
+matches the migrations — the rest of the file should be byte-identical — but commit only what
+`pnpm db:types` produces.
+
+### The rest of staging
+
+Still to configure:
+
+1. **Vercel**, pointed at this repository with the root directory set to `apps/web`.
+
    Environment variables, all client-safe:
 
    | Variable                               | Value                   |
@@ -133,11 +210,11 @@ What it needs, in order:
    `SUPABASE_SERVICE_ROLE_KEY` is **not** needed — nothing server-side uses it yet, and it
    must never be added with a `NEXT_PUBLIC_` prefix.
 
-3. **Supabase Auth URL configuration** for the staging project: set the Site URL to the
+2. **Supabase Auth URL configuration** for the staging project: set the Site URL to the
    Vercel URL and add `<vercel-url>/auth/confirm` as a redirect URL. Magic links point at
    whatever is configured here; get it wrong and sign-in silently bounces back to `/login`.
 
-4. **The extension, pointed at staging.** Set `WXT_PUBLIC_SUPABASE_URL`,
+3. **The extension, pointed at staging.** Set `WXT_PUBLIC_SUPABASE_URL`,
    `WXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `WXT_PUBLIC_APP_URL` in
    `apps/extension/.env`, rebuild, and reload the unpacked extension. It stays unpacked —
    no store listing at this stage.
