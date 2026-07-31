@@ -69,8 +69,8 @@
     {
       "field": "offer.originalPriceAmount",
       "source": "dom",
-      "selector": "[class*=\"price--original\"]",
-      "confidence": 0.4
+      "selector": "strikethrough near price",
+      "confidence": 0.5
     },
     {
       "field": "offer.availability",
