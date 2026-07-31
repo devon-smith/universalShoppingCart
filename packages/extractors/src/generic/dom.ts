@@ -47,6 +47,64 @@ const ORIGINAL_PRICE_SELECTORS: ReadonlyArray<readonly [selector: string, confid
   ['del[class*="price"]', 0.35],
 ];
 
+/**
+ * Markup that renders text struck through — the honest signal of a former price.
+ *
+ * Keyed on markup rather than words because the live pages showed the words lying in both
+ * directions: Uniqlo prints "Online + App-Member Price" with no former price anywhere,
+ * AeroPress labels its only price "Sale price" with nothing to compare it to, and StockX
+ * shows "Retail Price: $115" as a spec row, not a discount. Meanwhile every genuine former
+ * price in the set — Amazon's "Typical price", Chewy's, Wayfair's, Zalando's, Nike's — was
+ * struck through. Zalando is the decisive case: a plain "Ursprünglich: 119,95 €" and a
+ * struck "47,95 €", where only the struck figure matches the advertised -25%.
+ */
+const STRUCK_PRICE_SELECTOR = 's, del, strike, [style*="line-through"]';
+
+/**
+ * How far above the current-price element a struck former price may sit.
+ *
+ * Two, not more, and the number is the safety margin: every genuine former price in the
+ * live set sits beside the current one — siblings, or one wrapper apart — while a third
+ * hop on a deeply nested price block can reach the container that also holds a sponsored
+ * tile with its own strikethrough. Missing a distant former price under-reports, which is
+ * the project's stated safe direction; attaching a neighbouring product's does not.
+ */
+const STRUCK_PRICE_HOPS = 2;
+
+/**
+ * A struck-through price adjacent to the current one.
+ *
+ * Anchored to the element the current price was read from, because "in the product root"
+ * is not tight enough: a sponsored tile inside the root can carry its own strikethrough,
+ * and two attempts at excluding such regions by markup have already failed and been
+ * reverted (docs/STATUS.md). Adjacency is the discriminator that needs no denylist — the
+ * page puts the former price beside the price it is correcting.
+ */
+function struckPriceNear(priceElement: Element): { amount: string; selector: string } | null {
+  let scope = priceElement.parentElement;
+  for (let hop = 0; hop < STRUCK_PRICE_HOPS && scope; hop += 1) {
+    for (const struck of scope.querySelectorAll(STRUCK_PRICE_SELECTOR)) {
+      // A struck element containing the current price would be the price itself on the
+      // way out, not a former price beside it.
+      if (struck.contains(priceElement)) continue;
+      const amount = normalizePrice(readValue(struck)).amount;
+      if (amount) return { amount, selector: 'strikethrough near price' };
+    }
+    scope = scope.parentElement;
+  }
+  return null;
+}
+
+/** Exact comparison of two normalized decimal strings, without floating point. */
+function decimalGreaterThan(a: string, b: string): boolean {
+  const [aWhole = '0', aFraction = ''] = a.split('.');
+  const [bWhole = '0', bFraction = ''] = b.split('.');
+  const scale = Math.max(aFraction.length, bFraction.length);
+  return (
+    BigInt(aWhole + aFraction.padEnd(scale, '0')) > BigInt(bWhole + bFraction.padEnd(scale, '0'))
+  );
+}
+
 const TITLE_SELECTORS: ReadonlyArray<readonly [selector: string, confidence: number]> = [
   ['[itemprop="name"]', 0.6],
   ['h1[class*="product"]', 0.55],
@@ -469,20 +527,46 @@ export const domExtractor: ProductExtractor = {
       }
     }
 
-    const originalMatch = firstMatch(root, ORIGINAL_PRICE_SELECTORS);
-    if (originalMatch) {
-      const parsed = normalizePrice(readValue(originalMatch.element));
-      if (parsed.amount) {
-        offer.originalPriceAmount = parsed.amount;
-        capture.evidence.push(
-          evidence(
-            'offer.originalPriceAmount',
-            'dom',
-            originalMatch.confidence,
-            originalMatch.selector,
-          ),
-        );
+    let original: { amount: string; confidence: number; selector: string } | null = null;
+
+    // The anchored strikethrough is tried first: markup plus adjacency is stronger
+    // evidence than a class name, and it works on pages whose classes say nothing.
+    if (priceMatch && offer.priceAmount) {
+      const struck = struckPriceNear(priceMatch.element);
+      if (struck) {
+        original = {
+          amount: struck.amount,
+          confidence: rank(0.5),
+          selector: mark(struck.selector),
+        };
       }
+    }
+    if (!original) {
+      const originalMatch = firstMatch(root, ORIGINAL_PRICE_SELECTORS);
+      if (originalMatch) {
+        const parsed = normalizePrice(readValue(originalMatch.element));
+        if (parsed.amount) {
+          original = {
+            amount: parsed.amount,
+            confidence: originalMatch.confidence,
+            selector: originalMatch.selector,
+          };
+        }
+      }
+    }
+
+    // An "original" that is not strictly above the current price is not a former price —
+    // it is an instalment, a range's low end, or the current price wearing a second class.
+    // Discarded on every path: reporting no discount is honest, inventing one is not.
+    if (original && offer.priceAmount && !decimalGreaterThan(original.amount, offer.priceAmount)) {
+      original = null;
+    }
+
+    if (original) {
+      offer.originalPriceAmount = original.amount;
+      capture.evidence.push(
+        evidence('offer.originalPriceAmount', 'dom', original.confidence, original.selector),
+      );
     }
 
     // Reported on its own path so it never argues with the product-level claim. The pipeline

@@ -49,6 +49,117 @@ describe('domExtractor — price discipline', () => {
   });
 });
 
+describe('domExtractor — the former price is the struck one', () => {
+  // Each shape here was captured from a live page. The heuristic keys on strikethrough
+  // markup beside the current price, never on discount language — the live set showed the
+  // words lying in both directions.
+
+  it('reads a plain <s> with no price-ish class, beside the price', () => {
+    // Nike: <s>$120</s> next to $94.97, classes saying nothing.
+    const result = extract(`
+      <div class="buy-box">
+        <span itemprop="price" content="94.97">$94.97</span>
+        <s>$120</s>
+        <span>20% off</span>
+      </div>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('94.97');
+    expect(result.offer?.originalPriceAmount).toBe('120.00');
+  });
+
+  it('takes the struck reference, not the plain-text one', () => {
+    // Zalando shows two candidate originals: "Ursprünglich: 119,95 €" in plain text and a
+    // struck-through "47,95 €" carrying the -25% badge. Only the struck figure matches the
+    // advertised percentage; showing 119.95 beside -25% would assert a relationship the
+    // page does not claim.
+    const result = extract(`
+      <div class="price-block">
+        <span data-price="35.95">35,95 €</span>
+        <s>47,95 €</s>
+        <span>-25%</span>
+        <p>Ursprünglich: 119,95 €</p>
+      </div>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('35.95');
+    expect(result.offer?.originalPriceAmount).toBe('47.95');
+  });
+
+  it('reports no original when a sale label has nothing struck through', () => {
+    // AeroPress labels its only price "Sale price"; Uniqlo prints "Online + App-Member
+    // Price". Neither page shows a former price, and the label alone is not evidence.
+    const result = extract(`
+      <div>
+        <span class="sale-price" data-price="199.95">$199.95</span>
+        <span>Sale price</span>
+      </div>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('199.95');
+    expect(result.offer?.originalPriceAmount).toBeUndefined();
+  });
+
+  it('ignores a struck price far from the current one', () => {
+    // A sponsored tile can carry its own strikethrough. Adjacency is the discriminator:
+    // the page puts a former price beside the price it corrects, not four sections away.
+    const result = extract(`
+      <main>
+        <div class="product">
+          <div><div><div>
+            <span itemprop="price" content="67.97">$67.97</span>
+          </div></div></div>
+          <section class="also-bought">
+            <div class="tile"><s>$89.99</s><span>$49.99</span></div>
+          </section>
+        </div>
+      </main>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('67.97');
+    expect(result.offer?.originalPriceAmount).toBeUndefined();
+  });
+
+  it('discards an original that is not above the current price', () => {
+    // An instalment, a range's low end, or the current price wearing a second class.
+    // Reporting no discount is honest; inventing one is not.
+    const equal = extract(`
+      <span itemprop="price" content="59.90">$59.90</span>
+      <s>$59.90</s>
+    `);
+    const lower = extract(`
+      <span itemprop="price" content="129.00">$129.00</span>
+      <span class="was-price">$32.25</span>
+    `);
+
+    expect(equal.offer?.originalPriceAmount).toBeUndefined();
+    expect(lower.offer?.originalPriceAmount).toBeUndefined();
+  });
+
+  it('does not treat a struck current price as its own original', () => {
+    // Some templates strike the price element itself while a script swaps the number in.
+    const result = extract(`
+      <div><s><span itemprop="price" content="80.00">$80.00</span></s></div>
+    `);
+
+    expect(result.offer?.priceAmount).toBe('80.00');
+    expect(result.offer?.originalPriceAmount).toBeUndefined();
+  });
+
+  it('reads an inline line-through style as struck', () => {
+    // Amazon's "Typical price" renders the strike through CSS rather than <s>.
+    const result = extract(`
+      <div class="a-price-block">
+        <span data-price="50.97">$50.97</span>
+        <span style="text-decoration: line-through">$55.65</span>
+        <span>Typical price</span>
+      </div>
+    `);
+
+    expect(result.offer?.originalPriceAmount).toBe('55.65');
+  });
+});
+
 describe('domExtractor — the product root', () => {
   it('ignores a price that is not inside the product', () => {
     // Chewy: `[data-price]` matched the first such attribute in document order, which

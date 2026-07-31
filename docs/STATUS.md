@@ -186,7 +186,16 @@ its test is the same move VALIDATION.md forbids in its other clothes.
 
 Deferred, each for a stated reason rather than for lack of time: persisting
 `variantAvailability` to `items` and `item_observations` and showing both facts (lands with
-comparison); strikethrough original prices (under-reporting, not wrongness).
+comparison).
+
+Strikethrough original prices landed 2026-07-31: the DOM layer reads a struck-through
+figure within two hops of the element the current price came from, keyed on markup rather
+than discount language, with a strictly-greater guard on every path so an instalment or a
+range's low end can never become a discount. The live shapes are encoded as unit fixtures
+(Nike's plain `<s>`, Zalando's struck-vs-plain pair, Amazon's inline `line-through`,
+AeroPress's "Sale price" with nothing struck). Needs a `pnpm score:live` pass on the real
+pages to confirm — the scorer's `original` column should move on amazon/wayfair/zalando/oos
+and stay `·` on uniqlo/aeropress/stockx.
 
 Remaining in `selectedVariant`: opaque option ids (lululemon `Color: 76616` where the page
 shows "Rumble Crumble"), waiting on the deferred `hasVariant` matching. The Shopify variant id
