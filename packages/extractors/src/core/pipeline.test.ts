@@ -60,6 +60,47 @@ describe('extractProductCapture', () => {
     expect(result.capture.source.canonicalUrl).toBe('https://shop.lumenworks.example/p/1');
   });
 
+  it('routes an opaque ?variant= id to identifiers, not selectedVariant', () => {
+    const result = run(
+      `<!doctype html><html><head><title>Crew</title>
+      <script type="application/ld+json">
+        {"@type":"Product","name":"Essential Crew","sku":"CREW-UNIFORM",
+         "offers":{"price":"23.00","priceCurrency":"USD"}}
+      </script></head><body></body></html>`,
+      'https://shop.example/products/crew?variant=43742060085334',
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The id identifies the variant rather than describing it, so it must not pollute the
+    // compare view — and it must still reach the fingerprint through identifiers, or two
+    // sizes sharing a product-level sku would hash alike.
+    expect(result.capture.selectedVariant).toEqual({});
+    expect(result.capture.product.identifiers.variantId).toBe('43742060085334');
+    expect(result.capture.product.identifiers.sku).toBe('CREW-UNIFORM');
+  });
+
+  it('lets an adapter-supplied variant id win over the URL', () => {
+    const adapterCapture: PartialCapture = {
+      product: { identifiers: { variantId: 'from-adapter-1' } },
+      evidence: [evidence('product.identifiers', 'adapter', 0.95)],
+    };
+    const result = extractProductCapture(
+      {
+        document: page('<!doctype html><html><body></body></html>'),
+        url: 'https://shop.example/p?variant=99887766',
+      },
+      {
+        now: () => new Date(OBSERVED_AT),
+        extractors: [stubExtractor('shopify', 95, adapterCapture)],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.capture.product.identifiers.variantId).toBe('from-adapter-1');
+  });
+
   it('returns a graceful capture when nothing is extractable', () => {
     const result = run('<html><head><title>Catalogue</title></head><body></body></html>');
 

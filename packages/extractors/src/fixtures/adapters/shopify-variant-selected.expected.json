@@ -19,7 +19,8 @@
     "identifiers": {
       "sku": "MWR-41-SLT",
       "gtin": "00191234567891",
-      "productId": "7712340001"
+      "productId": "7712340001",
+      "variantId": "4400220002"
     }
   },
   "offer": {
@@ -150,11 +151,6 @@
       "source": "dom",
       "selector": "main h1",
       "confidence": 0.45
-    },
-    {
-      "field": "selectedVariant",
-      "source": "dom",
-      "confidence": 0.6
     }
   ],
   "extraction": {

@@ -188,10 +188,11 @@ Deferred, each for a stated reason rather than for lack of time: persisting
 `variantAvailability` to `items` and `item_observations` and showing both facts (lands with
 comparison); strikethrough original prices (under-reporting, not wrongness).
 
-Remaining in `selectedVariant`: Shopify variant ids (`Variant: 47776291946739`) that belong in
-`identifiers`, and opaque option ids (lululemon `Color: 76616` where the page shows "Rumble
-Crumble"). Moving the Shopify id is not a key rename — it has to enter the fingerprint's
-identifier precedence above `sku`, or two sizes of one product start hashing alike.
+Remaining in `selectedVariant`: opaque option ids (lululemon `Color: 76616` where the page
+shows "Rumble Crumble"), waiting on the deferred `hasVariant` matching. The Shopify variant id
+is done (2026-07-31): opaque `?variant=` tokens and `variants[].id` now land in
+`identifiers.variantId`, ranked above `sku` in the fingerprint so two sizes of one garment
+cannot hash alike — the coupling that made it one change is argued in DECISIONS.md.
 
 ## Phase 5 — Retailer adapters
 

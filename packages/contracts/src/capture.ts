@@ -77,6 +77,14 @@ export const productIdentifiersSchema = z.object({
   gtin: z.string().min(1).optional(),
   mpn: z.string().min(1).optional(),
   productId: z.string().min(1).optional(),
+  /**
+   * The retailer's id for the *selected variant* — Shopify's `?variant=47776291946739`,
+   * or `variants[].id` in its product JSON. It is an identifier, not an option the
+   * shopper chose, so it lives here rather than in `selectedVariant`; but it is the only
+   * per-variant identifier on platforms whose `sku` is product-level, which makes it the
+   * thing that keeps two sizes of one garment from fingerprinting alike.
+   */
+  variantId: z.string().min(1).optional(),
 });
 export type ProductIdentifiers = z.infer<typeof productIdentifiersSchema>;
 

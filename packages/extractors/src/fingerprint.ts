@@ -22,19 +22,25 @@ export interface FingerprintInput {
     gtin?: string | undefined;
     mpn?: string | undefined;
     productId?: string | undefined;
+    variantId?: string | undefined;
   };
 }
 
 /**
  * The identifier that best distinguishes this product, or `null`.
  *
- * GTIN first because it is globally unique across retailers; then MPN, which is unique
- * per manufacturer; then the retailer's own SKU and product id, which are only unique
- * within the site — but the URL in the fingerprint already scopes it to that site.
+ * GTIN first because it is globally unique across retailers — and assigned per sellable
+ * unit, so it already names the variant. Then the retailer's variant id: site-local, but
+ * the URL in the fingerprint already scopes the hash to the site, and unlike MPN or SKU it
+ * is guaranteed per-variant. On Shopify the `sku` is frequently product-level — shared by
+ * every size — so ranking `variantId` below `sku` would let two sizes of one garment hash
+ * alike, which is the false merge BUILD_PLAN.md §9.3 calls worse than a duplicate. Then
+ * MPN (unique per manufacturer), then SKU and product id (site-local, product-level).
  */
 export function primaryIdentifier(identifiers: FingerprintInput['identifiers']): string | null {
   for (const [kind, value] of [
     ['gtin', identifiers.gtin],
+    ['variantId', identifiers.variantId],
     ['mpn', identifiers.mpn],
     ['sku', identifiers.sku],
     ['productId', identifiers.productId],

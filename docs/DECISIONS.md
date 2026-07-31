@@ -611,3 +611,63 @@ now, with no consumer, is how a field ends up wrong in a way that later needs a 
 
 Until then the rule in `CLAUDE.md` holds and is the point: never invent missing product
 facts. A composition we do not have is shown as missing.
+
+## 2026-07-31 — A retailer's variant id is an identifier, and it outranks a product-level SKU
+
+**Decision.** An opaque `?variant=`/`?variation=` URL token — and Shopify's `variants[].id`
+where the adapter reads it — is stored as `identifiers.variantId`, not as a
+`selectedVariant` entry. In the fingerprint's `primaryIdentifier` precedence it sits between
+GTIN and MPN: `gtin → variantId → mpn → sku → productId`.
+
+**Context.** Live captures put `Variant=47776291946739` in `selectedVariant` on AeroPress
+and Everlane — an identifier wearing an option's clothes. In the compare view it is
+user-visible garbage; as a variant entry it also enters the fingerprint as text, which works
+by accident and only until the retailer renumbers.
+
+The removal could not be a simple drop. On Shopify the `sku` is frequently product-level —
+shared by every size of one garment — and the canonical URL drops `?variant=`, so on a page
+where the size control also goes undetected, the variant id is the only thing standing
+between two sizes and one fingerprint. Removing it from `selectedVariant` without ranking
+`variantId` above `sku` would let those saves silently merge: the false merge BUILD_PLAN.md
+§9.3 calls worse than duplicates. That coupling is why this shipped as one change — contract,
+extraction, fingerprint precedence, and stability tests together.
+
+The routing is deliberately narrow. Only `variant`/`variation` parameters whose value is
+opaque (a long digit run, or hex with a digit) are treated as ids; `?variant=harbour-blue`
+stays a readable option. Lululemon's `?color=76616` also stays an option even though the
+value is opaque — recovering its human label needs `hasVariant` matching, which is deferred,
+and moving it out of the variant map now would silently drop the colour from the
+fingerprint.
+
+**Consequences.** Items saved while the junk entry existed will not match the new
+fingerprint on their next capture and will refresh as a duplicate once, which is the safe
+direction. A URL-only variant id is resolved in the pipeline (like the canonical URL) rather
+than merged, because identifiers merge whole-object by source rank and a JSON-LD `{sku}`
+would otherwise discard it.
+
+## 2026-07-31 — One field name carrying two questions is a pattern, not a coincidence
+
+**Decision.** Recorded, not acted on: when a capture field turns out to hold answers to two
+different questions, the fix is to split the field (or route one answer elsewhere), never to
+rank the two answers against each other.
+
+**Context.** It has now happened three times. `availability` carried "is this product sold?"
+and "is this size available?" — resolved by splitting into variant- and product-level fields,
+after a proposed merge-rank exception showed that ranking two different facts against each
+other is a category error. `Material: 100% cotton` carried "what is this garment made of?"
+inside "what did the user select?" — resolved by removing it from `selectedVariant` with a
+composition field decided and deferred. StockX's price carries "what is the lowest ask?"
+against "what does Buy Now cost for the selected size?" — both real prices for one product,
+currently resolved by the adapter preferring the Buy Now figure and recorded in the
+adapter's own documentation.
+
+The shape is always the same: the page answers more questions than the contract has fields
+for, and the surplus answer squats in the nearest field with a plausible name. It looks like
+a wrong value; it is actually a missing field. The tell is a "wrong" value that is _true_ —
+76 really is the lowest ask, the product really is in stock, the shirt really is cotton.
+
+**Consequences.** When a live capture produces a confidently wrong value that turns out to be
+true of _something_, ask which question it answers before fixing the extractor. If the
+answer is "a question we have no field for", the extractor is not broken — the contract is
+narrow, and ranking, suppressing, or "fixing" the value hides real data. No new fields are
+added by this entry; it is the diagnostic rule for the next occurrence.

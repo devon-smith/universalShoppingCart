@@ -26,7 +26,7 @@ function validCapture(): ProductCaptureV1 {
       description: 'A shoe.',
       imageUrls: ['https://cdn.example.com/1.jpg'],
       selectedImageUrl: 'https://cdn.example.com/1.jpg',
-      identifiers: { sku: 'WR-9', gtin: '0123456789012' },
+      identifiers: { sku: 'WR-9', gtin: '0123456789012', variantId: '43742060085334' },
     },
     offer: {
       priceAmount: '98.00',

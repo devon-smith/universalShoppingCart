@@ -5,6 +5,7 @@ import { RETAILER_ADAPTERS } from '../adapters/registry';
 import { domExtractor } from '../generic/dom';
 import { jsonLdExtractor } from '../generic/json-ld';
 import { metaExtractor } from '../generic/meta';
+import { extractVariantIdFromUrl } from '../generic/variant';
 import { normalizeUrl } from '../normalize-url';
 import { domainFromUrl, retailerNameFromDomain } from '../normalizers/text';
 
@@ -165,6 +166,17 @@ export function extractProductCapture(
       ? claimedAvailability
       : undefined;
 
+  // Like the canonical URL above, a `?variant=` id is a fact about the page rather than a
+  // layer's claim, so it is resolved here rather than merged: an adapter that read the id
+  // out of the page's own data wins, and the URL fills in for the generic path. Identifiers
+  // merge whole-object by source rank, so without this a JSON-LD `{sku}` would silently
+  // discard a URL-only variant id.
+  const identifiers = { ...(merged.product?.identifiers ?? {}) };
+  if (!identifiers.variantId) {
+    const urlVariantId = extractVariantIdFromUrl(context.url);
+    if (urlVariantId) identifiers.variantId = urlVariantId;
+  }
+
   const draft = {
     schemaVersion: CAPTURE_SCHEMA_VERSION,
     source: {
@@ -180,7 +192,7 @@ export function extractProductCapture(
       description: merged.product?.description ?? null,
       imageUrls: merged.product?.imageUrls ?? [],
       selectedImageUrl: merged.product?.selectedImageUrl ?? null,
-      identifiers: merged.product?.identifiers ?? {},
+      identifiers,
     },
     offer: {
       priceAmount: merged.offer?.priceAmount ?? null,
