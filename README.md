@@ -6,7 +6,7 @@ This is **not** a universal checkout system. It never stores retailer credential
 
 ## Status
 
-**Phase 5 complete** — a cart that keeps watching, now with retailer adapters. Capture products from the extension side panel; search, filter, sort, edit, and archive them on the web, with undo and live updates across devices. Reopening the panel on a saved product re-observes its price and stock without touching your notes, and the dashboard shows how the price has moved and how old the last check is. Adapters for five commerce platforms read the variant you actually selected, and an extractor-health page shows which retailers extraction is struggling with. Sharing and comparison are next. See [docs/STATUS.md](docs/STATUS.md).
+**Validated against real retailer pages, redesign and staging in flight.** Phases 0–5 are built: capture products from the extension side panel; search, filter, sort, edit, and archive them on the web, with undo and live updates across devices. Reopening the panel on a saved product re-observes its price and stock without touching your notes. Extraction has since been validated against sixteen live retailer pages — zero silently wrong values — with the fixes that pass demanded: variant-level availability, strikethrough-only former prices, readable variant labels behind opaque URL codes. The primary category is clothing and the primary value is comparison (docs/DECISIONS.md), so the roadmap runs: finish the UI redesign, then the comparison view, then sharing. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Stack
 
