@@ -371,33 +371,38 @@ async function captureWeb() {
 
   await page.goto(`${appUrl}/app`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Meridian Wool Runner').first().waitFor();
+
+  // List is the default now: aligned columns are what makes several products comparable at a
+  // glance, which is the dashboard's job.
+  await shootAll(page, 'web-dashboard-list', WEB_WIDTHS);
+
+  await page.getByRole('button', { name: 'cards', exact: true }).click();
+  await page.waitForTimeout(200);
   await shootAll(page, 'web-dashboard-cards', WEB_WIDTHS);
+  await page.getByRole('button', { name: 'list', exact: true }).click();
+  await page.waitForTimeout(200);
 
-  // List view, if the dashboard offers the toggle.
-  const listToggle = page.getByRole('button', { name: /list/i }).first();
-  if (await listToggle.isVisible().catch(() => false)) {
-    await listToggle.click();
-    await page.waitForTimeout(200);
-    await shootAll(page, 'web-dashboard-list', WEB_WIDTHS);
-    const cardToggle = page.getByRole('button', { name: /card/i }).first();
-    if (await cardToggle.isVisible().catch(() => false)) await cardToggle.click();
-  } else {
-    console.log(stamp('web-dashboard-list SKIPPED — no view toggle found'));
-  }
+  // The secondary filters, open. They used to be a permanent bar above the grid that wrapped
+  // taller than the first card at 375px; the state worth photographing now is the popover.
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  await page.getByRole('dialog', { name: 'Filters' }).waitFor({ timeout: 10_000 });
+  await shootAll(page, 'web-filters-open', WEB_WIDTHS);
 
-  // Filters. The dashboard has no disclosure to open — the controls sit permanently in a bar
-  // above the grid, which is itself part of what the audit is about. So the state worth
-  // photographing is the bar in use: a status filter applied, narrowing the grid.
-  const status = page.locator('#filter-status');
-  if (await status.isVisible().catch(() => false)) {
-    await status.selectOption('saved');
-    await page.waitForTimeout(300);
-    await shootAll(page, 'web-filters-applied', WEB_WIDTHS);
-    await status.selectOption('');
-    await page.waitForTimeout(200);
-  } else {
-    console.log(stamp('web-filters-applied SKIPPED — no status filter found'));
-  }
+  // And the same filter applied, with the popover closed, so the chip beside the results is
+  // the only thing saying what is narrowing them.
+  await page.getByLabel('Retailer').selectOption('Fieldcraft');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await shootAll(page, 'web-filters-applied', WEB_WIDTHS);
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await page.waitForTimeout(200);
+
+  // A section reached from the navigation, rather than from a status select competing with it.
+  await page.getByRole('button', { name: /^Archived/ }).click();
+  await page.waitForTimeout(300);
+  await shootAll(page, 'web-section-archived-empty', WEB_WIDTHS);
+  await page.getByRole('button', { name: /^Cart/ }).first().click();
+  await page.waitForTimeout(300);
 
   // A search that matches nothing. The empty result is a different state from an empty cart
   // and the redesign has to tell them apart.

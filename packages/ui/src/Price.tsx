@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 
 import { cn } from './cn';
-import { compareDecimal, formatMoney } from './money';
+import { compareDecimal, discountPercent, formatMoney } from './money';
 
 /**
  * Money on screen.
@@ -118,6 +118,10 @@ export function Price({
   const discount =
     listPrice !== null && compareDecimal(listPrice.amount, value.amount) === 1 ? listPrice : null;
 
+  // Derived from the pair the guard above already accepted, so there is no arrangement of
+  // props that yields a percentage without a genuine, strictly-higher list price.
+  const saving = discount === null ? null : discountPercent(discount.amount, value.amount);
+
   const spoken = `${formatted}${CADENCE_SPOKEN[cadence]}${
     discount ? `, reduced from ${formatMoney(discount.amount, discount.currency, locale)}` : ''
   }`;
@@ -134,9 +138,14 @@ export function Price({
           {suffix ? <span className="uc-price__note">{suffix}</span> : null}
         </span>
         {discount ? (
-          <span className="uc-price__original">
-            {formatMoney(discount.amount, discount.currency, locale)}
-          </span>
+          <>
+            <span className="uc-price__original">
+              {formatMoney(discount.amount, discount.currency, locale)}
+            </span>
+            {saving === null ? null : (
+              <span className="uc-price__saving">{`\u2212${saving}%`}</span>
+            )}
+          </>
         ) : null}
       </span>
     </span>

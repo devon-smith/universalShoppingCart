@@ -209,6 +209,10 @@
 .uc-price__contents {
   display: inline-flex;
   align-items: baseline;
+  /* Wraps rather than overflows. In a narrow column the amount, the struck-out original and
+     the saving together exceed the width, and a clipped price reads as a different number —
+     "−33%" cut to "−3" is worse than the same three parts on two lines. */
+  flex-wrap: wrap;
   gap: var(--uc-space-1);
   min-width: 0;
 }
@@ -415,4 +419,13 @@
 .uc-toast__message {
   flex: 1;
   min-width: 0;
+}
+
+.uc-price__saving {
+  /* Green is a second signal here, never the only one: the minus sign and the "%" carry the
+     meaning, and the struck-out original sits beside it. */
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--uc-success);
+  white-space: nowrap;
 }

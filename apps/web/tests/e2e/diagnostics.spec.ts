@@ -38,6 +38,11 @@ test.describe('extractor health', () => {
     );
 
     await signInBrowser(page, client);
+
+    // Extractor health left the dashboard header for the account menu. It names DOM markup
+    // and extractor versions — a developer tool, and not something a person browsing their
+    // saved clothes should be navigating past.
+    await page.getByTestId('account-menu').click();
     await page.getByRole('link', { name: 'Extractor health' }).click();
     await expect(page).toHaveURL(/\/app\/diagnostics$/);
 

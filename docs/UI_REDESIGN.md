@@ -259,3 +259,66 @@ known-item path reaches it with less slack because `panel.reload()` destroys eve
 recognition text and the image element appear in the same tick. A race landing on the boundary,
 not a layout bug. The harness now waits for every image to have resolved rather than for a
 clock, so the shot describes the component instead of the machine it ran on.
+
+## Phase 3 — the dashboard shell and cart browsing
+
+**The front door was lying.** The landing page opened with "Phase 1 — accounts and access
+control" and closed with "product capture, the dashboard, and sharing arrive in later phases".
+Both were true when written and had been false for several phases. A first visitor was reading
+a changelog written for the person building it, describing a product less capable than the one
+they were about to use. It now says what the thing does, in three steps, with every claim
+mapped to shipped behaviour — "re-checked when you revisit", not "tracked", because nothing
+runs in the background yet. `/login` keeps its mechanism exactly and gains the same framing.
+
+**The dashboard opened on its own controls.** Five bare selects and two checkboxes sat in a row
+above the results; at 375px that row wrapped to a block taller than the first product card. The
+secondary filters now live in a popover, what is active shows as a chip beside the results, and
+search stays visible in the content column where it acts on what you can see. The header says
+which cart, how many items, when it last changed, and how to add one — which is the extension,
+stated rather than assumed.
+
+**Navigation, and one control per fact.** Cart, Recently changed, Purchased, Archived: a rail
+from `lg` up, a drawer below it, counts beside each label. The nav _is_ the status control, so
+the Status select is gone — two controls writing one field could disagree. Diagnostics left the
+header for the account menu, labelled as the developer tool it is; it names DOM markup and
+extractor versions and is not a shopping destination.
+
+**Cards and rows.** Cards are image-forward, because somebody choosing between three jackets
+recognises them by sight before they read a title. The list is not a squashed card grid — it
+exists so price sits under price and availability under availability, which is how you notice
+two of four are out of stock without reading four paragraphs. Both go through `ProductImage`
+and `Price`, and a card with no usable image drops the frame rather than reserving a grey
+rectangle.
+
+Two audit findings closed at the display layer. "Northwind · Northwind" was brand and retailer
+printed twice; `sourceLine` compares them loosely and says it once. Titles carrying "…& Reviews
+| Wayfair" are trimmed by `displayTitle`, which never drops the first segment and returns the
+original if its rules would empty it. Neither touches the extractor — the stored title stays
+the record of what the page said.
+
+**Five empty states, not two.** A search miss, a filter miss, an empty cart, an empty section
+and a new account are five different situations that shared two messages, one of which told a
+person who had typed a search term to go and look at their filters. Each now names what
+happened and offers the control that fixes it.
+
+**No comparison UI.** Not a checkbox, not a tray, not a nav entry. It is built as its own work
+after the redesign, per the ADR — and a control that leads nowhere is worse than its absence.
+
+### What the tests caught
+
+Three defects surfaced from the e2e suite rather than from looking at screenshots, which is
+the argument for having driven it through the real flows:
+
+- `role="menuitem"` **replaces** the implicit button and link roles. `getByRole('button', {
+name: 'Sign out' })` stopped matching, and a screen reader would have stopped calling the
+  diagnostics link a link. Both overlays are now labelled groups of ordinary controls.
+- The Archived section rendered nothing. `sectionItems` included the archived items and
+  `applyQuery` then re-applied the status rule, whose "no statuses means hide archived"
+  default discarded them. The section's statuses are now handed to the query.
+- The whole suite ran green against a **stale** `next start` from an earlier session,
+  reporting thirteen failures that were all the old UI. Worth remembering: `reuseExistingServer`
+  is not free.
+
+A fourth came from the screenshots: at 1024px the row's six columns truncated the retailer to
+"Northwind · Bergs…" and wrapped every chip three lines deep. The variant moved under the
+product name it belongs to, leaving five columns and the alignment that actually matters.

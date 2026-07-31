@@ -109,3 +109,77 @@ describe('money helpers', () => {
     expect(formatMoney('10.00', 'NOTACODE')).toBe('10.00 NOTACODE');
   });
 });
+
+describe('Price discount percentage', () => {
+  it('shows the saving beside a genuine list price', () => {
+    render(
+      <Price
+        cadence="one_time"
+        value={{ amount: '98.00', currency: 'USD' }}
+        listPrice={{ amount: '120.00', currency: 'USD' }}
+      />,
+    );
+
+    expect(document.querySelector('.uc-price__saving')?.textContent).toBe('−18%');
+  });
+
+  it('shows no percentage when there is no list price', () => {
+    render(<Price cadence="one_time" value={{ amount: '98.00', currency: 'USD' }} />);
+    expect(document.querySelector('.uc-price__saving')).toBeNull();
+  });
+
+  it('shows no percentage when the "original" is not higher', () => {
+    render(
+      <Price
+        cadence="one_time"
+        value={{ amount: '98.00', currency: 'USD' }}
+        listPrice={{ amount: '98.00', currency: 'USD' }}
+      />,
+    );
+
+    expect(document.querySelector('.uc-price__saving')).toBeNull();
+    expect(document.querySelector('.uc-price__original')).toBeNull();
+  });
+
+  it('gives a range no percentage, because a range is not a discount', () => {
+    render(
+      <Price
+        cadence="one_time"
+        value={null}
+        range={{
+          from: { amount: '10.99', currency: 'USD' },
+          to: { amount: '145.94', currency: 'USD' },
+        }}
+      />,
+    );
+
+    expect(document.querySelector('.uc-price__saving')).toBeNull();
+    expect(document.querySelector('.uc-price__original')).toBeNull();
+  });
+
+  it('stays silent rather than rounding to a meaningless 0%', () => {
+    render(
+      <Price
+        cadence="one_time"
+        value={{ amount: '99.999', currency: 'USD' }}
+        listPrice={{ amount: '100.00', currency: 'USD' }}
+      />,
+    );
+
+    // The strikethrough is honest — it really is lower — but "−0%" is not information.
+    expect(document.querySelector('.uc-price__original')).toBeTruthy();
+    expect(document.querySelector('.uc-price__saving')).toBeNull();
+  });
+
+  it('keeps the percentage out of the spoken string, which already names both amounts', () => {
+    render(
+      <Price
+        cadence="one_time"
+        value={{ amount: '98.00', currency: 'USD' }}
+        listPrice={{ amount: '120.00', currency: 'USD' }}
+      />,
+    );
+
+    expect(document.querySelector('.uc-sr-only')?.textContent).toBe('$98.00, reduced from $120.00');
+  });
+});
