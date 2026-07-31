@@ -24,13 +24,29 @@ test.describe('side panel sign-in', () => {
     await page.getByLabel(/6-digit code sent to/).fill(code);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-    // Signed in: the capture surface appears, and the account menu holds the identity. The
-    // header used to carry the address; it now carries the cart selector and the way out, and
-    // identity moved behind the menu so the panel's most valuable space is the product's.
+    // Signed in: the capture surface appears, with the recent list empty beneath it.
     await expect(page.getByRole('heading', { name: 'Save this product' })).toBeVisible();
-    await page.getByRole('button', { name: 'Account and settings' }).click();
-    await expect(page.getByText(email)).toBeVisible();
     await expect(page.getByText('Nothing saved yet')).toBeVisible();
+
+    // Settings is a destination, not a drawer: it replaces the capture surface and comes back.
+    // At 320px a panel that keeps capture, the recent list and an account section on one screen
+    // pushes the primary action off the bottom, so this asserts the trip rather than coexistence.
+    await page.getByRole('button', { name: 'Account and settings' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await expect(page.getByText(email)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Save this product' })).toBeHidden();
+
+    await page.getByRole('button', { name: 'Back' }).click();
+    await expect(page.getByRole('heading', { name: 'Save this product' })).toBeVisible();
+    await expect(page.getByText('Nothing saved yet')).toBeVisible();
+
+    // The permission copy 2A took out of the header is reachable, and says what is captured.
+    await page.getByRole('button', { name: 'Account and settings' }).click();
+    await page.getByRole('button', { name: 'What Universal Cart can see' }).click();
+    await expect(page.getByRole('heading', { name: 'What it never touches' })).toBeVisible();
+    await expect(page.getByText('Your cookies, or any account you are signed in to')).toBeVisible();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
 
     // The session lives in extension-local storage, not in a cookie or in memory.
     const stored = await page.evaluate(async () => {

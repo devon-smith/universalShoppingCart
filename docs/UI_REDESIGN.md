@@ -204,3 +204,58 @@ filters, empty and error states.
   consume; an unused primitive is a maintenance cost with no user.
 - **No change to extraction, RLS, the security model, extension permissions, or the Supabase
   architecture.** None of those are UI problems and none are touched.
+
+## Phase 2C — authentication and settings
+
+The last of the extension's own surfaces. Three things changed and one long-standing question
+was settled.
+
+**Sign-in became onboarding.** It was a heading reading "Sign in" above two controls, which
+asks for an address before saying what it buys. Now: what the product is, three things it does,
+then the form — mechanism unchanged, still a six-digit code verified inside the panel, because
+the panel cannot follow an emailed link into a browser tab whose cookies are not its session
+storage. Each benefit is a claim about shipped behaviour; none of them says the price is
+watched, because nothing watches it yet (BUILD_PLAN.md §14.2).
+
+**Failures say what to do.** "Token has expired or is invalid" is one string for two different
+situations, and Supabase returns it for both deliberately — telling them apart would tell an
+attacker which codes had once been real. So the panel offers both readings and the single
+action that resolves either, and never asserts "your code expired" as though it knew. Rate
+limiting is distinguished, because there the useful advice is the opposite: wait, do not resend.
+Our own validation messages pass through untouched — "Enter a valid email address" needs no
+"Sign-in failed" wrapped around it.
+
+**The permission copy found its home.** What 2A took out of the header is now `PrivacyContent`,
+reachable from settings and from a disclosure on the sign-in screen — the person deciding
+whether to trust a freshly installed extension is exactly the one who wants it. It is written
+for a person rather than transcribed from the manifest: what is read and when, the seven
+captured fields in full, and what is never touched. The field list is `ProductCaptureV1`; if
+that type gains a field, this list is wrong and must change with it.
+
+**Settings is a destination, not a drawer.** At 320px an expanding section under capture and
+the recent list pushes the primary action off the bottom. Both subviews replace the shell, so
+each takes the `h1` and focus on arrival, and returns focus to the account button on the way
+out. Contents are deliberately few: account, appearance, starting cart, the real keyboard
+shortcut, privacy, dashboard links, sign out. No notification or export rows — a settings
+screen full of controls for unbuilt features is a list of promises.
+
+**Two honesty fixes fell out of it.** The shortcut was printed as `⌘⇧U`, which is the macOS
+suggestion and nothing else — wrong on Windows, and wrong for anyone who rebound it. It now
+comes from `chrome.commands`, including the case where Chrome assigned no binding at all. And
+the "not configured" screen printed environment-variable names to whoever opened it; that is
+useful in `wxt dev` and reads as broken software to someone who installed from the Web Store,
+so the release path now says what happened in English.
+
+### The `panel-known-item` image frame, settled
+
+2B flagged that this state kept an image frame where the other states collapsed to the no-image
+layout, and guessed the error event was landing just after the shutter. The guess was wrong in
+its mechanism. Measured, `cdn.example.com` fails in 1–65ms, and instrumenting the real flow
+showed both states behaving identically: frame at +0ms, collapsed by +140ms, in the saved state
+and the known-item state alike. There is no `onUnavailable` gap — the wiring fires in both.
+
+What differed was elapsed time before the shutter. `shootAll` waited a fixed 140ms, and the
+known-item path reaches it with less slack because `panel.reload()` destroys everything and the
+recognition text and the image element appear in the same tick. A race landing on the boundary,
+not a layout bug. The harness now waits for every image to have resolved rather than for a
+clock, so the shot describes the component instead of the machine it ran on.

@@ -711,6 +711,56 @@ If a resale or marketplace use case later makes true cross-seller matching valua
 reopened with evidence. The design in §9.3 stays a sound design — for the goods it was written
 for.
 
+## 2026-07-31 — Which sign-in providers exist is asked of the Auth server, not baked into the build
+
+**Context.** The panel offered "Continue with Google" unconditionally. Local Supabase ships
+`[auth.external.google] enabled = false`, so on every developer machine — and on any project
+where the provider was never configured — that button opened an OAuth window that could only
+fail.
+
+A build-time flag (`WXT_PUBLIC_GOOGLE_ENABLED`) would answer the question without a request.
+It was rejected because it is a copy of a fact owned by the Auth server, and the failure mode
+of a stale copy is the exact bug being fixed: a button that cannot work. `GET /auth/v1/settings`
+returns the provider map for the publishable key, which is authoritative and needs no
+maintenance.
+
+**Consequences.** The sign-in screen makes one extra request on mount. Nothing waits for it —
+email sign-in is complete and usable throughout, and Google appears afterwards if it exists.
+Any failure, including offline, resolves to "google: false, email: true": a failed probe must
+never remove the only way in, and must never advertise a method whose availability is unknown.
+
+Adding a provider becomes a Supabase configuration change plus a UI branch, with no build
+variable to keep in step.
+
+## 2026-07-31 — Settings and privacy are views that replace capture, not sections below it
+
+**Context.** The account menu previously expanded a section beneath the capture form and the
+recent list. At 320px — the narrowest panel Chrome allows — that puts three concerns on one
+scrolling column and pushes the primary action off the bottom.
+
+**Consequences.** `SignedInPanel` routes between `capture`, `settings` and `privacy`. Each
+subview replaces the shell, so its heading is the document's `h1` and takes focus on arrival;
+leaving returns focus to the account button that opened it.
+
+One existing assertion changed shape. `auth.spec.ts` asserted that the address and the empty
+recent list were visible _at the same time_ after opening the account menu. Both are still
+asserted, in the places they now occur — the recent list on the capture view, the address in
+settings — plus the trip back, and that capture is hidden while settings is open. The test
+covers more than it did; it no longer encodes a layout the redesign replaced.
+
+## 2026-07-31 — Panel preferences live in extension storage, not in Postgres
+
+**Context.** 2C adds two preferences: appearance, and which cart the panel opens on.
+
+**Consequences.** Both are written to `chrome.storage.local` under one key. Neither is shared
+data — a theme belongs to the machine it is read on, and the starting cart is a property of
+this browser, not of the account. Putting them in Postgres would mean a migration, a round
+trip before first paint, and a row to keep in step with `carts.is_default`.
+
+`carts.is_default` remains the account-wide answer and is untouched by this setting: choosing
+a cart here changes only where this panel starts, which is why the control says so. The stored
+value is validated on read like any other untrusted input — extension storage is versionless
+and writable by any past or future build.
 ## 2026-08-02 — Composition lands, raw, now that comparison has a consumer for it
 
 **Decision.** `product.composition` becomes a real capture field and an `items.composition`

@@ -14,8 +14,8 @@ export interface Cart {
  *
  * What used to live here was a sentence explaining that the build reads no page content and
  * requests no host permissions. True, and important — and developer-facing, sitting in the most
- * valuable space on the product's most important surface. It moves to a privacy view reachable
- * from the account menu, which 2C builds; the link below is the placeholder for it.
+ * valuable space on the product's most important surface. It now lives in `PrivacyContent`,
+ * reached through the account button below, rewritten for somebody who does not read manifests.
  *
  * The cart selector lives here rather than in the capture form, so there is exactly one control
  * writing that state. The preview confirms the destination in a line of text and offers to move
@@ -27,12 +27,14 @@ export function PanelHeader({
   onCartChange,
   onAccount,
   cartSelectRef,
+  accountButtonRef,
 }: {
   carts: Cart[];
   cartId: string;
   onCartChange: (id: string) => void;
   onAccount: () => void;
   cartSelectRef?: React.Ref<HTMLSelectElement>;
+  accountButtonRef?: React.Ref<HTMLButtonElement>;
 }) {
   return (
     <header className="panel-header">
@@ -79,6 +81,7 @@ export function PanelHeader({
 
         <IconButton
           label="Account and settings"
+          ref={accountButtonRef}
           onClick={onAccount}
           icon={
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor">

@@ -733,3 +733,407 @@ body {
   font-size: 0.8125rem;
   text-decoration: none;
 }
+
+/* ==========================================================================================
+   Phase 2C — authentication, settings and privacy.
+   The last of the panel's own surfaces to move onto the shared tokens; the `--panel-*`
+   aliases above now serve nothing but the not-configured notice.
+   ========================================================================================== */
+
+/* ---------- sign-in, as onboarding ---------- */
+
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-4);
+  padding: var(--uc-space-3);
+  min-width: 0;
+}
+
+.onboarding__pitch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.onboarding__promise {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--uc-foreground);
+  /* Balanced wrapping keeps a three-word orphan off the last line at 320px. */
+  text-wrap: balance;
+}
+
+.onboarding__benefits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding__benefit {
+  position: relative;
+  padding-left: var(--uc-space-4);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--uc-foreground-muted);
+}
+
+/* A tick drawn from a border pair: no icon font, no remote request, and it inherits colour. */
+.onboarding__benefit::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--uc-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.onboarding__auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  padding: var(--uc-space-3);
+  border: 1px solid var(--uc-border);
+  border-radius: var(--uc-radius-surface);
+  background: var(--uc-surface);
+  min-width: 0;
+}
+
+.onboarding__auth-heading {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.onboarding__note,
+.onboarding__sent {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__sent strong {
+  color: var(--uc-foreground);
+  /* A long address must wrap rather than widen the panel. */
+  overflow-wrap: anywhere;
+}
+
+.onboarding__failure-body {
+  display: block;
+  margin-top: 2px;
+}
+
+.onboarding__alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--uc-space-1) var(--uc-space-3);
+}
+
+.onboarding__inline-action {
+  padding: 2px;
+  border: 0;
+  border-radius: var(--uc-radius-control);
+  background: none;
+  color: var(--uc-primary);
+  font: inherit;
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.onboarding__inline-action:disabled {
+  color: var(--uc-foreground-muted);
+  cursor: default;
+}
+
+.onboarding__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--uc-space-2);
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__divider::before,
+.onboarding__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--uc-border);
+}
+
+.onboarding__privacy {
+  font-size: 0.75rem;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__privacy-summary {
+  border-radius: var(--uc-radius-control);
+  color: var(--uc-primary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.onboarding__privacy-summary::-webkit-details-marker {
+  display: none;
+}
+
+.onboarding__privacy-summary::before {
+  content: '▸ ';
+}
+
+.onboarding__privacy[open] .onboarding__privacy-summary::before {
+  content: '▾ ';
+}
+
+.onboarding__privacy[open] .privacy {
+  margin-top: var(--uc-space-3);
+}
+
+/* ---------- settings and privacy views ---------- */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-4);
+  padding: var(--uc-space-3);
+  min-width: 0;
+}
+
+.settings__bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  min-width: 0;
+}
+
+.settings__back {
+  align-self: flex-start;
+  padding: 2px var(--uc-space-1);
+  margin-left: calc(var(--uc-space-1) * -1);
+  border: 0;
+  border-radius: var(--uc-radius-control);
+  background: none;
+  color: var(--uc-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.settings__heading {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--uc-foreground);
+}
+
+/* The heading takes focus on arrival; it is not an interactive control, so it gets the ring
+   and nothing else. */
+.settings__heading:focus-visible {
+  outline: none;
+  box-shadow: var(--uc-focus-ring);
+  border-radius: var(--uc-radius-control);
+}
+
+.settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  padding-bottom: var(--uc-space-4);
+  border-bottom: 1px solid var(--uc-border);
+  min-width: 0;
+}
+
+.settings__group--last {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.settings__label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.settings__account {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--uc-foreground);
+  overflow-wrap: anywhere;
+}
+
+.settings__body {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--uc-foreground);
+}
+
+.settings__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--uc-foreground-muted);
+}
+
+.settings__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  align-items: flex-start;
+}
+
+.settings__link {
+  padding: 2px;
+  border: 0;
+  border-radius: var(--uc-radius-control);
+  background: none;
+  align-self: flex-start;
+  color: var(--uc-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* A segmented control. The radio itself is screen-reader-only, so keyboard selection and the
+   accessibility tree come from the platform while the face carries the styling. */
+.settings__choices {
+  display: flex;
+  gap: var(--uc-space-1);
+  padding: 3px;
+  border: 1px solid var(--uc-border);
+  border-radius: var(--uc-radius-control);
+  background: var(--uc-surface-muted);
+}
+
+.settings__choice {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings__choice-face {
+  display: block;
+  padding: var(--uc-space-1) var(--uc-space-2);
+  border-radius: 6px;
+  color: var(--uc-foreground-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--uc-duration-standard) var(--uc-ease);
+}
+
+.settings__choice input:checked + .settings__choice-face {
+  background: var(--uc-surface);
+  color: var(--uc-foreground);
+  font-weight: 600;
+  box-shadow: var(--uc-shadow-raised);
+}
+
+.settings__choice input:focus-visible + .settings__choice-face {
+  outline: none;
+  box-shadow: var(--uc-focus-ring);
+}
+
+/* ---------- the privacy explanation ---------- */
+
+.privacy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-4);
+  min-width: 0;
+}
+
+.privacy__lede {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--uc-foreground);
+}
+
+.privacy__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.privacy__heading {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.privacy__body {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--uc-foreground-muted);
+}
+
+.privacy__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--uc-foreground);
+}
+
+.privacy__list li {
+  position: relative;
+  padding-left: var(--uc-space-3);
+}
+
+.privacy__list li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.5em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--uc-border-strong);
+}
+
+/* A crossed-out marker, so the two lists cannot be mistaken for each other at a glance. */
+.privacy__list--never li::before {
+  top: 0.55em;
+  width: 7px;
+  height: 2px;
+  border-radius: 0;
+  background: var(--uc-danger);
+}

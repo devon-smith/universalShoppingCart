@@ -58,6 +58,11 @@ export interface IconButtonProps extends Omit<
   label: string;
   icon: ReactNode;
   className?: string;
+  /**
+   * React 19 takes `ref` as an ordinary prop. Leaving a subview must return focus to the
+   * control that opened it, which means the opener has to be reachable.
+   */
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 export function IconButton({
@@ -65,11 +70,13 @@ export function IconButton({
   icon,
   type = 'button',
   className,
+  ref,
   ...rest
 }: IconButtonProps): ReactElement {
   return (
     <button
       type={type}
+      ref={ref}
       aria-label={label}
       className={cn('uc-icon-button uc-focusable', className)}
       {...rest}
