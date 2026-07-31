@@ -173,6 +173,9 @@ export type Database = {
           note: string | null
           original_price: number | null
           priority: Database["public"]["Enums"]["item_priority"]
+          product_availability:
+            | Database["public"]["Enums"]["item_availability"]
+            | null
           quantity: number
           retailer_name: string
           selected_variant: Json
@@ -204,6 +207,9 @@ export type Database = {
           note?: string | null
           original_price?: number | null
           priority?: Database["public"]["Enums"]["item_priority"]
+          product_availability?:
+            | Database["public"]["Enums"]["item_availability"]
+            | null
           quantity?: number
           retailer_name: string
           selected_variant?: Json
@@ -235,6 +241,9 @@ export type Database = {
           note?: string | null
           original_price?: number | null
           priority?: Database["public"]["Enums"]["item_priority"]
+          product_availability?:
+            | Database["public"]["Enums"]["item_availability"]
+            | null
           quantity?: number
           retailer_name?: string
           selected_variant?: Json

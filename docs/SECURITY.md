@@ -52,24 +52,29 @@ characters. Redirect targets are built from the client-visible `Host` rather tha
 ## Authorization
 
 Every exposed table has RLS enabled and `anon` holds no grants. The policy matrix and its
-test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 90
-pgTAP assertions across five files, covering the cases listed in BUILD_PLAN.md §8.2: user
+test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 101
+pgTAP assertions across six files, covering the cases listed in BUILD_PLAN.md §8.2: user
 bootstrap (9), cart and membership RLS (18), atomic ingestion (29), item field ownership
-(14), and revisit refresh (20).
+(14), revisit refresh (20), and the two-fact availability pair (11).
 
 The dashboard checks the user a second time in the page itself, so a middleware
 misconfiguration alone cannot expose it.
 
 ## Extension permissions
 
-Requested today: `sidePanel`, `storage`, `identity`, `activeTab`, `scripting`. No
-`host_permissions` and no `<all_urls>` in a release build.
+Requested today: `sidePanel`, `storage`, `identity`, `activeTab`, `scripting`,
+`contextMenus`. No `host_permissions` and no `<all_urls>` in a release build.
 
 `activeTab` is the whole design. It grants access to one tab, at the moment the user
 invokes the extension, and expires on navigation — so the extension can read the product
 page in front of the user and nothing else. The capture script is **unlisted**: it appears
 in no `content_scripts` entry, matches no host, and is injected on demand with
 `chrome.scripting.executeScript`.
+
+`contextMenus` is not a convenience: a context-menu click is an _action invocation_,
+which is one of the three gestures that actually confer `activeTab` on the tab the user
+is looking at (toolbar click, context menu, keyboard command). See
+`apps/extension/lib/manifest.ts`.
 
 Two tests guard this. `apps/extension/lib/manifest.test.ts` pins the exact permission list
 and asserts that no build grants broad host access; the extension end-to-end suite reads

@@ -74,22 +74,23 @@ A saved product. The columns fall into three groups, and the grouping is the poi
 
 **Retailer-observed — rewritten on every capture and revisit:**
 
-| Column             | Type                     | Notes                        |
-| ------------------ | ------------------------ | ---------------------------- |
-| `source_url`       | `text`                   | the URL as visited           |
-| `canonical_url`    | `text`                   | when the page provides one   |
-| `domain`           | `text`                   |                              |
-| `retailer_name`    | `text`                   |                              |
-| `title`            | `text`                   | non-blank                    |
-| `brand`            | `text`                   |                              |
-| `description`      | `text`                   |                              |
-| `image_url`        | `text`                   |                              |
-| `currency`         | `text`                   | ISO 4217 when present        |
-| `current_price`    | `numeric(20,6)`          | ≥ 0 when present             |
-| `original_price`   | `numeric(20,6)`          | ≥ 0 when present             |
-| `availability`     | `item_availability` enum | default `unknown`            |
-| `selected_variant` | `jsonb`                  | only what is selected        |
-| `identifiers`      | `jsonb`                  | sku / gtin / mpn / productId |
+| Column                 | Type                     | Notes                                                                                                                |
+| ---------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `source_url`           | `text`                   | the URL as visited                                                                                                   |
+| `canonical_url`        | `text`                   | when the page provides one                                                                                           |
+| `domain`               | `text`                   |                                                                                                                      |
+| `retailer_name`        | `text`                   |                                                                                                                      |
+| `title`                | `text`                   | non-blank                                                                                                            |
+| `brand`                | `text`                   |                                                                                                                      |
+| `description`          | `text`                   |                                                                                                                      |
+| `image_url`            | `text`                   |                                                                                                                      |
+| `currency`             | `text`                   | ISO 4217 when present                                                                                                |
+| `current_price`        | `numeric(20,6)`          | ≥ 0 when present                                                                                                     |
+| `original_price`       | `numeric(20,6)`          | ≥ 0 when present                                                                                                     |
+| `availability`         | `item_availability` enum | default `unknown`; the **selected variant's** availability                                                           |
+| `product_availability` | `item_availability` enum | nullable; the page's product-level claim, kept only when it differs — "Nike still sells this shoe, your 6.5 is gone" |
+| `selected_variant`     | `jsonb`                  | only what is selected                                                                                                |
+| `identifiers`          | `jsonb`                  | sku / gtin / mpn / productId / variantId                                                                             |
 
 **Provenance:** `fingerprint` (64 lowercase hex, checked), `extractor_id`,
 `extractor_version`, `extraction_confidence` (0–1), `last_observed_at`, `created_by`.
