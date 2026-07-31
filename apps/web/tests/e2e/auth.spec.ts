@@ -50,17 +50,22 @@ test.describe('magic-link sign-in', () => {
     await page.goto(signInUrlFrom(await inbox.next()));
 
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
 
-    // The signup trigger created exactly one cart, and it is the default.
-    const carts = page.getByRole('list').getByRole('listitem');
-    await expect(carts).toHaveCount(1);
-    await expect(carts.first()).toContainText('My cart');
-    await expect(carts.first()).toContainText('Default');
+    // The signup trigger created exactly one cart, and it is the default. The dashboard used
+    // to print the carts as a list at the bottom of the page; the cart is now chosen from the
+    // navigation, so that is where the same fact is asserted.
+    const cartSelect = page.getByLabel('Cart', { exact: true });
+    await expect(cartSelect.locator('option')).toHaveCount(1);
+    await expect(cartSelect.locator('option')).toHaveText('My cart (default)');
 
     // A signed-in user has no reason to see the login page.
     await page.goto('/login');
     await expect(page).toHaveURL(/\/app$/);
+
+    // Identity moved behind the account menu, the same move the extension made in 2C: an
+    // address the user already knows does not earn a line under the page heading.
+    await page.getByTestId('account-menu').click();
+    await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/login$/);
@@ -84,9 +89,9 @@ test.describe('magic-link sign-in', () => {
     for (const visit of [1, 2]) {
       await signInBrowser(page, client);
 
-      const carts = page.getByRole('list').getByRole('listitem');
+      const carts = page.getByLabel('Cart', { exact: true }).locator('option');
       await expect(carts, `visit ${visit} should still see exactly one cart`).toHaveCount(1);
-      await expect(carts.first()).toContainText('My cart');
+      await expect(carts.first()).toHaveText('My cart (default)');
 
       // Discard the browser's session rather than clicking Sign out, which revokes the
       // session server-side and would leave nothing to return with. Signing out is asserted

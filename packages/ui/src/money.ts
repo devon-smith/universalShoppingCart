@@ -35,6 +35,30 @@ export function compareDecimal(left: string, right: string): number | null {
 }
 
 /**
+ * How far `now` sits below `was`, as a whole percent, or `null`.
+ *
+ * `Price` calls this only after `compareDecimal` has established that `was` is strictly
+ * greater, which is what stops a range or a subscription price from producing a "saving".
+ * Keeping the arithmetic here rather than in a card means no caller can derive a percentage
+ * from a pair of numbers the guard never saw.
+ *
+ * The division is floating point, which is fine: the result is a rounded integer shown beside
+ * two exact amounts, never a value anything is computed from.
+ */
+export function discountPercent(was: string, now: string): number | null {
+  if (compareDecimal(was, now) !== 1) return null;
+
+  const wasValue = Number(was);
+  const nowValue = Number(now);
+  if (!Number.isFinite(wasValue) || !Number.isFinite(nowValue) || wasValue <= 0) return null;
+
+  const percent = Math.round(((wasValue - nowValue) / wasValue) * 100);
+  // A rounding artefact at either end is worse than saying nothing: "−0%" reads as broken and
+  // "−100%" as free.
+  return percent > 0 && percent < 100 ? percent : null;
+}
+
+/**
  * Format a decimal string as money.
  *
  * With a currency, `Intl.NumberFormat` places the symbol where the locale puts it. Without

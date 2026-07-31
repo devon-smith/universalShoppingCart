@@ -761,6 +761,68 @@ trip before first paint, and a row to keep in step with `carts.is_default`.
 a cart here changes only where this panel starts, which is why the control says so. The stored
 value is validated on read like any other untrusted input — extension storage is versionless
 and writable by any past or future build.
+## 2026-07-31 — The navigation owns item status; the filter row does not
+
+**Context.** The dashboard had a Status select in its filter row. Phase 3 adds a left
+navigation whose sections are Cart, Recently changed, Purchased and Archived — which is the
+same field. Two controls writing one value can disagree: choose "Archived" in the nav and the
+select still reads "Any status".
+
+**Consequences.** Status is set only by the navigation. `sections.ts` holds the mapping and is
+unit-tested; the filter popover carries retailer, availability, priority, on-sale and
+hit-target only.
+
+One subtlety, found by a failing test rather than by reading: `filterItems` re-applies the
+status rule, and its default of "no statuses means hide archived" threw away the Archived
+section's own items. The section's statuses are now passed into the query so the two stages
+cannot disagree.
+
+`Cart` deliberately means "everything except archived" rather than partitioning cleanly
+against `Purchased`. Marking something purchased from a card should not make the card vanish
+from under the cursor; the item appears in both places, and that is the less surprising of the
+two behaviours.
+
+## 2026-07-31 — Page-title trimming is a display rule, not an extraction change
+
+**Context.** Stored titles carry page-title furniture — "Alcott 3-Seater Sofa & Reviews |
+Wayfair". The obvious fix is to strip it during extraction.
+
+**Consequences.** It is stripped at render instead, by `displayTitle`. The stored title stays
+exactly what the page said, because that is the record of what was observed and the extractor
+fixtures pin those strings; changing extraction would mean re-capturing fixtures and would put
+a heuristic where the evidence should be.
+
+The rule is conservative in one direction: the first segment is never dropped, whatever it
+says, and a title that the rules would empty is returned unchanged. Losing marketing noise is
+worth having; losing a product name is not. `sourceLine` follows the same principle for the
+"Northwind · Northwind" case — brand and retailer are compared loosely and printed once when
+they are the same fact.
+
+## 2026-07-31 — The discount percentage is computed inside `Price`
+
+**Context.** The old card computed `−18%` itself from `current_price` and `original_price`.
+`Price` exists precisely so a range or a subscription price cannot be rendered as a discount,
+and a percentage derived outside it re-opens that hole in a different place.
+
+**Consequences.** `discountPercent` lives in the primitive and runs only on the pair that
+already passed `compareDecimal`, so there is no arrangement of props that produces a
+percentage without a genuine, strictly-higher list price. It returns nothing for a rounding
+artefact at either end — "−0%" reads as broken and "−100%" as free.
+
+## 2026-07-31 — Overlays are labelled groups, not `role="menu"`
+
+**Context.** The account menu and the card overflow were first built with `role="menu"` and
+`role="menuitem"`.
+
+**Consequences.** Both roles were removed. `role="menu"` promises arrow-key navigation and
+typeahead that these do not implement, and `role="menuitem"` _replaces_ the implicit button
+and link roles — a screen reader stops calling a link a link. The e2e suite noticed before a
+user would have: `getByRole('button', { name: 'Sign out' })` stopped matching.
+
+They are now labelled containers of ordinary buttons and links, with Escape, outside-click and
+— for the filter popover and the mobile drawer — a focus trap that restores focus to the
+control that opened them.
+
 ## 2026-08-02 — Composition lands, raw, now that comparison has a consumer for it
 
 **Decision.** `product.composition` becomes a real capture field and an `items.composition`
@@ -821,3 +883,4 @@ appeared — the rule that "matched the right markup and was never called" was r
 Nike but not on Wayfair, one page deeper — and closing it needed a live re-run, not a unit
 pass, to surface. Reachability on the real Wayfair page still needs a live capture to
 confirm; the offline scorer sees the semantic strike but not the class-based one.
+

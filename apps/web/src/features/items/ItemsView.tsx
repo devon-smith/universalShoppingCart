@@ -1,49 +1,35 @@
 'use client';
 
+import { Toast } from '@universal-cart/ui';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { archiveItem, deleteItem, setItemStatus, updateItem } from './actions';
-import type { ItemEdit } from './edits';
-import { ItemCard, STATUS_LABELS } from './ItemCard';
-import { ItemDetail } from './ItemDetail';
-import type {
-  ItemAvailability,
-  ItemFilters,
-  ItemStatus,
-  PriceSummary,
-  SavedItem,
-  SortKey,
-} from './query';
-import { applyQuery, EMPTY_FILTERS, hasActiveFilters, retailerOptions } from './query';
-import { applyRealtimeUpsert, removeItem, replaceItem, withEdit } from './reduce';
-import { useItemsRealtime } from './useItemsRealtime';
+import { AppShell, type ShellCart } from '@/features/shell/AppShell';
 
-type View = 'list' | 'cards';
+import { archiveItem, deleteItem, setItemStatus, updateItem } from './actions';
+import { CartHeader, type ItemsLayout } from './CartHeader';
+import type { ItemEdit } from './edits';
+import { emptyReason, ItemsEmptyState } from './EmptyStates';
+import { ItemCard } from './ItemCard';
+import { ItemDetail } from './ItemDetail';
+import { ItemRow } from './ItemRow';
+import type { ItemFilters, ItemStatus, PriceSummary, SavedItem, SortKey } from './query';
+import { activeFilterCount, applyQuery, EMPTY_FILTERS, retailerOptions } from './query';
+import { applyRealtimeUpsert, removeItem, replaceItem, withEdit } from './reduce';
+import type { SectionId } from './sections';
+import { inSection, movedItemIds, SECTIONS, sectionCounts, sectionStatuses } from './sections';
+import { useItemsRealtime } from './useItemsRealtime';
 
 interface Undo {
   message: string;
   run: () => Promise<void>;
 }
 
-const SORT_LABELS: Record<SortKey, string> = {
-  'recently-updated': 'Recently updated',
-  'recently-added': 'Recently added',
-  'price-low': 'Price: low to high',
-  'price-high': 'Price: high to low',
-  priority: 'Priority',
-  title: 'Title',
-};
-
-const AVAILABILITY_OPTIONS: ItemAvailability[] = [
-  'in_stock',
-  'out_of_stock',
-  'preorder',
-  'backorder',
-  'unknown',
-];
-
 /**
  * The dashboard.
+ *
+ * State owner for the whole signed-in surface: which cart, which section, the query, and the
+ * optimistic item list. Everything below is presentational, which is what keeps the shell
+ * reusable and each piece testable on its own.
  *
  * Every mutation is applied locally first and rolled back if the server rejects it, so the
  * list never freezes while a write is in flight. Archive and delete both offer an undo,
@@ -54,15 +40,25 @@ export function ItemsView({
   initialItems,
   priceSummaries,
   cartIds,
+  carts,
+  email,
+  signOut,
 }: {
   initialItems: SavedItem[];
   priceSummaries: PriceSummary[];
   cartIds: string[];
+  carts: ShellCart[];
+  email: string;
+  signOut: () => void;
 }) {
   const [items, setItems] = useState(initialItems);
   const [filters, setFilters] = useState<ItemFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortKey>('recently-updated');
-  const [view, setView] = useState<View>('list');
+  const [layout, setLayout] = useState<ItemsLayout>('list');
+  const [section, setSection] = useState<SectionId>('cart');
+  const [cartId, setCartId] = useState(
+    carts.find((cart) => cart.is_default)?.id ?? carts[0]?.id ?? '',
+  );
   const [openItem, setOpenItem] = useState<SavedItem | null>(null);
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -84,11 +80,40 @@ export function ItemsView({
 
   useItemsRealtime(cartIds, onRealtimeChange);
 
-  const visible = useMemo(() => applyQuery(items, filters, sort), [items, filters, sort]);
-  const retailers = useMemo(() => retailerOptions(items), [items]);
   const summaries = useMemo(
     () => new Map(priceSummaries.map((summary) => [summary.item_id, summary])),
     [priceSummaries],
+  );
+
+  // The selected cart, then the section, then the user's own query. Each stage narrows the one
+  // before it, so the counts beside the nav describe the cart actually on screen.
+  const inCart = useMemo(
+    () => (cartId ? items.filter((item) => item.cart_id === cartId) : items),
+    [items, cartId],
+  );
+  const moved = useMemo(() => movedItemIds(inCart, summaries), [inCart, summaries]);
+  const counts = useMemo(() => sectionCounts(inCart, moved), [inCart, moved]);
+
+  const sectionItems = useMemo(
+    () => inCart.filter((item) => inSection(item, section, moved)),
+    [inCart, section, moved],
+  );
+  // The section already narrowed by status, but `filterItems` re-applies the status rule and
+  // its "no statuses means hide archived" default would then throw the Archived section's own
+  // items away. Handing it the section's statuses keeps the two from disagreeing.
+  const visible = useMemo(
+    () => applyQuery(sectionItems, { ...filters, statuses: sectionStatuses(section) }, sort),
+    [sectionItems, filters, sort, section],
+  );
+  const retailers = useMemo(() => retailerOptions(inCart), [inCart]);
+
+  const lastUpdated = useMemo(
+    () =>
+      sectionItems.reduce<string | null>(
+        (latest, item) => (latest === null || item.updated_at > latest ? item.updated_at : latest),
+        null,
+      ),
+    [sectionItems],
   );
 
   function offerUndo(message: string, run: () => Promise<void>) {
@@ -198,212 +223,90 @@ export function ItemsView({
     showNotice(`Deleted “${item.title}”.`);
   }
 
-  const showingArchived = filters.statuses.includes('archived');
+  const activeSection = SECTIONS.find((entry) => entry.id === section) ?? SECTIONS[0]!;
+  const cardProps = {
+    onOpen: setOpenItem,
+    onStatusChange: (target: SavedItem, status: ItemStatus) => void changeStatus(target, status),
+    onArchive: (target: SavedItem) => void archive(target),
+  };
 
   return (
-    <section aria-labelledby="items-heading" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="items-heading" className="text-sm font-semibold">
-          Saved products{' '}
-          <span className="font-normal text-[var(--color-ink-muted)]">
-            ({visible.length}
-            {visible.length !== items.length ? ` of ${items.length}` : ''})
-          </span>
-        </h2>
-
-        <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor="sort">
-            Sort by
-          </label>
-          <select
-            id="sort"
-            value={sort}
-            onChange={(event) => setSort(event.target.value as SortKey)}
-            className="rounded-md border border-[var(--color-line)] px-2 py-1 text-xs"
-          >
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
-              <option key={key} value={key}>
-                {SORT_LABELS[key]}
-              </option>
-            ))}
-          </select>
-
-          <div
-            className="flex rounded-md border border-[var(--color-line)]"
-            role="group"
-            aria-label="View"
-          >
-            {(['list', 'cards'] as View[]).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={view === option}
-                onClick={() => setView(option)}
-                className={[
-                  'px-2.5 py-1 text-xs capitalize',
-                  view === option ? 'bg-[var(--color-surface-muted)] font-medium' : '',
-                ].join(' ')}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="sr-only" htmlFor="search">
-          Search saved products
-        </label>
-        <input
-          id="search"
-          type="search"
-          placeholder="Search title, brand, retailer, note, variant"
-          value={filters.search}
-          onChange={(event) => setFilters({ ...filters, search: event.target.value })}
-          className="min-w-56 flex-1 rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm"
+    <AppShell
+      carts={carts}
+      cartId={cartId}
+      onCartChange={setCartId}
+      section={section}
+      onSectionChange={setSection}
+      counts={counts}
+      email={email}
+      signOut={signOut}
+      search={filters.search}
+      onSearchChange={(search) => setFilters({ ...filters, search })}
+    >
+      <section aria-labelledby="items-heading" className="flex flex-col gap-4">
+        <CartHeader
+          section={activeSection}
+          cartName={carts.find((cart) => cart.id === cartId)?.name ?? null}
+          shown={visible.length}
+          total={sectionItems.length}
+          lastUpdated={lastUpdated}
+          filters={filters}
+          onFiltersChange={setFilters}
+          retailers={retailers}
+          sort={sort}
+          onSortChange={setSort}
+          layout={layout}
+          onLayoutChange={setLayout}
         />
 
-        <label className="sr-only" htmlFor="filter-status">
-          Status
-        </label>
-        <select
-          id="filter-status"
-          value={filters.statuses[0] ?? ''}
-          onChange={(event) =>
-            setFilters({
-              ...filters,
-              statuses: event.target.value ? [event.target.value as ItemStatus] : [],
-            })
-          }
-          className="rounded-md border border-[var(--color-line)] px-2 py-1.5 text-xs"
-        >
-          <option value="">Any status</option>
-          {(Object.keys(STATUS_LABELS) as ItemStatus[]).map((status) => (
-            <option key={status} value={status}>
-              {STATUS_LABELS[status]}
-            </option>
-          ))}
-        </select>
-
-        <label className="sr-only" htmlFor="filter-retailer">
-          Retailer
-        </label>
-        <select
-          id="filter-retailer"
-          value={filters.retailers[0] ?? ''}
-          onChange={(event) =>
-            setFilters({ ...filters, retailers: event.target.value ? [event.target.value] : [] })
-          }
-          className="rounded-md border border-[var(--color-line)] px-2 py-1.5 text-xs"
-        >
-          <option value="">Any retailer</option>
-          {retailers.map((retailer) => (
-            <option key={retailer} value={retailer}>
-              {retailer}
-            </option>
-          ))}
-        </select>
-
-        <label className="sr-only" htmlFor="filter-availability">
-          Availability
-        </label>
-        <select
-          id="filter-availability"
-          value={filters.availabilities[0] ?? ''}
-          onChange={(event) =>
-            setFilters({
-              ...filters,
-              availabilities: event.target.value ? [event.target.value as ItemAvailability] : [],
-            })
-          }
-          className="rounded-md border border-[var(--color-line)] px-2 py-1.5 text-xs"
-        >
-          <option value="">Any availability</option>
-          {AVAILABILITY_OPTIONS.map((availability) => (
-            <option key={availability} value={availability}>
-              {availability.replace(/_/g, ' ')}
-            </option>
-          ))}
-        </select>
-
-        <label className="flex items-center gap-1.5 text-xs">
-          <input
-            type="checkbox"
-            checked={filters.onSaleOnly}
-            onChange={(event) => setFilters({ ...filters, onSaleOnly: event.target.checked })}
-          />
-          On sale
-        </label>
-
-        <label className="flex items-center gap-1.5 text-xs">
-          <input
-            type="checkbox"
-            checked={filters.atOrBelowDesiredOnly}
-            onChange={(event) =>
-              setFilters({ ...filters, atOrBelowDesiredOnly: event.target.checked })
-            }
-          />
-          Hit my target
-        </label>
-
-        {hasActiveFilters(filters) ? (
-          <button
-            type="button"
-            onClick={() => setFilters(EMPTY_FILTERS)}
-            className="rounded-md border border-[var(--color-line)] px-2.5 py-1 text-xs"
-          >
-            Clear filters
-          </button>
+        {error ? (
+          <p role="alert" className="uc-callout uc-callout--danger">
+            {error}
+          </p>
         ) : null}
-      </div>
 
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-md border border-red-300 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:text-red-200"
-        >
-          {error}
-        </p>
-      ) : null}
-
-      {items.length === 0 ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed border-[var(--color-line)] px-4 py-6">
-          <p className="text-sm font-medium">Nothing saved yet</p>
-          <p className="text-sm text-[var(--color-ink-muted)]">
-            Install the extension, open a product page, and click <strong>Capture this page</strong>{' '}
-            in the side panel. What you save appears here.
-          </p>
-        </div>
-      ) : visible.length === 0 ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed border-[var(--color-line)] px-4 py-6">
-          <p className="text-sm font-medium">Nothing matches those filters</p>
-          <p className="text-sm text-[var(--color-ink-muted)]">
-            {showingArchived
-              ? 'No archived items yet.'
-              : 'Try a different search, or clear the filters.'}
-          </p>
-        </div>
-      ) : (
-        <ul
-          className={
-            view === 'cards' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2' : 'flex flex-col gap-3'
-          }
-        >
-          {visible.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              summary={summaries.get(item.id)}
-              view={view}
-              busy={busyIds.has(item.id)}
-              onOpen={setOpenItem}
-              onStatusChange={(target, status) => void changeStatus(target, status)}
-              onArchive={(target) => void archive(target)}
-            />
-          ))}
-        </ul>
-      )}
+        {visible.length === 0 ? (
+          <ItemsEmptyState
+            reason={emptyReason({
+              totalItems: inCart.length,
+              sectionCount: sectionItems.length,
+              section,
+              search: filters.search,
+              activeFilters: activeFilterCount(filters),
+            })}
+            onClearSearch={() => setFilters({ ...filters, search: '' })}
+            onClearFilters={() => setFilters({ ...EMPTY_FILTERS, search: filters.search })}
+          />
+        ) : (
+          <ul
+            className={
+              layout === 'cards'
+                ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3'
+                : 'flex flex-col gap-2'
+            }
+          >
+            {visible.map((item) =>
+              layout === 'cards' ? (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  summary={summaries.get(item.id)}
+                  busy={busyIds.has(item.id)}
+                  {...cardProps}
+                />
+              ) : (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  summary={summaries.get(item.id)}
+                  busy={busyIds.has(item.id)}
+                  {...cardProps}
+                />
+              ),
+            )}
+          </ul>
+        )}
+      </section>
 
       {openItem ? (
         <ItemDetail
@@ -415,28 +318,25 @@ export function ItemsView({
       ) : null}
 
       {undo ? (
-        <div
-          role="status"
-          className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2.5 text-sm shadow-lg dark:bg-[#0d1015]"
-        >
-          <span>{undo.message}</span>
-          <button
-            type="button"
-            className="font-medium text-[var(--color-accent)] underline"
-            onClick={() => void undo.run()}
-          >
-            Undo
-          </button>
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+          <Toast
+            message={undo.message}
+            action={
+              <button
+                type="button"
+                className="uc-focusable font-medium text-[var(--uc-primary)] underline"
+                onClick={() => void undo.run()}
+              >
+                Undo
+              </button>
+            }
+          />
         </div>
       ) : notice ? (
-        <div
-          role="status"
-          data-testid="notice"
-          className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2.5 text-sm shadow-lg dark:bg-[#0d1015]"
-        >
-          <span>{notice}</span>
+        <div data-testid="notice" className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+          <Toast message={notice} />
         </div>
       ) : null}
-    </section>
+    </AppShell>
   );
 }
