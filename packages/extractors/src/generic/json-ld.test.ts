@@ -734,3 +734,122 @@ describe('jsonLdExtractor — price ranges and variant groups', () => {
     expect(result.offer?.availability).toBe('out_of_stock');
   });
 });
+
+describe('jsonLdExtractor — the page URL narrows the variant family', () => {
+  // Lululemon's shape: the page URL says ?color=76616 and displays "Rumble Crumble", and
+  // the mapping between the code and the name exists only in hasVariant, where each
+  // variant's URL carries the same parameters.
+  const lululemonish = JSON.stringify({
+    '@type': 'ProductGroup',
+    name: 'Unshaken Collared Shirt',
+    hasVariant: [
+      {
+        '@type': 'Product',
+        color: 'Rumble Crumble',
+        size: 'M',
+        url: 'https://shop.example/p/unshaken?color=76616&sz=M',
+        offers: { '@type': 'Offer', price: '98.00', priceCurrency: 'USD' },
+      },
+      {
+        '@type': 'Product',
+        color: 'Rumble Crumble',
+        size: 'L',
+        url: 'https://shop.example/p/unshaken?color=76616&sz=L',
+        offers: { '@type': 'Offer', price: '98.00', priceCurrency: 'USD' },
+      },
+      {
+        '@type': 'Product',
+        color: 'Bone',
+        size: 'M',
+        url: 'https://shop.example/p/unshaken?color=31883&sz=M',
+        offers: { '@type': 'Offer', price: '118.00', priceCurrency: 'USD' },
+      },
+    ],
+  });
+
+  it('recovers the colour label behind an opaque URL code', () => {
+    const result = extract(lululemonish, 'https://shop.example/p/unshaken?color=76616');
+
+    // The survivors of ?color=76616 all say "Rumble Crumble"; the Bone variant is excluded
+    // by its own URL. Size still varies within the subset, so it is honestly absent.
+    expect(result.selectedVariant).toEqual({ Color: 'Rumble Crumble' });
+    expect(result.offer?.priceAmount).toBe('98.00');
+  });
+
+  it('recovers both options when the URL pins a unique variant', () => {
+    const result = extract(lululemonish, 'https://shop.example/p/unshaken?color=76616&sz=M');
+
+    expect(result.selectedVariant).toEqual({ Color: 'Rumble Crumble', Size: 'M' });
+    expect(result.offer?.priceAmount).toBe('98.00');
+  });
+
+  it('reports a price the whole family disagrees on once the URL narrows it', () => {
+    // Family-wide, 98 and 118 disagree and the consolidators would say nothing. The page
+    // URL excludes the 118 colour, so 98 is a reading, not a guess.
+    const result = extract(lululemonish, 'https://shop.example/p/unshaken?color=76616&sz=L');
+
+    expect(result.offer?.priceAmount).toBe('98.00');
+  });
+
+  it('falls back to family behaviour when nothing matches the URL', () => {
+    // A code no variant claims must not produce an empty subset that reports nothing —
+    // no-match means no signal, not disagreement.
+    const result = extract(lululemonish, 'https://shop.example/p/unshaken?color=99999');
+
+    expect(result.offer?.priceAmount).toBeUndefined();
+    expect(result.selectedVariant).toBeUndefined();
+  });
+
+  it('needs a shared key to match, not merely a shared path', () => {
+    // A page URL with no query signal narrows nothing.
+    const result = extract(lululemonish, 'https://shop.example/p/unshaken');
+
+    expect(result.offer?.priceAmount).toBeUndefined();
+    expect(result.selectedVariant).toBeUndefined();
+  });
+
+  it('matches a ?variant= id against a variant sku, the Shopify shape', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'ProductGroup',
+        name: 'Meridian Runner',
+        hasVariant: [
+          {
+            '@type': 'Product',
+            sku: '43742060085334',
+            size: 'M',
+            offers: { '@type': 'Offer', price: '23.00', priceCurrency: 'USD' },
+          },
+          {
+            '@type': 'Product',
+            sku: '43742060118102',
+            size: 'L',
+            offers: { '@type': 'Offer', price: '29.00', priceCurrency: 'USD' },
+          },
+        ],
+      }),
+      'https://shop.example/products/crew?variant=43742060085334',
+    );
+
+    expect(result.offer?.priceAmount).toBe('23.00');
+    expect(result.selectedVariant).toEqual({ Size: 'M' });
+  });
+
+  it('a disagreeing shared key excludes the variant even when another key agrees', () => {
+    // color agrees, sz disagrees: this is the other size, not the one on screen.
+    const result = extract(lululemonish, 'https://shop.example/p/unshaken?color=76616&sz=XL');
+
+    // Neither M nor L matches sz=XL, and Bone fails on color — so no variant matches and
+    // the family fallback applies.
+    expect(result.offer?.priceAmount).toBeUndefined();
+  });
+
+  it('ignores tracking parameters when matching', () => {
+    const result = extract(
+      lululemonish,
+      'https://shop.example/p/unshaken?color=76616&sz=M&utm_source=share&gclid=abc',
+    );
+
+    expect(result.selectedVariant).toEqual({ Color: 'Rumble Crumble', Size: 'M' });
+  });
+});

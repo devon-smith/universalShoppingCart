@@ -197,11 +197,16 @@ AeroPress's "Sale price" with nothing struck). Needs a `pnpm score:live` pass on
 pages to confirm — the scorer's `original` column should move on amazon/wayfair/zalando/oos
 and stay `·` on uniqlo/aeropress/stockx.
 
-Remaining in `selectedVariant`: opaque option ids (lululemon `Color: 76616` where the page
-shows "Rumble Crumble"), waiting on the deferred `hasVariant` matching. The Shopify variant id
-is done (2026-07-31): opaque `?variant=` tokens and `variants[].id` now land in
-`identifiers.variantId`, ranked above `sku` in the fingerprint so two sizes of one garment
-cannot hash alike — the coupling that made it one change is argued in DECISIONS.md.
+The `selectedVariant` hygiene queue is now empty. The Shopify variant id landed 2026-07-31:
+opaque `?variant=` tokens and `variants[].id` land in `identifiers.variantId`, ranked above
+`sku` in the fingerprint so two sizes of one garment cannot hash alike — the coupling that
+made it one change is argued in DECISIONS.md. Opaque option labels landed the same day: the
+page URL narrows a `ProductGroup`'s `hasVariant` family to the variants whose own URLs are
+consistent with it, and the existing agree-or-nothing consolidators then run on the subset —
+so lululemon's `?color=76616` recovers "Rumble Crumble" from the survivors' agreement, a
+narrowed subset can state a price the whole family disagrees on, and a no-match or
+no-signal page falls back to family behaviour exactly as before. Needs the same
+`pnpm score:live` confirmation pass as the strikethrough work.
 
 ## Phase 5 — Retailer adapters
 
