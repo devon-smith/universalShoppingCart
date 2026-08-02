@@ -397,7 +397,72 @@ describe('jsonLdExtractor — product fields', () => {
       }),
     );
 
+    // Still out of the fingerprint-bearing map...
     expect(result.selectedVariant).toEqual({ Color: 'Blue' });
+    // ...but no longer dropped: composition captures the fibre content the spec rows carry.
+    expect(result.product?.composition).toContain('100% cotton');
+  });
+});
+
+describe('jsonLdExtractor — composition', () => {
+  it('reads schema.org Product.material', () => {
+    const result = extract(
+      JSON.stringify({ '@type': 'Product', name: 'Tee', material: '100% organic cotton' }),
+    );
+    expect(result.product?.composition).toBe('100% organic cotton');
+  });
+
+  it('reads composition-named additionalProperty rows the option filter drops', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'Jacket',
+        additionalProperty: [
+          { '@type': 'PropertyValue', name: 'Outer shell', value: '100% wool' },
+          { '@type': 'PropertyValue', name: 'Lining', value: '52% polyester' },
+        ],
+      }),
+    );
+    // Labelled parts keep their labels so a two-part composition stays legible.
+    expect(result.product?.composition).toBe('Outer Shell: 100% wool; Lining: 52% polyester');
+  });
+
+  it('drops the label for a bare material/composition/fabric name', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'Tee',
+        additionalProperty: [{ '@type': 'PropertyValue', name: 'Material', value: '100% linen' }],
+      }),
+    );
+    expect(result.product?.composition).toBe('100% linen');
+  });
+
+  it('collapses a part the page states twice', () => {
+    const result = extract(
+      JSON.stringify({
+        '@type': 'Product',
+        name: 'Tee',
+        material: '100% cotton',
+        additionalProperty: [{ '@type': 'PropertyValue', name: 'Material', value: '100% cotton' }],
+      }),
+    );
+    expect(result.product?.composition).toBe('100% cotton');
+  });
+
+  it('is absent when the page says nothing about fibre content', () => {
+    const result = extract(JSON.stringify({ '@type': 'Product', name: 'Tee', color: 'Blue' }));
+    expect(result.product?.composition ?? null).toBeNull();
+  });
+
+  it('stores the string raw, without normalizing', () => {
+    // "Cotton 100%" is not reshaped into "100% cotton" — that normalization is deferred
+    // work (docs/DECISIONS.md, 2026-08-02), and reshaping raw text would assert an
+    // equivalence the tool cannot yet defend.
+    const result = extract(
+      JSON.stringify({ '@type': 'Product', name: 'Tee', material: 'Cotton 100%' }),
+    );
+    expect(result.product?.composition).toBe('Cotton 100%');
   });
 });
 

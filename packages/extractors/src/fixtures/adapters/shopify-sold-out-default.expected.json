@@ -17,7 +17,8 @@
       "sku": "HEM-CHK",
       "productId": "7712340002",
       "variantId": "4400330002"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "26.00",

@@ -15,7 +15,8 @@
     "selectedImageUrl": "https://www.bergsport.example/media/adj-778.jpg",
     "identifiers": {
       "sku": "ADJ-778"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "1099.00",

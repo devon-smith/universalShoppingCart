@@ -15,7 +15,8 @@
     "selectedImageUrl": null,
     "identifiers": {
       "sku": "TW-SK-12"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "119.00",

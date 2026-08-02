@@ -13,7 +13,8 @@
     "description": null,
     "imageUrls": [],
     "selectedImageUrl": null,
-    "identifiers": {}
+    "identifiers": {},
+    "composition": null
   },
   "offer": {
     "priceAmount": null,

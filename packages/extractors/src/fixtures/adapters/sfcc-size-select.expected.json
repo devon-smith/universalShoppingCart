@@ -16,7 +16,8 @@
     "identifiers": {
       "sku": "TMS-0091-GRY",
       "productId": "TMS-0091-GRY"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "24.00",

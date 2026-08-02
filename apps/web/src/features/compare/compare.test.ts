@@ -248,6 +248,35 @@ describe('compareItems — retailer agreement is a real fact', () => {
   });
 });
 
+describe('compareItems — composition', () => {
+  it('shows the raw string and is never comparable', () => {
+    const comparison = compareItems([
+      input({ id: 'a', composition: '100% cotton' }),
+      input({ id: 'b', composition: 'Cotton 100%' }),
+    ]);
+    const comp = row(comparison, 'composition')!;
+    // Two ways of writing the same fabric — but the tool must not assert they agree.
+    expect(comp.comparable).toBe(false);
+    expect(comp.allAgree).toBeUndefined();
+    expect(comp.cells.find((c) => c.itemId === 'a')!.text).toBe('100% cotton');
+    expect(comp.cells.find((c) => c.itemId === 'b')!.text).toBe('Cotton 100%');
+  });
+
+  it('omits the row when no item has composition, and marks absent per item', () => {
+    expect(
+      row(compareItems([input({ id: 'a' }), input({ id: 'b' })]), 'composition'),
+    ).toBeUndefined();
+
+    const partial = compareItems([
+      input({ id: 'a', composition: 'Shell: 100% wool' }),
+      input({ id: 'b' }),
+    ]);
+    const comp = row(partial, 'composition')!;
+    expect(comp.cells.find((c) => c.itemId === 'a')!.present).toBe(true);
+    expect(comp.cells.find((c) => c.itemId === 'b')!.present).toBe(false);
+  });
+});
+
 describe('compareItems — shape', () => {
   it('preserves input order in items and in every row', () => {
     const comparison = compareItems([

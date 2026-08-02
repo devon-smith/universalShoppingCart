@@ -15,7 +15,8 @@
     "selectedImageUrl": "https://fieldcraft.example/wp-content/uploads/beeswax.jpg",
     "identifiers": {
       "sku": "BWW-SET-3"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "18.50",

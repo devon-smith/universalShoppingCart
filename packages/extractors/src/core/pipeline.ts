@@ -193,6 +193,7 @@ export function extractProductCapture(
       imageUrls: merged.product?.imageUrls ?? [],
       selectedImageUrl: merged.product?.selectedImageUrl ?? null,
       identifiers,
+      composition: merged.product?.composition ?? null,
     },
     offer: {
       priceAmount: merged.offer?.priceAmount ?? null,

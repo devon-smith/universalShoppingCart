@@ -15,7 +15,8 @@
     "selectedImageUrl": "https://bergsport.example/media/catalog/product/alpenrose.jpg",
     "identifiers": {
       "sku": "ALP-DJ-2201"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "279.00",

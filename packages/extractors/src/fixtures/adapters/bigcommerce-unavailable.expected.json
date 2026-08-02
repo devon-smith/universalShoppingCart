@@ -16,7 +16,8 @@
     "identifiers": {
       "sku": "CIR-FL-WHT",
       "productId": "4822"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "310.00",

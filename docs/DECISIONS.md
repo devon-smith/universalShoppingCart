@@ -671,3 +671,34 @@ true of _something_, ask which question it answers before fixing the extractor. 
 answer is "a question we have no field for", the extractor is not broken — the contract is
 narrow, and ranking, suppressing, or "fixing" the value hides real data. No new fields are
 added by this entry; it is the diagnostic rule for the next occurrence.
+
+## 2026-08-02 — Composition lands, raw, now that comparison has a consumer for it
+
+**Decision.** `product.composition` becomes a real capture field and an `items.composition`
+column — a **raw** string, read from where it was being dropped, stored without
+normalization. The extractors collect it; the compare view renders it as a descriptive,
+non-comparable row.
+
+**Context.** The 2026-07-27 entry deferred this field on two grounds: no consumer yet, and
+"guessing its shape now, with no consumer, is how a field ends up wrong in a way that later
+needs a migration." The first ground is gone — `compareItems` exists
+(`apps/web/src/features/compare/`), and "is the expensive one actually merino" is exactly a
+row it can carry. The second is respected rather than overruled: we store the string exactly
+as the page published it — "100% cotton", "Shell: 100% wool; Lining: 52% polyester" — and do
+**no** normalization. Normalizing "100% merino wool" and "Merino Wool 100%" into a comparable
+form is still the deferred work; a raw string needs no schema decision and no later migration
+to correct, because it makes no claim beyond what the page said.
+
+Source: schema.org `Product.material` and the `additionalProperty` spec rows the
+`isOptionName` filter currently discards — Zara's `Material` and `OUTER SHELL`, H&M's
+`Material`. Labelled parts keep their labels ("Outer shell: 100% cotton") so a two-part
+composition stays legible; a bare `material` label contributes just its value.
+
+**Consequences.** Composition is a **retailer-observed** field — it describes the garment,
+not a user choice — so the `reject_observed_field_writes` trigger protects it and a client
+cannot write it, exactly like price or availability. It is emphatically **not** in
+`selectedVariant` (it would corrupt the fingerprint, the whole point of the 07-27 entry) and
+not in `identifiers`. In the compare structure it is `comparable: false`: two garments being
+"100% cotton" is a genuine shared fact, but until the strings are normalized the tool cannot
+assert that "100% cotton" and "Cotton 100%" agree, and asserting it on raw strings would
+fabricate a match. Non-comparable is the honest setting until normalization lands.

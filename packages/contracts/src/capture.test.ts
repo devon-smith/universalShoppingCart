@@ -27,6 +27,7 @@ function validCapture(): ProductCaptureV1 {
       imageUrls: ['https://cdn.example.com/1.jpg'],
       selectedImageUrl: 'https://cdn.example.com/1.jpg',
       identifiers: { sku: 'WR-9', gtin: '0123456789012', variantId: '43742060085334' },
+      composition: '100% merino wool',
     },
     offer: {
       priceAmount: '98.00',
@@ -91,6 +92,7 @@ describe('productCaptureV1Schema', () => {
       imageUrls: [],
       selectedImageUrl: null,
       identifiers: {},
+      composition: null,
     };
     sparse.offer = {
       priceAmount: null,

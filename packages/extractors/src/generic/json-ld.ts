@@ -498,6 +498,71 @@ function readSelectedVariant(node: JsonObject): Record<string, string> {
 }
 
 /**
+ * `additionalProperty` names that carry fibre content rather than a chosen option.
+ *
+ * These are the spec rows `readSelectedVariant` drops (they are not option names): Zara's
+ * `Material` and `OUTER SHELL`, H&M's `Material`. A bare `material`/`composition`/`fabric`
+ * label contributes only its value; a more specific label ("outer shell", "lining") is kept
+ * as a prefix so a two-part composition stays legible.
+ */
+const COMPOSITION_NAMES = new Set([
+  'material',
+  'composition',
+  'fabric',
+  'fabric content',
+  'fabric composition',
+  'main fabric',
+  'shell',
+  'outer shell',
+  'lining',
+]);
+
+/** Labels generic enough to add nothing — their value stands alone. */
+const BARE_COMPOSITION_LABELS = new Set(['material', 'composition', 'fabric', 'fabric content']);
+
+function titleCaseLabel(name: string): string {
+  return name.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Fibre content, as the page published it, or null.
+ *
+ * Raw by decision (docs/DECISIONS.md, 2026-08-02): the parts are joined but never
+ * normalized, because "100% cotton" and "Cotton 100%" cannot be asserted equal without work
+ * this does not do. `Product.material` and composition-named `additionalProperty` rows are
+ * both read; duplicate parts are collapsed so a page stating material twice does not repeat.
+ */
+function readComposition(node: JsonObject): string | null {
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  const add = (part: string) => {
+    const trimmed = part.trim();
+    const key = trimmed.toLowerCase();
+    if (trimmed.length > 0 && !seen.has(key)) {
+      seen.add(key);
+      parts.push(trimmed);
+    }
+  };
+
+  const material = readName(node.material);
+  if (material) add(material);
+
+  const additional = node.additionalProperty;
+  const entries = Array.isArray(additional) ? additional : [additional];
+  for (const entry of entries) {
+    if (!isObject(entry)) continue;
+    const name = readString(entry.name);
+    const value = readString(entry.value);
+    if (!name || !value) continue;
+    const lower = name.trim().toLowerCase();
+    if (!COMPOSITION_NAMES.has(lower)) continue;
+    add(BARE_COMPOSITION_LABELS.has(lower) ? value : `${titleCaseLabel(name)}: ${value}`);
+  }
+
+  return parts.length > 0 ? parts.join('; ') : null;
+}
+
+/**
  * The options every variant in a group shares.
  *
  * A group whose variants are all Navy is stating the colour; one offering Navy and Rust is
@@ -608,6 +673,12 @@ export const jsonLdExtractor: ProductExtractor = {
     if (description) {
       product.description = description;
       capture.evidence.push(evidence('product.description', 'json_ld', 0.85));
+    }
+
+    const composition = readComposition(node);
+    if (composition) {
+      product.composition = composition;
+      capture.evidence.push(evidence('product.composition', 'json_ld', 0.85));
     }
 
     const images = unique(readImages(node.image, context.url));

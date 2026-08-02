@@ -95,6 +95,13 @@ export const captureProductSchema = z.object({
   imageUrls: z.array(httpUrlSchema),
   selectedImageUrl: httpUrlSchema.nullable(),
   identifiers: productIdentifiersSchema,
+  /**
+   * Fibre content, as the page published it — "100% cotton", "Shell: 100% wool; Lining:
+   * 52% polyester". A raw string, deliberately not normalized (docs/DECISIONS.md,
+   * 2026-08-02): it describes the garment, so it is retailer-observed, and it is never in
+   * `selectedVariant` because that feeds the fingerprint. Null when the page did not say.
+   */
+  composition: z.string().nullable(),
 });
 
 export const captureOfferSchema = z.object({

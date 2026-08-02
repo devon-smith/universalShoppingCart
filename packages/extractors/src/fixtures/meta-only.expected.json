@@ -16,7 +16,8 @@
       "https://cdn.example.com/kestrel-card.jpg"
     ],
     "selectedImageUrl": "https://fieldcraft.example/img/kestrel-hero.jpg",
-    "identifiers": {}
+    "identifiers": {},
+    "composition": null
   },
   "offer": {
     "priceAmount": "189.00",

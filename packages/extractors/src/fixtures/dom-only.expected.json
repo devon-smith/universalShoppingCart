@@ -13,7 +13,8 @@
     "description": null,
     "imageUrls": ["https://lumenworks.example/assets/solstice-1.jpg"],
     "selectedImageUrl": "https://lumenworks.example/assets/solstice-1.jpg",
-    "identifiers": {}
+    "identifiers": {},
+    "composition": null
   },
   "offer": {
     "priceAmount": "129.00",

@@ -52,10 +52,10 @@ characters. Redirect targets are built from the client-visible `Host` rather tha
 ## Authorization
 
 Every exposed table has RLS enabled and `anon` holds no grants. The policy matrix and its
-test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 101
-pgTAP assertions across six files, covering the cases listed in BUILD_PLAN.md §8.2: user
+test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 107
+pgTAP assertions across seven files, covering the cases listed in BUILD_PLAN.md §8.2: user
 bootstrap (9), cart and membership RLS (18), atomic ingestion (29), item field ownership
-(14), revisit refresh (20), and the two-fact availability pair (11).
+(14), revisit refresh (20), the two-fact availability pair (11), and composition (6).
 
 The dashboard checks the user a second time in the page itself, so a middleware
 misconfiguration alone cannot expose it.

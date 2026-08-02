@@ -16,7 +16,8 @@
     "identifiers": {
       "sku": "SOL-DL-BRS",
       "productId": "4821"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "189.00",
