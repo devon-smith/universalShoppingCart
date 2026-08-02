@@ -19,6 +19,9 @@ function item(overrides: Partial<SavedItem> & { id: string }): SavedItem {
     original_price: null,
     availability: 'in_stock',
     product_availability: null,
+    // Retailer-observed, raw, and required on `SavedItem` since it reaches the compare
+    // view. Null is the ordinary case: most pages publish no fibre content at all.
+    composition: null,
     selected_variant: null,
     identifiers: null,
     note: null,

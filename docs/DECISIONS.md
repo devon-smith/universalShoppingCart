@@ -944,3 +944,54 @@ Nike but not on Wayfair, one page deeper — and closing it needed a live re-run
 pass, to surface. Reachability on the real Wayfair page still needs a live capture to
 confirm; the offline scorer sees the semantic strike but not the class-based one.
 
+## 2026-08-03 — A comparison is a URL, and it renders as a table
+
+**Decision.** The compare view is a route, `/app/compare?items=a,b,c`, and the selected ids
+live in that query string rather than in component state. It renders as an HTML `<table>`.
+
+**Context.** BUILD_PLAN.md §12.1 already listed the route; this records why it is the right
+shape rather than a modal over the dashboard. A comparison is a thing you send someone, come
+back to after a refresh, and expect the back button to undo. All three fall out of the URL
+for free and none of them survive `useState`. The ids are therefore untrusted input:
+`parseSelection` validates uuid shape, collapses duplicates and caps the list before a query
+is built, and RLS is the second gate — a well-formed id belonging to another account returns
+no row, which the page reports as "no longer available to you" rather than an empty table.
+
+A `<table>` because the content is genuinely tabular: every cell means "this item's value for
+this attribute". The element gives row and column header association, so a screen reader
+announces "Price, Meridian Wool Runner, $79.95" without any ARIA at all. Rebuilding that over
+a grid of divs would be more code doing the same job worse. Four columns cannot fit a phone,
+so the table scrolls inside its own box with the label column sticky; the page itself never
+scrolls sideways, which the e2e asserts at four widths.
+
+**Consequences.** The scroll container is `position: relative`, and that is load-bearing:
+`overflow` only clips an absolutely positioned descendant when the scroll box is also its
+containing block, and `.uc-sr-only` is absolutely positioned. Without it every
+screen-reader-only span in the off-screen part of the table resolved against the viewport,
+escaped the clip, and stretched the document to 856px at a 375px viewport — a page that
+scrolled sideways because of text nobody can see.
+
+---
+
+## 2026-08-03 — Selecting items to compare is a checkbox, not an action
+
+**Decision.** The control that adds a product to a comparison is a checkbox at the start of
+the row and card, not a button in the action cluster beside "Details" and "Move to cart".
+
+**Context.** It was a button first, and the dashboard measurably regressed: at 1024px — a
+laptop minus the 240px rail — a fifth control in the actions cluster took enough width from
+the grid to wrap product titles onto two lines and collide the price column with the
+freshness line. That is the same squeeze the 2026-07-31 entry fixed by moving the variant out
+of its own column, reintroduced from the other end.
+
+The deeper reason is that selection is not an action. An action is a thing you do to one item
+now; a selection is a state you set on several items before doing one thing with all of them,
+and a leading checkbox is where people already look for it.
+
+**Consequences.** The list's leading column is 3.5rem, which fits a checkbox but not the word
+"Compare", so the label is visually hidden there and shown on cards, where there is room. The
+accessible name always carries the product title — "Compare" repeated four times down a list
+tells a screen-reader user nothing about which row they are on. The dashboard gains bottom
+padding while the tray is open, so the last product is not permanently underneath the control
+being used to choose products.
+
