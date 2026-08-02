@@ -225,12 +225,29 @@ no scan, even though the struck former price is visible. Fixed (2026-08-02): the
 resolves the former price post-merge, when the current price is known from any layer, with
 `struckOriginalForValue` — it anchors on the element displaying that exact value, or on an
 `aria-label` that names an original price ("current price $94.97, original price $120"),
-and applies the same strictly-greater guard. Nine tests, including the JSON-LD-price shape
-D1 exposed. This still needs the D1 re-run to confirm on the real pages, since only a live
-capture loads the class-based striking CSS — the offline scorer stays blind to it, which
-is a measurement boundary, not a bug. Amazon and Wayfair extracting no price at all is
-separate and pre-existing (no reachable structured data); `oos`'s captured DOM was
-confirmed to carry both figures.
+and applies the same strictly-greater guard.
+
+**The D1 re-run then confirmed Nike live and surfaced one more page.** Nike lands the struck
+$120 through the panel, and the local host verified it the hard way — stripping all
+price-bearing `aria-label`s from the live document and re-running still returns $120, so the
+class-based strike path stands on its own, not propped up by Nike's accessible pairing.
+Wayfair was a real find, not the CSS boundary: it renders "$672.96 was $993.97" with the
+former price struck **three parent hops** above the current one, one past `struckPriceNear`'s
+two-hop safety margin. Raising the margin would let a sponsored tile's own strikethrough in,
+so the fix (2026-08-02, "Wayfair v2") is a **cue-gated** extended path — `struckCueOriginalNear`
+admits a struck price a little farther out only when a former-price cue word ("was",
+"original"…) stands immediately before it, the visible-text twin of the aria-label rule.
+Triple gate: struck AND cue AND strictly-greater. Four tests (extractors 367 → 371), including
+the JSON-LD-price + three-hop-cue shape end to end. Wants a live Wayfair re-run to confirm
+reachability, same as Nike did.
+
+Zalando and Amazon stay legitimately missing: no struck element within twelve hops of either
+price on the saved page, because the striking CSS was never fetched — a measurement boundary,
+not a bug — and both also extract no price at all, which is separate and pre-existing (no
+reachable structured data). Zalando's former price is deliberately the struck 47,95 €, not the
+119,95 € labelled "Ursprünglich": only the struck figure matches the page's own advertised
+−25%, and recording 119,95 would have the tool assert a 70% discount Zalando never claims.
+`oos`'s captured DOM was confirmed to carry both figures.
 
 The `selectedVariant` hygiene queue is now empty. The Shopify variant id landed 2026-07-31:
 opaque `?variant=` tokens and `variants[].id` land in `identifiers.variantId`, ranked above

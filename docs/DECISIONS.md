@@ -702,3 +702,33 @@ not in `identifiers`. In the compare structure it is `comparable: false`: two ga
 "100% cotton" is a genuine shared fact, but until the strings are normalized the tool cannot
 assert that "100% cotton" and "Cotton 100%" agree, and asserting it on raw strings would
 fabricate a match. Non-comparable is the honest setting until normalization lands.
+
+## 2026-08-02 — A former price farther than adjacency, gated on a cue word, not on distance
+
+**Decision.** `struckOriginalForValue` gains a third path, `struckCueOriginalNear`: a struck
+former price up to four wrappers above the current price is admitted, but only when a
+former-price cue word ("was", "original", "regular", "list", "rrp", "before", "reduced")
+stands immediately before it in the enclosing text. `STRUCK_PRICE_HOPS` stays at two; the
+wider reach lives only in the cue-gated path.
+
+**Context.** The D1 re-run confirmed Nike but found Wayfair still returning no former price
+against a real current price of 672.96. The page renders "$672.96 was $993.97" with the
+struck $993.97 three parent hops above the current price — one hop past `struckPriceNear`'s
+two-hop margin, so bare adjacency never reaches it. The obvious fix, raising
+`STRUCK_PRICE_HOPS` to three, was rejected on the local host's evidence: a third hop on a
+deeply nested price block reaches the container that also holds a sponsored tile with its own
+strikethrough, which is exactly the leak the two-hop margin was chosen to prevent. Distance
+alone cannot tell Wayfair's real former price from a neighbour's.
+
+**Consequences.** The discriminator at this range is the cue word, not proximity — a genuine
+"$672.96 was $993.97" carries it and a sponsored tile beside it does not. So the extended
+path requires three signals together: the candidate must be rendered struck, a cue word must
+immediately precede it, and it must be strictly greater than the current price. That triple
+gate is deliberately narrow; missing a distant, uncued former price under-reports, which is
+the project's stated safe direction, while attaching a neighbour's does not. The tight
+two-hop path keeps working with no cue requirement, because adjacency is its own
+discriminator there. This is the sixth instance of a green suite proving less than it
+appeared — the rule that "matched the right markup and was never called" was reachable on
+Nike but not on Wayfair, one page deeper — and closing it needed a live re-run, not a unit
+pass, to surface. Reachability on the real Wayfair page still needs a live capture to
+confirm; the offline scorer sees the semantic strike but not the class-based one.

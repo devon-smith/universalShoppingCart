@@ -150,6 +150,20 @@ function pricesIn(text: string): string[] {
 const ORIGINAL_LABEL = /\b(original|was|regular|list|rrp|before|reduced)\b/i;
 
 /**
+ * How far above the current price a struck former price *introduced by a cue word* may sit.
+ *
+ * Wider than STRUCK_PRICE_HOPS because here the cue word — "was", "original", "regular" —
+ * does the discriminating that bare adjacency does closer in. Wayfair renders
+ * "$672.96 was $993.97" with the former price struck one wrapper past the adjacency-only
+ * limit; raising STRUCK_PRICE_HOPS to reach it would also admit a sponsored tile's own
+ * strikethrough, but requiring the cue word immediately before the struck price does not.
+ */
+const CUE_STRUCK_HOPS = 4;
+
+/** A former-price cue word standing at the very end of the text that precedes a price. */
+const CUE_BEFORE_PRICE = /\b(?:original|was|regular|list|rrp|before|reduced)\b[\s:]*$/i;
+
+/**
  * A struck-through former price found by ANCHORING ON THE CURRENT-PRICE VALUE, not on a
  * DOM-tier price find.
  *
@@ -160,14 +174,18 @@ const ORIGINAL_LABEL = /\b(original|was|regular|list|rrp|before|reduced)\b/i;
  * rendered page. Once the merge knows the current price from any layer, its VALUE is the
  * anchor: the element displaying "$94.97" sits beside the struck "$120".
  *
- * Two paths, both keyed on real markup:
+ * Three paths, all keyed on real markup:
  *  - an `aria-label` that names an original price and contains the current one — the
  *    explicit accessible pairing ("current price $94.97, original price $120");
  *  - the innermost element whose own text is the current price, scanned for an adjacent
- *    strikethrough exactly as `struckPriceNear` does.
+ *    strikethrough exactly as `struckPriceNear` does;
+ *  - a struck former price a little farther out, admitted only when a cue word ("was",
+ *    "original"…) stands immediately before it — the visible-text twin of the aria-label
+ *    rule, for pages like Wayfair that render "$672.96 was $993.97" one wrapper past the
+ *    adjacency-only limit.
  *
- * The strictly-greater guard applies on both: a former price at or below the current one is
- * not a discount. Returns null rather than guess.
+ * The strictly-greater guard applies on all three: a former price at or below the current one
+ * is not a discount. Returns null rather than guess.
  */
 export function struckOriginalForValue(
   root: ParentNode,
@@ -198,6 +216,57 @@ export function struckOriginalForValue(
     }
   }
 
+  // Text-adjacency path: a struck former price introduced by a cue word, admissible a little
+  // farther from the current price than bare adjacency because the cue is the discriminator.
+  for (const anchor of anchors) {
+    const cued = struckCueOriginalNear(anchor, currentAmount);
+    if (cued) return cued;
+  }
+
+  return null;
+}
+
+/**
+ * A struck former price sitting a little farther from the current one than bare adjacency
+ * allows, admitted only when a cue word introduces it.
+ *
+ * Three signals are all required, and that is the point: the price must be rendered struck
+ * AND the text immediately before it must be a former-price cue AND it must be strictly
+ * greater than the current price. Distance alone at this range would reach a neighbouring
+ * product's strikethrough (the reason STRUCK_PRICE_HOPS stays at two); the cue word is what
+ * a genuine "$672.96 was $993.97" carries and a sponsored tile beside it does not.
+ */
+function struckCueOriginalNear(
+  anchor: Element,
+  currentAmount: string,
+): { amount: string; selector: string } | null {
+  let scope = anchor.parentElement;
+  for (let hop = 0; hop < CUE_STRUCK_HOPS && scope; hop += 1) {
+    // The tight range is struckPriceNear's job and needs no cue; only the wider range, where
+    // adjacency alone would risk a neighbour, requires one.
+    if (hop >= STRUCK_PRICE_HOPS) {
+      const scopeText = normalizeText(scope.textContent) ?? '';
+      const struckAll = Array.from(scope.querySelectorAll('*'))
+        .slice(0, STRUCK_SCAN_CAP)
+        .filter((element) => !element.contains(anchor) && isStruck(element));
+      const innermost = struckAll.filter(
+        (element) => !struckAll.some((other) => other !== element && element.contains(other)),
+      );
+
+      for (const struck of innermost) {
+        const amount = normalizePrice(readValue(struck)).amount;
+        if (!amount || !decimalGreaterThan(amount, currentAmount)) continue;
+        const struckText = normalizeText(struck.textContent);
+        if (!struckText) continue;
+        const at = scopeText.indexOf(struckText);
+        if (at <= 0) continue;
+        if (CUE_BEFORE_PRICE.test(scopeText.slice(0, at))) {
+          return { amount, selector: 'was-labelled strikethrough above price' };
+        }
+      }
+    }
+    scope = scope.parentElement;
+  }
   return null;
 }
 
