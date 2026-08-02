@@ -22,9 +22,11 @@
 
 import type { ItemAvailability, PriceSummary, SavedItem } from '../items/query';
 
-/** A saved item plus the second availability fact, which the row type may not yet carry. */
+/** A saved item plus fields the row type may not yet carry. */
 export type CompareItem = SavedItem & {
   product_availability?: ItemAvailability | null;
+  /** Raw fibre content, un-normalized (docs/DECISIONS.md, 2026-08-02). */
+  composition?: string | null;
 };
 
 export interface CompareInput {
@@ -304,6 +306,22 @@ function desiredPriceRow(inputs: readonly CompareInput[]): CompareRow | null {
   };
 }
 
+function compositionRow(inputs: readonly CompareInput[]): CompareRow | null {
+  const cells = inputs.map(({ item }) => cell(item.id, item.composition ?? null));
+  if (!cells.some((c) => c.present)) return null;
+  return {
+    key: 'composition',
+    label: 'Composition',
+    kind: 'scalar',
+    // Not comparable while the strings are raw: two garments both "100% cotton" is a real
+    // shared fact, but the tool cannot assert "100% cotton" and "Cotton 100%" agree until
+    // the strings are normalized (docs/DECISIONS.md, 2026-08-02). Asserting it on raw text
+    // would fabricate a match — non-comparable is the honest setting until then.
+    comparable: false,
+    cells,
+  };
+}
+
 function noteRow(inputs: readonly CompareInput[]): CompareRow | null {
   const cells = inputs.map(({ item }) => cell(item.id, item.note));
   if (!cells.some((c) => c.present)) return null;
@@ -340,6 +358,7 @@ export function compareItems(inputs: readonly CompareInput[]): Comparison {
     priceChangeRow(inputs),
     availabilityRow(inputs),
     ...variantRows(inputs),
+    compositionRow(inputs),
     desiredPriceRow(inputs),
     noteRow(inputs),
   ].filter((row): row is CompareRow => row !== null);

@@ -17,7 +17,8 @@
     "selectedImageUrl": "https://images.example.com/360/Vantage-Court-Low-Sail-Cobalt/Images/hero.jpg?w=1000",
     "identifiers": {
       "mpn": "VC1234-101"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "84.00",

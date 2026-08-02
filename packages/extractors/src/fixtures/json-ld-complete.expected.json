@@ -20,7 +20,8 @@
       "sku": "MWR-042",
       "gtin": "0123456789012",
       "mpn": "NW-MWR-042"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "98.00",

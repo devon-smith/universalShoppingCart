@@ -13,7 +13,8 @@
     "description": null,
     "imageUrls": ["https://cdn.example.com/tidewater.jpg"],
     "selectedImageUrl": "https://cdn.example.com/tidewater.jpg",
-    "identifiers": {}
+    "identifiers": {},
+    "composition": null
   },
   "offer": {
     "priceAmount": "34.5",

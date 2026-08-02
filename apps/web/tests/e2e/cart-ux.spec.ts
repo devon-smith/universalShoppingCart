@@ -52,6 +52,7 @@ function capture(fixture: Fixture): ProductCaptureV1 {
       imageUrls: [],
       selectedImageUrl: null,
       identifiers: { sku: fixture.slug },
+      composition: null,
     },
     offer: {
       priceAmount: fixture.price === undefined ? '98.00' : fixture.price,

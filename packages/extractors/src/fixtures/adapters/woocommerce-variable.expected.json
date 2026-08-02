@@ -15,7 +15,8 @@
     "selectedImageUrl": "https://fieldcraft.example/wp-content/uploads/alder-board-large.jpg",
     "identifiers": {
       "sku": "ACB-L-OIL"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "68.00",

@@ -19,7 +19,7 @@ import { SOURCE_RANK } from './types';
 /** Dotted paths that the merge engine knows how to resolve. */
 export type MergeableField =
   | `source.${'url' | 'canonicalUrl' | 'domain' | 'retailerName' | 'pageTitle'}`
-  | `product.${'title' | 'brand' | 'description' | 'imageUrls' | 'selectedImageUrl' | 'identifiers'}`
+  | `product.${'title' | 'brand' | 'description' | 'composition' | 'imageUrls' | 'selectedImageUrl' | 'identifiers'}`
   | `offer.${'priceAmount' | 'originalPriceAmount' | 'currency' | 'availability' | 'variantAvailability'}`
   | 'selectedVariant';
 

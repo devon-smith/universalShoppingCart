@@ -23,6 +23,7 @@ function capture(overrides: { variant?: Record<string, string> } = {}): ProductC
       imageUrls: [],
       selectedImageUrl: null,
       identifiers: { sku: 'S1' },
+      composition: null,
     },
     offer: {
       priceAmount: '88.00',

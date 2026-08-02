@@ -15,7 +15,8 @@
     "selectedImageUrl": "https://images.example.com/360/Halyard-Mid-Bracken/Images/hero.jpg?w=1000",
     "identifiers": {
       "mpn": "HY5678-200"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": null,

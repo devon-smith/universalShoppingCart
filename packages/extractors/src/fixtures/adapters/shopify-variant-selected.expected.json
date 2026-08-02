@@ -21,7 +21,8 @@
       "gtin": "00191234567891",
       "productId": "7712340001",
       "variantId": "4400220002"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "108.00",

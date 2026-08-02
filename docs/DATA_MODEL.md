@@ -83,6 +83,7 @@ A saved product. The columns fall into three groups, and the grouping is the poi
 | `title`                | `text`                   | non-blank                                                                                                            |
 | `brand`                | `text`                   |                                                                                                                      |
 | `description`          | `text`                   |                                                                                                                      |
+| `composition`          | `text`                   | fibre content, raw and un-normalized — "100% cotton", "Shell: 100% wool; Lining: 52% polyester"; null when unstated  |
 | `image_url`            | `text`                   |                                                                                                                      |
 | `currency`             | `text`                   | ISO 4217 when present                                                                                                |
 | `current_price`        | `numeric(20,6)`          | ≥ 0 when present                                                                                                     |

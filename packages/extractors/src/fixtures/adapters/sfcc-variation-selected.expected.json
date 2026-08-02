@@ -16,7 +16,8 @@
     "identifiers": {
       "sku": "KRS-0042-SLT-M",
       "productId": "KRS-0042-SLT-M"
-    }
+    },
+    "composition": null
   },
   "offer": {
     "priceAmount": "189.00",

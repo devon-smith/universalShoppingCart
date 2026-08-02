@@ -155,6 +155,7 @@ export type Database = {
           brand: string | null
           canonical_url: string | null
           cart_id: string
+          composition: string | null
           created_at: string
           created_by: string
           currency: string | null
@@ -189,6 +190,7 @@ export type Database = {
           brand?: string | null
           canonical_url?: string | null
           cart_id: string
+          composition?: string | null
           created_at?: string
           created_by: string
           currency?: string | null
@@ -223,6 +225,7 @@ export type Database = {
           brand?: string | null
           canonical_url?: string | null
           cart_id?: string
+          composition?: string | null
           created_at?: string
           created_by?: string
           currency?: string | null

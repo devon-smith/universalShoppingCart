@@ -21,6 +21,7 @@ function capture(overrides: Partial<ProductCaptureV1> = {}): ProductCaptureV1 {
       imageUrls: [],
       selectedImageUrl: null,
       identifiers: { sku: 'S1' },
+      composition: null,
     },
     offer: {
       priceAmount: '10.00',

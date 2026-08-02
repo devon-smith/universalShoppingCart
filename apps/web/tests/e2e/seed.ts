@@ -64,6 +64,7 @@ export function capture(overrides: CaptureOverrides = {}): ProductCaptureV1 {
       imageUrls: [],
       selectedImageUrl: null,
       identifiers: { sku: 'MWR-042' },
+      composition: null,
     },
     offer: {
       priceAmount: overrides.noPrice ? null : (overrides.price ?? '98.00'),
