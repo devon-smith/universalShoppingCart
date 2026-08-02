@@ -334,6 +334,64 @@ test.describe('dashboard as a daily tool', () => {
     await expect(page.getByTestId('item-card')).toHaveCount(0);
   });
 
+  test('drawer traps focus, closes on Escape, and hands focus back to the opener', async ({
+    page,
+  }) => {
+    await openDashboard(page, 'drawer-keys');
+
+    const card = page.getByTestId('item-card').filter({ hasText: 'Meridian' });
+    const opener = card.getByRole('button', { name: 'Details' });
+    await opener.click();
+
+    const drawer = page.getByRole('dialog');
+    await expect(drawer).toBeVisible();
+
+    // Focus is inside the drawer, not left behind on the row underneath it.
+    await expect(drawer.locator(':focus')).toHaveCount(1);
+
+    // Escape closes, and focus returns to the control that opened it — otherwise a keyboard
+    // user lands at the top of the document and has to tab back to where they were reading.
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+
+  test('confirms a save, and says so without claiming anything was observed', async ({ page }) => {
+    await openDashboard(page, 'save-toast');
+
+    const card = page.getByTestId('item-card').filter({ hasText: 'Meridian' });
+    await card.getByRole('button', { name: 'Details' }).click();
+
+    const drawer = page.getByRole('dialog');
+    await drawer.getByLabel('Note').fill('for the trip');
+    await drawer.getByRole('button', { name: 'Save changes' }).click();
+
+    await expect(drawer).toBeHidden();
+
+    // One live region, one message. Saving used to confirm nothing at all.
+    const toast = page.getByRole('status');
+    await expect(toast).toContainText('Saved your changes');
+    await expect(card).toContainText('for the trip');
+  });
+
+  test('rolls a refused change back and says so, rather than reverting in silence', async ({
+    page,
+  }) => {
+    await openDashboard(page, 'rollback');
+
+    // A note beyond the 2000-character limit is refused by the same schema on both sides.
+    const card = page.getByTestId('item-card').filter({ hasText: 'Meridian' });
+    await card.getByRole('button', { name: 'Details' }).click();
+
+    const drawer = page.getByRole('dialog');
+    await drawer.getByLabel('Note').fill('x'.repeat(2001));
+    await drawer.getByRole('button', { name: 'Save changes' }).click();
+
+    // Rejected before it reaches the database, and the drawer stays open with the reason.
+    await expect(drawer.getByRole('alert')).toContainText('2000');
+    await expect(drawer).toBeVisible();
+  });
+
   test('deletes permanently, only after confirming', async ({ page }) => {
     await openDashboard(page, 'delete');
 

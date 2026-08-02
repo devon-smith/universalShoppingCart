@@ -95,7 +95,9 @@ test.describe('revisit refresh', () => {
     await expect(panel.getByTestId('preview-title')).toHaveText('Meridian Wool Runner');
     await panel.getByRole('button', { name: 'Save item' }).click();
     await expect(panel.getByRole('status')).toContainText('Saved');
-    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$98.00' })).toBeVisible();
+    await expect(
+      panel.locator('.item-summary .uc-price__amount').filter({ hasText: '$98.00' }),
+    ).toBeVisible();
 
     // Same product, same variant, lower price.
     await product.goto(`${fixtureOrigin}/json-ld-complete.html?price=88.00`);
@@ -104,7 +106,9 @@ test.describe('revisit refresh', () => {
     // Phrased as what happened rather than as a claim about monitoring.
     await expect(panel.getByRole('status')).toContainText('recorded a new price or availability');
     // One item, at the new price — a refresh, not a second card.
-    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$88.00' })).toBeVisible();
+    await expect(
+      panel.locator('.item-summary .uc-price__amount').filter({ hasText: '$88.00' }),
+    ).toBeVisible();
     await expect(panel.getByRole('listitem')).toHaveCount(1);
   });
 
@@ -157,6 +161,8 @@ test.describe('revisit refresh', () => {
     await clickWithoutFocus(panel, 'button:has-text("Refresh details")');
 
     await expect(panel.getByRole('status')).toContainText('recorded a new price or availability');
-    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$79.50' })).toBeVisible();
+    await expect(
+      panel.locator('.item-summary .uc-price__amount').filter({ hasText: '$79.50' }),
+    ).toBeVisible();
   });
 });

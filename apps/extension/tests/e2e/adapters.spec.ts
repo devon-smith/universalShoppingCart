@@ -66,7 +66,9 @@ test.describe('retailer adapters', () => {
 
     await panel.getByRole('button', { name: 'Save item' }).click();
     await expect(panel.getByRole('status')).toContainText('Saved');
-    await expect(panel.locator('.uc-price__amount').filter({ hasText: '$108.00' })).toBeVisible();
+    await expect(
+      panel.locator('.item-summary .uc-price__amount').filter({ hasText: '$108.00' }),
+    ).toBeVisible();
   });
 
   test('falls back to the generic pipeline on a page no adapter claims', async ({

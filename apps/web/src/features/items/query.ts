@@ -26,6 +26,13 @@ export interface SavedItem {
   current_price: string | number | null;
   original_price: string | number | null;
   availability: ItemAvailability;
+  /**
+   * The page's *product-level* claim, kept only when it differs from `availability` — which
+   * describes the selected variant. Null means the page made no separate claim, or the two
+   * agree, so a non-null value is by construction the interesting case: the size you chose is
+   * gone while the product is still sold (supabase/migrations/…_product_availability.sql).
+   */
+  product_availability: ItemAvailability | null;
   selected_variant: Record<string, string> | null;
   identifiers: Record<string, string> | null;
   note: string | null;
