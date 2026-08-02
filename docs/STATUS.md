@@ -271,6 +271,17 @@ anywhere near their prices, because the striking CSS was never fetched — the m
 boundary, not a defect. Amazon and Wayfair also still extract no price at all, which is
 separate and pre-existing.
 
+**Wayfair, after `e0e7d88`'s cue-gated path (verified live 2026-08-03).** The reach defect
+is fixed and proven on the real page: given Wayfair's actual current price,
+`struckOriginalForValue("672.96")` returns `993.97` via `was-labelled strikethrough above
+price`, the figure three hops up that adjacency could not reach. End to end the page is
+unchanged, and that is a _different_ blocker rather than a failed fix — the resolver runs
+post-merge only when a current price is already known, and on Wayfair no tier finds one
+(no JSON-LD offer; the DOM heuristics do not recognise `data-test-id="PriceDisplay"`).
+Through the panel it correctly shows an empty flagged Price field and "1 field needs
+checking". Nike stays green. Amazon is in the same position as Wayfair; Zalando's strike CSS
+is external and only a live-site capture could exercise it.
+
 Four `.live/*.truth.json` sidecars now exist (oos, wayfair, zalando, amazon), so the
 correctness pass has real ground truth on the four pages that carry a former price: 8 ok,
 7 missing, **0 silently wrong**. Zalando's records `47.95` rather than the `119,95 €`
@@ -289,12 +300,14 @@ or "same" and mark the cheapest; a **descriptive** row — size, colour, composi
 says "not compared" and shows its values, no matter how alike they look. Two retailers' size
 "M" is the case the e2e pins, because it is the one a naive table would get wrong.
 
-Two things found while building it, both recorded in DECISIONS.md. `compare.ts` marks the
-price row `comparable: true` but omits `allAgree`, contradicting that field's own
-documentation — the view derives it rather than editing a core owned elsewhere, but the core
-is the right place to fix it. And `composition` existed in the database and the capture
-contract while reaching no client at all: neither `SavedItem` nor the dashboard's column list
-selected it, so the compare row it was added for would always have been empty.
+Two things found while building it, both since fixed. `compare.ts` marked the price row
+`comparable: true` while omitting `allAgree`, contradicting that field's own documentation,
+so a view keying off its presence labelled Price "not compared" — the one thing that row must
+never say. The view derived the verdict as a stopgap; `bed61bf` fixed it in the core and
+made it currency-aware, which the stopgap was not, and the stopgap is gone. And `composition`
+existed in the database and the capture contract while reaching no client at all: neither
+`SavedItem` nor the dashboard's column list selected it, so the compare row it was added for
+would always have been empty.
 
 The `selectedVariant` hygiene queue is now empty. The Shopify variant id landed 2026-07-31:
 opaque `?variant=` tokens and `variants[].id` land in `identifiers.variantId`, ranked above
