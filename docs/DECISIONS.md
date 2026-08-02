@@ -914,6 +914,7 @@ not in `identifiers`. In the compare structure it is `comparable: false`: two ga
 "100% cotton" is a genuine shared fact, but until the strings are normalized the tool cannot
 assert that "100% cotton" and "Cotton 100%" agree, and asserting it on raw strings would
 fabricate a match. Non-comparable is the honest setting until normalization lands.
+
 ## 2026-08-02 — A former price farther than adjacency, gated on a cue word, not on distance
 
 **Decision.** `struckOriginalForValue` gains a third path, `struckCueOriginalNear`: a struck
@@ -994,4 +995,3 @@ accessible name always carries the product title — "Compare" repeated four tim
 tells a screen-reader user nothing about which row they are on. The dashboard gains bottom
 padding while the tray is open, so the last product is not permanently underneath the control
 being used to choose products.
-

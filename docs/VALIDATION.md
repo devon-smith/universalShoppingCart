@@ -133,23 +133,31 @@ was about:
 
 | page    | current price extracted | struck figure present in the saved DOM  | blocker                                                           |
 | ------- | ----------------------- | --------------------------------------- | ----------------------------------------------------------------- |
-| wayfair | **no**                  | yes — real `<s>$993.97</s>`, "was"      | two: no price anchor at all, **and** the hop limit (below)        |
+| wayfair | **no**                  | yes — real `<s>$993.97</s>`, "was"      | no price anchor at all (see below)                                |
 | zalando | yes (35.95)             | **no** — strike CSS is external         | measurement boundary; only a live capture can load the stylesheet |
-| amazon  | **no**                  | **no** — `data-a-strike` + external CSS | two: no price anchor, and the strike is invisible to `isStruck`   |
+| amazon  | **no**                  | **no** — `data-a-strike` + external CSS | no price anchor, and the strike is invisible to `isStruck`        |
 
-**The wayfair finding is concrete and actionable.** Given its real current price,
-`struckOriginalForValue("672.96")` still returns `null`, and measurement says why: the
-struck `$993.97` is **3 parent hops** from the `$672.96` element, while
-`STRUCK_PRICE_HOPS = 2`. The scope at hop 3 reads exactly `"$672.96 was$993.97"` — as
-tight and unambiguous a pairing as the corpus contains, one hop out of reach. Raising
-the limit is not obviously safe (adjacency is what keeps a sponsored tile's own
-strikethrough out), so it wants its own change with its own evidence, not a nudge here.
+**Wayfair's hop-distance blocker is fixed; its remaining one is older and separate.**
+`e0e7d88` added the cue-gated path, and it works on the real page: given Wayfair's
+actual current price, `struckOriginalForValue("672.96")` now returns
+`{ amount: "993.97", selector: "was-labelled strikethrough above price" }` — the
+figure three hops up that adjacency alone could not reach.
 
-Zalando and Amazon cannot be settled from a saved page at all: probing every ancestor
-up to twelve hops finds no struck element anywhere near their prices, because the CSS
-that would strike them was never fetched. That is the measurement boundary this
-document already names, not an extraction defect — and for Amazon it is moot until a
-price is extracted at all.
+End to end the page is unchanged, and that is not a failure of the fix. The resolver
+runs post-merge _only when a current price is already known_, and on Wayfair no tier
+finds one: JSON-LD carries no offer, and the DOM heuristics do not recognise
+`data-test-id="PriceDisplay"`. No anchor, nothing to resolve from. Captured through the
+panel, Wayfair correctly shows an empty, flagged, editable Price field with "1 field
+needs checking" — graceful partial extraction, nothing invented.
+
+So the sequence for Wayfair is: adjacency reach — fixed; price anchor — still open, and
+pre-existing since the corpus was first scored. Amazon is in the same position for the
+same reason.
+
+Zalando and Amazon additionally cannot be settled from a saved page: probing every
+ancestor up to twelve hops finds no struck element anywhere near their prices, because
+the CSS that would strike them was never fetched. That is the measurement boundary this
+document already names, not an extraction defect.
 
 None of the three is a silently-wrong value. `pnpm score:live` reports each as
 `missing`, and the gate's `SILENTLY WRONG` count is **0** across all four sidecars

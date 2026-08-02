@@ -127,25 +127,16 @@ export function CompareTable({ comparison }: { comparison: Comparison }) {
   );
 }
 
-/**
- * Do all the present cells in a row carry the same value?
- *
- * `compare.ts` answers this in `allAgree` for comparable rows — except the price row, which
- * is `comparable: true` and leaves it undefined, contrary to the field's own documentation.
- * Trusting `allAgree === false` alone therefore labelled Price "not compared", which is the
- * one thing this table must never say about a row that genuinely is. Deriving it here keeps
- * the view correct without editing a core that is unit-proven and owned elsewhere; when the
- * core does answer, its answer wins.
- */
-function rowAgrees(row: CompareRow): boolean {
-  if (row.allAgree !== undefined) return row.allAgree;
-  const present = row.cells.filter((cell) => cell.present).map((cell) => cell.text);
-  if (present.length < 2) return present.length === 1;
-  return present.every((value) => value === present[0]);
-}
-
 function Row({ row }: { row: CompareRow }) {
-  const agrees = row.comparable && rowAgrees(row);
+  /*
+    `differs` is the negation of `agrees` rather than `allAgree === false`, and that
+    asymmetry is deliberate. A comparable row whose `allAgree` were somehow undefined would
+    then read as "differs" — imprecise, but survivable. Keying both off the field's exact
+    value instead lets such a row fall through to "not compared", which is the one thing this
+    table must never say about a row that genuinely is compared. `compare.ts` defines the
+    field on every comparable row as of `bed61bf`; this is what happens if that ever slips.
+  */
+  const agrees = row.comparable && row.allAgree === true;
   const differs = row.comparable && !agrees;
 
   return (
