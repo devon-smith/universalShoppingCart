@@ -1,0 +1,39 @@
+{
+  "name": "@universal-cart/extension",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "lint": "eslint .",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf node_modules .turbo .output .wxt coverage",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.110.8",
+    "@universal-cart/contracts": "workspace:*",
+    "@universal-cart/extractors": "workspace:*",
+    "@universal-cart/ui": "workspace:*",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.0",
+    "@types/chrome": "0.1.29",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@universal-cart/config": "workspace:*",
+    "@wxt-dev/module-react": "1.2.2",
+    "eslint": "9.39.5",
+    "globals": "16.5.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10",
+    "wxt": "0.20.27"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.fieldcraft.example/kestrel-rain-shell.html",
+    "canonicalUrl": "https://fieldcraft.example/kestrel-rain-shell.html",
+    "domain": "fieldcraft.example",
+    "retailerName": "Fieldcraft",
+    "pageTitle": "Kestrel Rain Shell — Fieldcraft"
+  },
+  "product": {
+    "title": "Kestrel Rain Shell",
+    "brand": "Fieldcraft",
+    "description": null,
+    "imageUrls": ["https://www.fieldcraft.example/dw/image/v2/kestrel-slate.jpg"],
+    "selectedImageUrl": "https://www.fieldcraft.example/dw/image/v2/kestrel-slate.jpg",
+    "identifiers": {
+      "sku": "KRS-0042-SLT-M",
+      "productId": "KRS-0042-SLT-M"
+    },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "189.00",
+    "originalPriceAmount": "245.00",
+    "currency": "CAD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Colour": "Slate",
+    "Size": "Medium"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": ".product-name",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "adapter",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.88
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.88
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": ".prices .sales .value[content]",
+      "confidence": 0.94
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "confidence": 0.92
+    },
+    {
+      "field": "offer.currency",
+      "source": "adapter",
+      "confidence": 0.88
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": ".availability-msg",
+      "confidence": 0.9
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": ".attribute[data-attr]",
+      "confidence": 0.92
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "h1[class*=\"product\"]",
+      "confidence": 0.55
+    }
+  ],
+  "extraction": {
+    "extractorId": "salesforce-commerce-cloud",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.926,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

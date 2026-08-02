@@ -1,0 +1,80 @@
+<!doctype html>
+<!--
+  StockX — a size with no Buy Now price.
+
+  Sanitized and hand-built, like its sibling fixture. Nobody is currently selling the
+  selected size, so the buy box offers only "Make Offer" and there is no
+  `trade-box-buy-amount` element at all.
+
+  This is the graceful-degradation case (BUILD_PLAN.md §1.2, §10.8): the adapter still reads
+  the title, image, style code and selected size, claims no price, and claims nothing about
+  availability either — a missing element is not evidence that a size is sold out, because it
+  is equally what a markup change looks like. The generic layers underneath still contribute,
+  so the capture remains saveable and correctable by hand.
+-->
+<html lang="en">
+  <head>
+    <title>Halyard Mid Bracken | Example</title>
+    <link rel="canonical" href="https://stockx.com/halyard-mid-bracken" />
+    <meta property="og:title" content="Halyard Mid Bracken" />
+    <script type="application/ld+json" data-testid="product-schema">
+      {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": "Halyard Mid Bracken",
+        "brand": { "@type": "Brand", "name": "Halyard" }
+      }
+    </script>
+  </head>
+  <body>
+    <div data-testid="pdp-hero">
+      <div data-testid="pdp-hero-media">
+        <img
+          class="chakra-image css-vu90sb"
+          alt="Halyard Mid Bracken"
+          src="https://images.example.com/360/Halyard-Mid-Bracken/Images/hero.jpg?w=1000"
+        />
+      </div>
+
+      <div data-testid="pdp-hero-title" class="css-hfp9tp">
+        <div data-component="Header" data-testid="header" class="css-or1ilu">
+          <h1 class="chakra-heading css-k15mlv" data-component="primary-product-title">
+            Halyard Mid<span
+              class="chakra-heading css-k15mlv"
+              data-component="secondary-product-title"
+              >Bracken</span
+            >
+          </h1>
+        </div>
+      </div>
+
+      <div data-testid="pdp-hero-buysell">
+        <div data-testid="BuySellContainerStandard">
+          <span class="css-xl71ch">
+            <button type="button" class="chakra-menu__menu-button">
+              <div class="css-2lhf4t">
+                <p class="chakra-text css-fz9sby">Size:</p>
+                <div class="css-pi696t"><p class="chakra-text css-1ek241l">US Men's 13</p></div>
+              </div>
+            </button>
+          </span>
+
+          <div data-testid="BuyContainer">
+            <button type="button">Make Offer</button>
+          </div>
+        </div>
+      </div>
+
+      <div data-component="ProductTraits" data-testid="product-traits" class="css-17w8l66">
+        <div data-component="product-trait" class="css-101wtdy">
+          <span class="chakra-text css-1m3qoev">Style</span>
+          <p class="chakra-text css-1wfxafd">HY5678-200</p>
+        </div>
+        <div data-component="product-trait" class="css-101wtdy">
+          <span class="chakra-text css-1m3qoev">Colorway</span>
+          <p class="chakra-text css-1wfxafd">Bracken/Sand</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

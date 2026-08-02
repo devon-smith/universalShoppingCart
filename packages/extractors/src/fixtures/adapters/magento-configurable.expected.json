@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://bergsport.example/alpenrose-daunenjacke.html",
+    "canonicalUrl": "https://bergsport.example/alpenrose-daunenjacke.html",
+    "domain": "bergsport.example",
+    "retailerName": "Bergsport",
+    "pageTitle": "Alpenrose Daunenjacke — Bergsport"
+  },
+  "product": {
+    "title": "Alpenrose Daunenjacke",
+    "brand": null,
+    "description": null,
+    "imageUrls": ["https://bergsport.example/media/catalog/product/alpenrose.jpg"],
+    "selectedImageUrl": "https://bergsport.example/media/catalog/product/alpenrose.jpg",
+    "identifiers": {
+      "sku": "ALP-DJ-2201"
+    },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "279.00",
+    "originalPriceAmount": "349.00",
+    "currency": "EUR",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Größe": "M",
+    "Farbe": "Preiselbeere"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": ".page-title .base",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.85
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "[data-price-type=\"finalPrice\"]",
+      "confidence": 0.4,
+      "value": "279.00"
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "confidence": 0.94
+    },
+    {
+      "field": "offer.currency",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": ".stock.available",
+      "confidence": 0.92
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": ".swatch-attribute-selected-option",
+      "confidence": 0.94
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "h1",
+      "confidence": 0.35
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "dom",
+      "selector": "[data-price-amount]",
+      "confidence": 0.4,
+      "value": "349.00"
+    }
+  ],
+  "extraction": {
+    "extractorId": "magento",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.747,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

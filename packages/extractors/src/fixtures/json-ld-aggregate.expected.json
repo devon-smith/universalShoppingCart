@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://harbourkitchen.example/p/tidewater-skillet",
+    "canonicalUrl": "https://harbourkitchen.example/p/tidewater-skillet",
+    "domain": "harbourkitchen.example",
+    "retailerName": "Harbourkitchen",
+    "pageTitle": "Tidewater Cast Iron Skillet — Harbour Kitchen"
+  },
+  "product": {
+    "title": "Tidewater Cast Iron Skillet",
+    "brand": "Harbour Kitchen",
+    "description": null,
+    "imageUrls": ["https://cdn.example.com/tidewater.jpg"],
+    "selectedImageUrl": "https://cdn.example.com/tidewater.jpg",
+    "identifiers": {},
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "34.5",
+    "originalPriceAmount": null,
+    "currency": "GBP",
+    "availability": "unknown"
+  },
+  "selectedVariant": {},
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "json_ld",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.currency",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "main h1",
+      "confidence": 0.45
+    }
+  ],
+  "extraction": {
+    "extractorId": "generic",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.811,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

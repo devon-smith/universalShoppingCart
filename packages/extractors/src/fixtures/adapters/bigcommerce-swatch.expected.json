@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://lumenworks.example/solstice-desk-lamp/",
+    "canonicalUrl": "https://lumenworks.example/solstice-desk-lamp",
+    "domain": "lumenworks.example",
+    "retailerName": "Lumenworks",
+    "pageTitle": "Solstice Desk Lamp — Lumenworks"
+  },
+  "product": {
+    "title": "Solstice Desk Lamp",
+    "brand": "Lumenworks",
+    "description": null,
+    "imageUrls": ["https://cdn11.bigcommerce.com/s-abc/products/4821/solstice.jpg"],
+    "selectedImageUrl": "https://cdn11.bigcommerce.com/s-abc/products/4821/solstice.jpg",
+    "identifiers": {
+      "sku": "SOL-DL-BRS",
+      "productId": "4821"
+    },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "189.00",
+    "originalPriceAmount": "229.00",
+    "currency": null,
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Finish": "Brushed Brass",
+    "Shade": "Linen"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": ".productView-title",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "[data-product-price-without-tax]",
+      "confidence": 0.93
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "confidence": 0.85
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "[data-product-attribute] input:checked",
+      "confidence": 0.92
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "h1[class*=\"product\"]",
+      "confidence": 0.55
+    },
+    {
+      "field": "selectedVariant",
+      "source": "dom",
+      "confidence": 0.6
+    }
+  ],
+  "extraction": {
+    "extractorId": "bigcommerce",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.821,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

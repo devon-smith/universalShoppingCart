@@ -1,0 +1,45 @@
+{
+  "name": "universal-cart",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "test:e2e": "node scripts/with-supabase-env.mjs pnpm exec turbo run test:e2e",
+    "supabase:start": "node scripts/supabase.mjs start",
+    "supabase:stop": "node scripts/supabase.mjs stop",
+    "supabase:reset": "node scripts/supabase.mjs db reset",
+    "clean": "turbo run clean",
+    "supabase:status": "node scripts/supabase.mjs status",
+    "test:db": "node scripts/supabase.mjs test db",
+    "db:types": "node scripts/generate-db-types.mjs",
+    "score:live": "tsx scripts/score-live.mjs"
+  },
+  "devDependencies": {
+    "@universal-cart/config": "workspace:*",
+    "@universal-cart/extractors": "workspace:*",
+    "jsdom": "29.1.1",
+    "prettier": "3.9.6",
+    "supabase": "2.109.1",
+    "tsx": "^4.23.1",
+    "turbo": "2.10.7",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "supabase"
+    ]
+  }
+}

@@ -55,6 +55,20 @@ pnpm supabase:stop
 pnpm supabase:reset
 ```
 
+Added since Phase 0/1, and equally required to keep working:
+
+```bash
+pnpm format         # Prettier write
+pnpm format:check   # Prettier check (CI runs this)
+pnpm supabase:status
+pnpm test:db        # pgTAP: schema, triggers, row-level security
+pnpm db:types       # regenerate packages/contracts/src/database.types.ts
+```
+
+`pnpm test:e2e` and `pnpm test:db` need Docker and a running local stack
+(`pnpm supabase:start`). The end-to-end suites sign real users in; they do not skip when
+no project is reachable, they fail.
+
 If the actual scripts differ, update this file and `README.md` in the same change.
 
 ## Task workflow
