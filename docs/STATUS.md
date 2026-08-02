@@ -249,6 +249,34 @@ reachable structured data). Zalando's former price is deliberately the struck 47
 −25%, and recording 119,95 would have the tool assert a 70% discount Zalando never claims.
 `oos`'s captured DOM was confirmed to carry both figures.
 
+**D1 was re-run on 2026-08-03 and PASSES.** The Nike page, served to a real Chromium at
+its own canonical URL and captured through the side panel, now previews
+`$94.97, reduced from $120.00`. The strikethrough path was checked in isolation rather
+than inferred from the outcome: Nike ships both an `aria-label` naming the original price
+and a class-struck `$120`, and the label is tried first, so a green capture alone would
+not have shown the class-based strike working. With all seventeen price-bearing
+`aria-label`s stripped from the live document, the helper still returns
+`{ amount: "120.00", selector: "strikethrough near current price" }`. Both signals resolve
+it independently, which is what the check existed to establish.
+
+The re-run also settled the other three pages, and each fails for its own reason — none of
+them this rule. **Wayfair is the actionable one:** given its real current price,
+`struckOriginalForValue("672.96")` still returns null, because the struck `$993.97` sits
+**3 parent hops** from the `$672.96` element while `STRUCK_PRICE_HOPS` is 2. The scope at
+hop 3 reads exactly `"$672.96 was$993.97"` — one hop out of reach. Raising the limit is not
+obviously safe, since adjacency is what keeps a sponsored tile's own strikethrough out of
+the answer, so it wants its own change with its own evidence. Zalando and Amazon cannot be
+settled from a saved page at all: probing twelve hops of ancestry finds no struck element
+anywhere near their prices, because the striking CSS was never fetched — the measurement
+boundary, not a defect. Amazon and Wayfair also still extract no price at all, which is
+separate and pre-existing.
+
+Four `.live/*.truth.json` sidecars now exist (oos, wayfair, zalando, amazon), so the
+correctness pass has real ground truth on the four pages that carry a former price: 8 ok,
+7 missing, **0 silently wrong**. Zalando's records `47.95` rather than the `119,95 €`
+labelled "Ursprünglich", because 35.95 / 47.95 is exactly the -25% the page advertises and
+35.95 / 119.95 would be -70% — a saving the retailer does not claim.
+
 The `selectedVariant` hygiene queue is now empty. The Shopify variant id landed 2026-07-31:
 opaque `?variant=` tokens and `variants[].id` land in `identifiers.variantId`, ranked above
 `sku` in the fingerprint so two sizes of one garment cannot hash alike — the coupling that

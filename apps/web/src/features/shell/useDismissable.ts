@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 /**
  * Close-on-Escape and close-on-outside-click for a transient overlay.
@@ -95,4 +95,31 @@ export function useFocusTrap(open: boolean, container: RefObject<HTMLElement | n
       opener?.focus();
     };
   }, [open, container]);
+}
+
+/**
+ * Give focus back to the button that opened a popover, when the popover took it away.
+ *
+ * `useFocusTrap` already does this for the overlays it guards. A disclosure — the account
+ * menu, a card's overflow — deliberately isn't trapped: it does not cover the page, and
+ * trapping a non-modal popover is worse than leaving it open. But it still unmounts, and
+ * anything focused inside it goes with it, so pressing Escape drops focus onto `<body>` and
+ * the next Tab restarts from the top of the document.
+ *
+ * The test for "did the popover have focus" is that `document.activeElement` is now the body:
+ * a removed element leaves focus there, whereas clicking another control moves focus to that
+ * control before this runs. So a user who dismissed the popover by clicking elsewhere keeps
+ * the focus they chose, and only a user who lost it gets it back.
+ */
+export function useReturnFocus(open: boolean, trigger: RefObject<HTMLElement | null>): void {
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    const closing = wasOpen.current && !open;
+    wasOpen.current = open;
+    if (!closing) return;
+
+    const active = document.activeElement;
+    if (active === null || active === document.body) trigger.current?.focus();
+  }, [open, trigger]);
 }

@@ -132,6 +132,19 @@ export function AppShell({
 
   return (
     <div className="min-h-screen lg:flex">
+      {/*
+        Bypass the rail (WCAG 2.4.1). Everything before the search box — wordmark, cart
+        selector, four sections, account menu — is eight tab stops that a keyboard user
+        crosses on every page, and they are identical every time. Hidden until focused, so it
+        costs a mouse user nothing and is the first thing a keyboard user reaches.
+      */}
+      <a
+        href="#content"
+        className="uc-focusable sr-only rounded-[var(--uc-radius-control)] bg-[var(--uc-surface-elevated)] px-3 py-2 text-sm font-semibold shadow-[var(--uc-shadow-overlay)] focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50"
+      >
+        Skip to your saved products
+      </a>
+
       {/* Desktop rail. */}
       <aside className="hidden w-60 shrink-0 flex-col gap-4 border-r border-[var(--uc-border)] bg-[var(--uc-surface)] p-4 lg:sticky lg:top-0 lg:flex lg:h-screen">
         {railContents}
@@ -185,7 +198,10 @@ export function AppShell({
         </div>
       ) : null}
 
-      <main className="min-w-0 flex-1">
+      {/* `tabIndex={-1}` so the skip link moves focus here rather than only scrolling — an
+          anchor to a non-focusable element leaves the keyboard where it was in several
+          browsers, which makes the link look like it did nothing. */}
+      <main id="content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
         <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8">
           <div className="flex flex-col gap-1">
             <label className="sr-only" htmlFor="search">

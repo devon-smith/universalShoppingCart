@@ -18,6 +18,14 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
   fullWidth?: boolean;
   className?: string;
   children: ReactNode;
+  /**
+   * React 19 takes `ref` as an ordinary prop, but only if the component declares one.
+   *
+   * Same reason as `IconButton`: a control that replaces itself has to hand the keyboard to
+   * whatever replaced it, which means the replacement must be reachable. The item drawer's
+   * delete confirmation is the case that needed it.
+   */
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 export function Button({
@@ -26,6 +34,7 @@ export function Button({
   type = 'button',
   className,
   children,
+  ref,
   ...rest
 }: ButtonProps): ReactElement {
   return (
@@ -33,6 +42,7 @@ export function Button({
       // Explicit, because a `<button>` inside a form defaults to submit and a "Compare"
       // control that reloads the dashboard is a bug nobody reports, they just stop using it.
       type={type}
+      ref={ref}
       className={cn(
         'uc-button uc-focusable',
         `uc-button--${tone}`,

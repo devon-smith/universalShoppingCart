@@ -48,9 +48,21 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
     null,
   );
   const panel = useRef<HTMLDivElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  // Set only by a click, so the effect below moves focus when the user asked a question or
+  // withdrew it — never on the drawer's first render, where it would jump straight to the
+  // destructive corner of a panel someone opened to read a price.
+  const deletePrompted = useRef(false);
 
   useDismissable(true, panel, onClose);
   useFocusTrap(true, panel);
+
+  useEffect(() => {
+    if (!deletePrompted.current) return;
+    deletePrompted.current = false;
+    (confirmingDelete ? confirmButton : deleteButton).current?.focus();
+  }, [confirmingDelete]);
 
   useEffect(() => {
     let active = true;
@@ -387,15 +399,37 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
 
           {confirmingDelete ? (
             <>
-              <p className="text-sm">
+              <p id="delete-question" className="text-sm">
                 Delete this item and its price history permanently? Archiving keeps both and can be
                 undone.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button tone="danger" onClick={() => void onDelete(item)}>
+                {/*
+                  Focus follows the decision. Confirming replaces the button that was just
+                  pressed, and a replaced button takes the keyboard with it — so without this
+                  the drawer answers a destructive prompt by dropping focus onto <body>.
+
+                  It lands on the confirm button, described by the question, so a screen
+                  reader reads the whole prompt rather than two orphaned words. A stray Enter
+                  cannot carry over: activation needs keydown and keyup on the same element,
+                  and the keydown happened on a button that no longer exists.
+                */}
+                <Button
+                  tone="danger"
+                  ref={confirmButton}
+                  aria-describedby="delete-question"
+                  onClick={() => void onDelete(item)}
+                >
                   Yes, delete it
                 </Button>
-                <Button onClick={() => setConfirmingDelete(false)}>Keep it</Button>
+                <Button
+                  onClick={() => {
+                    deletePrompted.current = true;
+                    setConfirmingDelete(false);
+                  }}
+                >
+                  Keep it
+                </Button>
               </div>
             </>
           ) : (
@@ -403,7 +437,15 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
               <p className="text-xs text-[var(--uc-foreground-muted)]">
                 Deleting removes the item and every observation recorded for it. There is no undo.
               </p>
-              <Button tone="ghost" className="self-start" onClick={() => setConfirmingDelete(true)}>
+              <Button
+                tone="ghost"
+                ref={deleteButton}
+                className="self-start"
+                onClick={() => {
+                  deletePrompted.current = true;
+                  setConfirmingDelete(true);
+                }}
+              >
                 Delete permanently
               </Button>
             </>

@@ -129,8 +129,23 @@ test.describe('capture and save', () => {
     await product.bringToFront();
     await clickWithoutFocus(panel, 'button:has-text("Capture this page")');
 
-    // Nothing was extractable, so the panel asks rather than inventing.
-    await expect(panel.getByRole('status')).toContainText('Check the highlighted fields');
+    /*
+      Nothing was extractable, so the panel asks rather than inventing.
+
+      This used to read `getByRole('status')` — the amber callout was its own live region. It
+      is not one any more, and the change is deliberate: the panel already announces the
+      outcome of a capture through a single `aria-live` region, and that message says how many
+      fields need checking. Two live regions mounting at the same instant to describe one
+      event is a screen reader saying it twice.
+
+      Both halves of the original claim are still checked, and more precisely than before:
+      the instruction is visible for a sighted user, and it is announced exactly once.
+    */
+    await expect(panel.getByText(/Check the highlighted fields/)).toBeVisible();
+    const live = panel.locator('[aria-live="polite"]');
+    await expect(live).toHaveCount(1);
+    await expect(live).toContainText(/needs? checking/);
+
     await expect(panel.getByLabel('Title')).toHaveValue('');
 
     await panel.getByLabel('Title').fill('Something I typed myself');

@@ -29,6 +29,18 @@
  * - `border` measures 1.27 against white. That is right for a decorative separator and
  *   wrong for the outline of a control, which WCAG 1.4.11 requires to reach 3:1 against its
  *   surroundings. `borderStrong` exists for anything a user is meant to click or type into.
+ * - The focus ring was `primary` at 40% alpha, and the alpha was the whole problem. Blended
+ *   onto the surfaces it is drawn against, it resolves to `#b1ace5` in light and `#434771`
+ *   in dark and measures 2.02 and 1.99 — while the token it was derived from measures 7.51
+ *   and 5.89, which is what made it look fine. A focus indicator is exactly the "visual
+ *   information required to identify a state" that 1.4.11 puts at 3:1, and it is the one
+ *   affordance a keyboard user cannot work without. Now drawn at full `primary`, and
+ *   declared once instead of per theme, since both `var()`s resolve when an element computes
+ *   its shadow.
+ *
+ * `contrast.test.ts` re-measures every pair named above, reading this file. The numbers in
+ * this comment are therefore checked rather than claimed: a token edit that breaks one fails
+ * the suite instead of quietly ageing the prose.
  */
 
 :root {
@@ -71,7 +83,10 @@
   --uc-duration-enter: 220ms;
   --uc-ease: cubic-bezier(0.2, 0, 0.2, 1);
 
-  --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(67 56 202 / 40%);
+  /* Drawn in `primary` at full opacity, and resolved per theme: both `var()`s are read when
+     an element computes its `box-shadow`, so the theme blocks below inherit the right ring
+     without redeclaring it. */
+  --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px var(--uc-primary);
 
   /* System stack for interface text. No web font is fetched, in either client: the
      extension must make no remote requests at all (BUILD_PLAN.md §17.4), and a dashboard
@@ -100,7 +115,6 @@
 
     --uc-shadow-raised: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
     --uc-shadow-overlay: 0 8px 24px rgb(0 0 0 / 50%), 0 2px 6px rgb(0 0 0 / 40%);
-    --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(129 140 248 / 40%);
   }
 }
 
@@ -122,7 +136,6 @@
   --uc-danger: #b91c1c;
   --uc-shadow-raised: 0 1px 2px rgb(26 25 23 / 6%), 0 1px 3px rgb(26 25 23 / 4%);
   --uc-shadow-overlay: 0 8px 24px rgb(26 25 23 / 12%), 0 2px 6px rgb(26 25 23 / 8%);
-  --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(67 56 202 / 40%);
 }
 
 :root[data-theme='dark'] {
@@ -142,7 +155,6 @@
   --uc-danger: #f87171;
   --uc-shadow-raised: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
   --uc-shadow-overlay: 0 8px 24px rgb(0 0 0 / 50%), 0 2px 6px rgb(0 0 0 / 40%);
-  --uc-focus-ring: 0 0 0 2px var(--uc-background), 0 0 0 4px rgb(129 140 248 / 40%);
 }
 
 @media (prefers-reduced-motion: reduce) {

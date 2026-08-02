@@ -25,6 +25,7 @@ import type { RevisitResult } from '@/lib/capture/revisit';
 import { itemLookup, refreshFromPage } from '@/lib/capture/revisit';
 import type { UserFields } from '@/lib/capture/save';
 import { saveCapture } from '@/lib/capture/save';
+import { readCaptureShortcut } from '@/lib/settings/shortcut';
 import { getSupabase } from '@/lib/supabase/client';
 
 type Stage =
@@ -103,6 +104,8 @@ export function CapturePanel({
   onChangeCart: () => void;
 }) {
   const [stage, setStage] = useState<Stage>({ name: 'idle' });
+  // `null` until Chrome answers, and `null` for good if the command has no binding.
+  const [shortcut, setShortcut] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>({
     title: '',
     priceAmount: '',
@@ -110,6 +113,16 @@ export function CapturePanel({
     note: '',
     quantity: '1',
   });
+
+  useEffect(() => {
+    let active = true;
+    void readCaptureShortcut(chrome.commands).then((value) => {
+      if (active) setShortcut(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /** Read the page in front of the user, or explain why it could not be read. */
   const readPage = useCallback(async (): Promise<ProductCaptureV1 | null> => {
@@ -328,7 +341,13 @@ export function CapturePanel({
       <p className="uc-sr-only" aria-live="polite">
         {stage.name === 'preview'
           ? stage.needsReview.length > 0
-            ? `Product details read. ${stage.needsReview.length} field needs checking.`
+            ? // The whole outcome in one sentence, including what to do about it. The amber
+              // callout below says the same thing visually and is deliberately not a live
+              // region, so this is announced once instead of as two queued announcements
+              // describing one event.
+              `Product details read. ${stage.needsReview.length} ${
+                stage.needsReview.length === 1 ? 'field needs' : 'fields need'
+              } checking — they are highlighted below.`
             : 'Product details read.'
           : stage.name === 'extracting'
             ? 'Reading product details.'
@@ -428,9 +447,18 @@ export function CapturePanel({
             Capture this page
           </Button>
 
-          <p className="capture__hint">
-            or press <kbd className="capture__kbd">⌘⇧U</kbd>
-          </p>
+          {/*
+            The real binding, not the suggested one. `⌘⇧U` was printed here literally, which
+            is the macOS suggestion and nothing else: a Windows user read a key they do not
+            have, and anybody who rebound the command read one that no longer works. Absent
+            while Chrome is still answering, and absent when there is no binding at all —
+            both are better than a key that does nothing.
+          */}
+          {shortcut ? (
+            <p className="capture__hint">
+              or press <kbd className="capture__kbd">{shortcut}</kbd>
+            </p>
+          ) : null}
         </div>
       )}
     </section>
@@ -483,6 +511,27 @@ function PreviewForm({
 }) {
   const [editing, setEditing] = useState<{ title?: boolean; price?: boolean }>({});
   const [showDetails, setShowDetails] = useState(false);
+  /**
+   * Where the keyboard goes when a displayed value becomes an editable one.
+   *
+   * Pressing "Edit title" unmounts the button that was pressed and mounts an input in its
+   * place. Focus does not follow on its own — it falls to `<body>`, so a keyboard user's next
+   * Tab restarts at the top of the panel and the field they just asked to edit is behind them.
+   *
+   * A ref rather than state: `editing` already re-renders on the click, so this only has to
+   * carry *which* field across that render. Holding it in state would mean clearing it from
+   * inside the effect, which is a synchronous setState in an effect and a cascading render.
+   */
+  const pendingFocus = useRef<'title' | 'price' | null>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const priceInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) return;
+    pendingFocus.current = null;
+    (target === 'title' ? titleInput : priceInput).current?.focus();
+  }, [editing]);
   // A retailer CDN that 404s leaves an image-first layout holding a placeholder where the
   // price should be. Treat a failed load exactly like no image at all.
   const [imageUsable, setImageUsable] = useState(true);
@@ -508,8 +557,12 @@ function PreviewForm({
     >
       {reviewCount > 0 ? (
         /* Inherited verbatim from the state the audit found already working: amber, above the
-           form, with the ⚠ on the field itself. */
-        <Callout tone="warning">
+           form, with the ⚠ on the field itself.
+
+           `announce={false}`: the panel's own live region already says how many fields need
+           checking and where they are, and it fires at the same instant this mounts. Two live
+           regions describing one event is a screen reader saying it twice. */
+        <Callout tone="warning" announce={false}>
           Check the highlighted fields — the page did not state them clearly.
         </Callout>
       ) : null}
@@ -531,7 +584,7 @@ function PreviewForm({
           invalid={flagged('product.title')}
           message={flagged('product.title') ? 'The page did not state this clearly. ⚠' : undefined}
           required
-          ref={flagged('product.title') ? firstFlaggedRef : undefined}
+          ref={flagged('product.title') ? firstFlaggedRef : titleInput}
           value={draft.title}
           onChange={(event) => setDraft({ ...draft, title: event.target.value })}
         />
@@ -542,7 +595,10 @@ function PreviewForm({
           </h2>
           <IconButton
             label="Edit title"
-            onClick={() => setEditing({ ...editing, title: true })}
+            onClick={() => {
+              pendingFocus.current = 'title';
+              setEditing({ ...editing, title: true });
+            }}
             icon={<EditGlyph />}
           />
         </div>
@@ -558,7 +614,7 @@ function PreviewForm({
             ref={
               flagged('offer.priceAmount') && !flagged('product.title')
                 ? firstFlaggedRef
-                : undefined
+                : priceInput
             }
             value={draft.priceAmount}
             onChange={(event) => setDraft({ ...draft, priceAmount: event.target.value })}
@@ -592,7 +648,10 @@ function PreviewForm({
           />
           <IconButton
             label="Edit price"
-            onClick={() => setEditing({ ...editing, price: true })}
+            onClick={() => {
+              pendingFocus.current = 'price';
+              setEditing({ ...editing, price: true });
+            }}
             icon={<EditGlyph />}
           />
         </div>
