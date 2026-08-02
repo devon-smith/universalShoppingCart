@@ -48,17 +48,47 @@ const ORIGINAL_PRICE_SELECTORS: ReadonlyArray<readonly [selector: string, confid
 ];
 
 /**
- * Markup that renders text struck through — the honest signal of a former price.
+ * Is this text rendered struck through — the honest signal of a former price?
  *
- * Keyed on markup rather than words because the live pages showed the words lying in both
- * directions: Uniqlo prints "Online + App-Member Price" with no former price anywhere,
- * AeroPress labels its only price "Sale price" with nothing to compare it to, and StockX
- * shows "Retail Price: $115" as a spec row, not a discount. Meanwhile every genuine former
- * price in the set — Amazon's "Typical price", Chewy's, Wayfair's, Zalando's, Nike's — was
- * struck through. Zalando is the decisive case: a plain "Ursprünglich: 119,95 €" and a
- * struck "47,95 €", where only the struck figure matches the advertised -25%.
+ * Keyed on rendering rather than words, because the live pages showed the words lying in
+ * both directions: Uniqlo prints "Online + App-Member Price" with no former price
+ * anywhere, AeroPress labels its only price "Sale price" with nothing to compare it to,
+ * and StockX shows "Retail Price: $115" as a spec row, not a discount.
+ *
+ * Three tiers of evidence, in decreasing availability. Semantic tags and inline styles
+ * are visible everywhere, including a parsed-but-windowless document. Computed style
+ * needs a live window and catches the commoner real-world case: a scored corpus showed
+ * Zalando and Nike striking through via CSS classes, with no `<s>`, no `<del>`, and no
+ * inline style — pages where the first two tiers see nothing at all. jsdom exposes the
+ * computed value only on the `textDecoration` shorthand while browsers also fill
+ * `textDecorationLine`, so both are read.
+ *
+ * The limit this cannot cross: computed style only exists where stylesheets loaded. In
+ * the extension the capture script runs in the rendered page, so class-based strikes are
+ * visible; in an offline scorer reading saved HTML whose CSS lives in external files,
+ * they are not, and the scorer under-reports `original` on exactly those pages. That is
+ * a measurement boundary, not an extraction bug — docs/VALIDATION.md tiers.
  */
-const STRUCK_PRICE_SELECTOR = 's, del, strike, [style*="line-through"]';
+function isStruck(element: Element): boolean {
+  if (element.matches('s, del, strike')) return true;
+
+  const inline = element.getAttribute('style');
+  if (inline && inline.includes('line-through')) return true;
+
+  const view = element.ownerDocument.defaultView;
+  if (view?.getComputedStyle) {
+    try {
+      const style = view.getComputedStyle(element);
+      return (
+        style.textDecorationLine.includes('line-through') ||
+        style.textDecoration.includes('line-through')
+      );
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 
 /**
  * How far above the current-price element a struck former price may sit.
@@ -70,6 +100,9 @@ const STRUCK_PRICE_SELECTOR = 's, del, strike, [style*="line-through"]';
  * the project's stated safe direction; attaching a neighbouring product's does not.
  */
 const STRUCK_PRICE_HOPS = 2;
+
+/** Computed-style checks are per-element, so bound the walk on a pathological block. */
+const STRUCK_SCAN_CAP = 200;
 
 /**
  * A struck-through price adjacent to the current one.
@@ -83,10 +116,19 @@ const STRUCK_PRICE_HOPS = 2;
 function struckPriceNear(priceElement: Element): { amount: string; selector: string } | null {
   let scope = priceElement.parentElement;
   for (let hop = 0; hop < STRUCK_PRICE_HOPS && scope; hop += 1) {
-    for (const struck of scope.querySelectorAll(STRUCK_PRICE_SELECTOR)) {
+    const struckAll = Array.from(scope.querySelectorAll('*'))
+      .slice(0, STRUCK_SCAN_CAP)
       // A struck element containing the current price would be the price itself on the
       // way out, not a former price beside it.
-      if (struck.contains(priceElement)) continue;
+      .filter((element) => !element.contains(priceElement) && isStruck(element));
+
+    // Innermost first: a wrapper struck by an inherited style contains every price in
+    // the block at once, and reading it would concatenate them.
+    const innermost = struckAll.filter(
+      (element) => !struckAll.some((other) => other !== element && element.contains(other)),
+    );
+
+    for (const struck of innermost) {
       const amount = normalizePrice(readValue(struck)).amount;
       if (amount) return { amount, selector: 'strikethrough near price' };
     }

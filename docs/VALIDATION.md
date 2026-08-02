@@ -98,6 +98,10 @@ The ten-product protocol in [LIVE_TESTING.md](LIVE_TESTING.md). D is the largest
 and most valuable part of this document, and it has its own file because its
 output is a dataset, not a checkbox.
 
+| #   | Check                                                                                                                             | Pass                                                                                                                                                                                                                                                                           |
+| --- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D1  | Capture a page whose former price is struck through by a CSS class (Zalando and Nike both are) through the panel, in real Chrome. | The preview shows the struck figure as the original price. The offline scorer CANNOT verify this: it reads saved HTML whose striking CSS lives in external files it never loads, so its `original` column under-reports on exactly these pages. Only a live capture proves it. |
+
 ## The gate
 
 Building resumes — Phase 6 or anything else — when all of these are true.
