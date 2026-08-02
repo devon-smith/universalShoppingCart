@@ -137,6 +137,70 @@ function struckPriceNear(priceElement: Element): { amount: string; selector: str
   return null;
 }
 
+/** How many candidate current-price anchors the value scan will consider. */
+const VALUE_ANCHOR_CAP = 40;
+
+/** Every price-shaped token in a string, normalized. */
+function pricesIn(text: string): string[] {
+  const tokens = text.match(/\d[\d.,]*\d|\d/g) ?? [];
+  return tokens.map((token) => normalizePrice(token).amount).filter((a): a is string => a !== null);
+}
+
+/** aria-labels that explicitly name a former price — the accessible pairing Nike ships. */
+const ORIGINAL_LABEL = /\b(original|was|regular|list|rrp|before|reduced)\b/i;
+
+/**
+ * A struck-through former price found by ANCHORING ON THE CURRENT-PRICE VALUE, not on a
+ * DOM-tier price find.
+ *
+ * The gap this closes (docs/STATUS.md, the fifth green-proved-less instance): on Nike,
+ * Wayfair, Zalando and Amazon the price comes from JSON-LD and the DOM heuristics find no
+ * price of their own, so `struckPriceNear` — which anchors on a DOM-found price element —
+ * has no anchor and never runs, even though the struck former price is right there in the
+ * rendered page. Once the merge knows the current price from any layer, its VALUE is the
+ * anchor: the element displaying "$94.97" sits beside the struck "$120".
+ *
+ * Two paths, both keyed on real markup:
+ *  - an `aria-label` that names an original price and contains the current one — the
+ *    explicit accessible pairing ("current price $94.97, original price $120");
+ *  - the innermost element whose own text is the current price, scanned for an adjacent
+ *    strikethrough exactly as `struckPriceNear` does.
+ *
+ * The strictly-greater guard applies on both: a former price at or below the current one is
+ * not a discount. Returns null rather than guess.
+ */
+export function struckOriginalForValue(
+  root: ParentNode,
+  currentAmount: string,
+): { amount: string; selector: string } | null {
+  // aria-label path: an element that names an original price and states the current one.
+  for (const labelled of root.querySelectorAll('[aria-label]')) {
+    const label = labelled.getAttribute('aria-label') ?? '';
+    if (!ORIGINAL_LABEL.test(label)) continue;
+    const prices = pricesIn(label);
+    if (!prices.includes(currentAmount)) continue;
+    const higher = prices.find((amount) => decimalGreaterThan(amount, currentAmount));
+    if (higher) return { amount: higher, selector: 'aria-label original price' };
+  }
+
+  // Value-anchored strikethrough path: find the on-screen current price, scan beside it.
+  const anchors = Array.from(root.querySelectorAll('*'))
+    .filter((element) => normalizePrice(readValue(element)).amount === currentAmount)
+    .filter(
+      (element, _i, all) => !all.some((other) => other !== element && element.contains(other)),
+    )
+    .slice(0, VALUE_ANCHOR_CAP);
+
+  for (const anchor of anchors) {
+    const struck = struckPriceNear(anchor);
+    if (struck && decimalGreaterThan(struck.amount, currentAmount)) {
+      return { amount: struck.amount, selector: 'strikethrough near current price' };
+    }
+  }
+
+  return null;
+}
+
 /** Exact comparison of two normalized decimal strings, without floating point. */
 function decimalGreaterThan(a: string, b: string): boolean {
   const [aWhole = '0', aFraction = ''] = a.split('.');
