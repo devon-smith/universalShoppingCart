@@ -823,6 +823,66 @@ They are now labelled containers of ordinary buttons and links, with Escape, out
 — for the filter popover and the mobile drawer — a focus trap that restores focus to the
 control that opened them.
 
+## 2026-08-01 — A sparkline beside the observation list, and no charting library
+
+**Context.** An earlier entry kept the price history as a list rather than a chart, on the
+grounds that with three observations a sparkline would be decoration. Phase 4 has seeded data
+with real shape — 98 → 94 → 92.50 → **96** → 88 → 84 → 79.95 — and that rise in the middle is
+invisible in seven timestamped rows.
+
+**Consequences.** The list stays; a sparkline is added _beside_ it, not instead of it. The
+earlier reasoning was right about what a list is for — "the price dropped when I revisited" is
+a question only the rows answer — and wrong that shape never matters.
+
+It is drawn from three observations up. Two points are a straight line whatever the numbers,
+and a straight line implies a trend two points cannot evidence. Below that threshold nothing
+renders.
+
+No charting library: forty lines of arithmetic in `sparkline.ts` against a dependency measured
+in hundreds of kilobytes. The SVG is `aria-hidden` — every number it encodes is in the four
+figures above it and the list below, so a screen reader gains nothing from the path and would
+have to sit through it.
+
+Points are spaced by index, not by elapsed time. Observations happen when the user revisits, so
+a time axis would render most of the width as the gap between two visits and crush every real
+move against the right edge. Even spacing answers the question actually being asked — how has
+this moved across the times I looked — and does not pretend to be a continuous record of a
+price nobody was watching.
+
+## 2026-08-01 — Green on a target means an observation recorded it
+
+**Context.** The desired price now has a visual treatment: a bar, a badge, and the distance to
+go.
+
+**Consequences.** The badge is green in exactly one case — an observation recorded the price at
+or below the target. Not "close to", not "likely to reach". Green is the strongest signal this
+product has and it stops meaning anything the first time it appears without that having
+happened.
+
+`targetState` describes _now_; `targetEverReached` describes the whole observed run, and they
+are deliberately separate functions. "It has been at or below your target before" is a real and
+useful fact, and folding it into the current state would let a green badge survive a price
+rise.
+
+Everything is arithmetic on two stored numbers. No forecast, no "similar items are cheaper" —
+the product has no evidence for either.
+
+## 2026-08-01 — One live region for everything the dashboard says back
+
+**Context.** Confirmations were scattered: an inline `role="alert"` paragraph for a failed
+write, two near-identical fixed divs for undo and for delete, and nothing at all for a
+successful save.
+
+**Consequences.** One `Announcements` component owns the region. Failures are assertive and
+persist until replaced — a message that vanishes on a timer is one the user may never have
+seen, and "your change did not save" needs attention now. Confirmations are polite and expire.
+An action lives _inside_ the region so "Archived — Undo" is announced as one thing.
+
+`Toast` gains an `announce` flag, the same one `Callout` got in 2B and for the same reason:
+the region is mounted once and toasts are swapped inside it, so a toast that is also its own
+`status` role makes a screen reader say the message twice and makes `getByRole('status')` match
+twice.
+
 ## 2026-08-02 — Composition lands, raw, now that comparison has a consumer for it
 
 **Decision.** `product.composition` becomes a real capture field and an `items.composition`

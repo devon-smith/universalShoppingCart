@@ -210,3 +210,18 @@ describe('loading and feedback', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
   });
 });
+
+describe('Toast announcing', () => {
+  it('is its own live region by default', () => {
+    render(<Toast message="Archived" />);
+    expect(screen.getByRole('status').textContent).toContain('Archived');
+  });
+
+  it('stays silent when the surrounding region already announces it', () => {
+    // Nesting two status roles makes a screen reader say it twice and a role query match
+    // twice; the dashboard owns one persistent region and swaps toasts inside it.
+    render(<Toast message="Archived" announce={false} />);
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(document.querySelector('.uc-toast')?.textContent).toContain('Archived');
+  });
+});

@@ -322,3 +322,51 @@ name: 'Sign out' })` stopped matching, and a screen reader would have stopped ca
 A fourth came from the screenshots: at 1024px the row's six columns truncated the retailer to
 "Northwind · Bergs…" and wrapped every chip three lines deep. The variant moved under the
 product name it belongs to, leaving five columns and the alignment that actually matters.
+
+## Phase 4 — item decisions
+
+**The drawer states the product's central idea outright.** "What the retailer says" and
+"Yours" are now two surfaces with their own headings, each carrying a sentence explaining what
+it is and why it behaves as it does: observed values are not editable because a correction
+would erase what was actually seen, and user fields are never touched by a refresh. The audit
+called this the product's central idea and the only place it is stated; it is louder now, not
+quieter.
+
+**Both URLs, labelled.** `Page you saved from` and `Canonical address`, under the provenance
+disclosure with the product codes. The canonical address is what the fingerprint is built
+from, so seeing it beside the source is the only way a tester can report the `canonical`
+failure code in LIVE_TESTING.md — a variant parameter silently dropped. Lululemon's product id
+is a whole URL carrying `?color=76616`; whether that colour survives is exactly this, and it
+was unobservable while the row did not exist.
+
+**Both availability facts, when they differ.** `items.product_availability` exists as of
+ee3f8eb and is written only when the page's product-level claim disagrees with the variant's —
+so a non-null value is, by construction, the interesting case. The drawer says it as a
+sentence: _the size you chose is sold out — the product is still sold_. That is the difference
+between "stop looking" and "try another size".
+
+**Price history answers questions instead of logging.** Four figures above the list — now,
+lowest seen, highest seen, what it cost when you saved it — then the change since saved, then
+the rows. The old list gave the price a small font and handed the rest of each row to a full
+`toLocaleString()` timestamp, making the least interesting value the widest thing on the line.
+That is inverted. A sparkline sits beside the figures; see the ADR for why it earns the space,
+why it starts at three points, and why there is no charting library.
+
+**The target price has a treatment.** A bar, the distance to go, and a badge that is green in
+exactly one case: an observation recorded the price at or below the target. "It has been at or
+below before" is tracked separately, so a green badge cannot survive a price rise.
+
+**One live region.** Save, archive-with-undo, delete-confirmed, and rollback-after-failure all
+go through `Announcements`. Failures are assertive and persist; confirmations are polite and
+expire. Saving used to confirm nothing at all.
+
+### What the environment caught, again
+
+Three stale-environment traps in two sessions, and this phase supplied the third: the e2e suite
+failed twelve tests because the local database predated `ee3f8eb`'s migration, so the new
+`product_availability` column broke the dashboard query. The earlier two were a `next start`
+left running from a previous session and a `.live/baseline.json` older than the branch it was
+being diffed against.
+
+The pattern is the same each time — a cached artifact that looks like a result. It is worth
+checking what a green or red run is actually running against before believing either.

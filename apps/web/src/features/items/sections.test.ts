@@ -18,6 +18,7 @@ function item(overrides: Partial<SavedItem> & { id: string }): SavedItem {
     current_price: '98.00',
     original_price: null,
     availability: 'in_stock',
+    product_availability: null,
     selected_variant: null,
     identifiers: null,
     note: null,

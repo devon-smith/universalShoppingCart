@@ -1,11 +1,12 @@
 'use client';
 
-import { Toast } from '@universal-cart/ui';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { AppShell, type ShellCart } from '@/features/shell/AppShell';
 
 import { archiveItem, deleteItem, setItemStatus, updateItem } from './actions';
+import type { Announcement } from './Announcements';
+import { Announcements } from './Announcements';
 import { CartHeader, type ItemsLayout } from './CartHeader';
 import type { ItemEdit } from './edits';
 import { emptyReason, ItemsEmptyState } from './EmptyStates';
@@ -19,11 +20,6 @@ import type { SectionId } from './sections';
 import { inSection, movedItemIds, SECTIONS, sectionCounts, sectionStatuses } from './sections';
 import { useItemsRealtime } from './useItemsRealtime';
 
-interface Undo {
-  message: string;
-  run: () => Promise<void>;
-}
-
 /**
  * The dashboard.
  *
@@ -32,9 +28,9 @@ interface Undo {
  * reusable and each piece testable on its own.
  *
  * Every mutation is applied locally first and rolled back if the server rejects it, so the
- * list never freezes while a write is in flight. Archive and delete both offer an undo,
- * because losing a saved product to a mis-click is the failure that would make someone stop
- * trusting the app.
+ * list never freezes while a write is in flight. Archive offers an undo, because losing a
+ * saved product to a mis-click is the failure that would make someone stop trusting the app;
+ * deletion has no undo and so is confirmed before it happens instead.
  */
 export function ItemsView({
   initialItems,
@@ -61,11 +57,11 @@ export function ItemsView({
   );
   const [openItem, setOpenItem] = useState<SavedItem | null>(null);
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [undo, setUndo] = useState<Undo | null>(null);
-  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const announcementTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The control that opened the drawer, so closing can hand focus back to it rather than to
+  // the top of the document.
+  const drawerOpener = useRef<HTMLElement | null>(null);
 
   const onRealtimeChange = useCallback(
     (change: Parameters<Parameters<typeof useItemsRealtime>[1]>[0]) => {
@@ -116,17 +112,23 @@ export function ItemsView({
     [sectionItems],
   );
 
-  function offerUndo(message: string, run: () => Promise<void>) {
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    setUndo({ message, run });
-    undoTimer.current = setTimeout(() => setUndo(null), 10_000);
+  /**
+   * Say one thing, and stop saying the last thing.
+   *
+   * A failure stays until something replaces it: it needs attention, and a message that
+   * vanishes on a timer is one the user may never have seen. Confirmations expire.
+   */
+  function announce(next: Announcement, holdMs: number | null) {
+    if (announcementTimer.current) clearTimeout(announcementTimer.current);
+    setAnnouncement(next);
+    if (holdMs !== null) {
+      announcementTimer.current = setTimeout(() => setAnnouncement(null), holdMs);
+    }
   }
 
-  /** Confirmation for a write that has no undo. Shown only once the server has agreed. */
-  function showNotice(message: string) {
-    if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    setNotice(message);
-    noticeTimer.current = setTimeout(() => setNotice(null), 6_000);
+  function clearAnnouncement() {
+    if (announcementTimer.current) clearTimeout(announcementTimer.current);
+    setAnnouncement(null);
   }
 
   async function withBusy(id: string, work: () => Promise<void>) {
@@ -149,7 +151,7 @@ export function ItemsView({
     call: () => Promise<{ ok: boolean; error?: string }>,
   ): Promise<boolean> {
     const previous = item;
-    setError(null);
+    clearAnnouncement();
     setItems((current) => replaceItem(current, item.id, apply));
 
     let succeeded = false;
@@ -160,8 +162,12 @@ export function ItemsView({
         return;
       }
 
+      // Rolled back locally, and said out loud — a silent revert looks like the click missed.
       setItems((current) => replaceItem(current, previous.id, () => previous));
-      setError(result.error ?? 'That change could not be saved.');
+      announce(
+        { tone: 'failure', message: result.error ?? 'That change could not be saved.' },
+        null,
+      );
     });
 
     return succeeded;
@@ -184,14 +190,23 @@ export function ItemsView({
     );
 
     if (ok) {
-      offerUndo(`Archived “${item.title}”.`, async () => {
-        await optimistic(
-          { ...item, status: 'archived' },
-          (current) => ({ ...current, status: restored }),
-          () => setItemStatus(item.id, restored),
-        );
-        setUndo(null);
-      });
+      announce(
+        {
+          tone: 'success',
+          message: `Archived “${item.title}”.`,
+          action: {
+            label: 'Undo',
+            run: () => {
+              void optimistic(
+                { ...item, status: 'archived' },
+                (current) => ({ ...current, status: restored }),
+                () => setItemStatus(item.id, restored),
+              ).then(() => clearAnnouncement());
+            },
+          },
+        },
+        10_000,
+      );
     }
   }
 
@@ -202,30 +217,53 @@ export function ItemsView({
       () => updateItem(item.id, edit),
     );
 
-    if (ok) setOpenItem(null);
+    if (ok) {
+      closeDrawer();
+      announce({ tone: 'success', message: `Saved your changes to “${item.title}”.` }, 6_000);
+    }
   }
 
   async function remove(item: SavedItem) {
     const previous = items;
     setItems((current) => removeItem(current, item.id));
-    setOpenItem(null);
+    closeDrawer();
 
     const result = await deleteItem(item.id);
     if (!result.ok) {
       setItems(previous);
-      setError(result.error ?? 'That item could not be deleted.');
+      announce(
+        { tone: 'failure', message: result.error ?? 'That item could not be deleted.' },
+        null,
+      );
       return;
     }
 
     // Deletion is permanent and has no undo, so hiding the card is not the same as the work
     // being done. Confirm only once the server has agreed, otherwise navigating away during
     // the request leaves the user believing an item is gone that will reappear on reload.
-    showNotice(`Deleted “${item.title}”.`);
+    announce({ tone: 'success', message: `Deleted “${item.title}”.`, testId: 'notice' }, 6_000);
+  }
+
+  /**
+   * Opening remembers what was focused; closing gives it back. Without this, dismissing the
+   * drawer drops focus to the top of the document and a keyboard user has to tab all the way
+   * back to the row they were reading.
+   */
+  function openDrawer(item: SavedItem) {
+    drawerOpener.current = document.activeElement as HTMLElement | null;
+    setOpenItem(item);
+  }
+
+  function closeDrawer() {
+    setOpenItem(null);
+    const opener = drawerOpener.current;
+    drawerOpener.current = null;
+    requestAnimationFrame(() => opener?.focus());
   }
 
   const activeSection = SECTIONS.find((entry) => entry.id === section) ?? SECTIONS[0]!;
   const cardProps = {
-    onOpen: setOpenItem,
+    onOpen: openDrawer,
     onStatusChange: (target: SavedItem, status: ItemStatus) => void changeStatus(target, status),
     onArchive: (target: SavedItem) => void archive(target),
   };
@@ -258,12 +296,6 @@ export function ItemsView({
           layout={layout}
           onLayoutChange={setLayout}
         />
-
-        {error ? (
-          <p role="alert" className="uc-callout uc-callout--danger">
-            {error}
-          </p>
-        ) : null}
 
         {visible.length === 0 ? (
           <ItemsEmptyState
@@ -311,32 +343,13 @@ export function ItemsView({
       {openItem ? (
         <ItemDetail
           item={items.find((entry) => entry.id === openItem.id) ?? openItem}
-          onClose={() => setOpenItem(null)}
+          onClose={closeDrawer}
           onSave={save}
           onDelete={remove}
         />
       ) : null}
 
-      {undo ? (
-        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
-          <Toast
-            message={undo.message}
-            action={
-              <button
-                type="button"
-                className="uc-focusable font-medium text-[var(--uc-primary)] underline"
-                onClick={() => void undo.run()}
-              >
-                Undo
-              </button>
-            }
-          />
-        </div>
-      ) : notice ? (
-        <div data-testid="notice" className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
-          <Toast message={notice} />
-        </div>
-      ) : null}
+      <Announcements announcement={announcement} />
     </AppShell>
   );
 }

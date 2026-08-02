@@ -348,6 +348,14 @@ async function captureWeb() {
     await ingest(client, capture({ ...item, observedAt: hoursAgo(72) }), {
       note: item.title === 'Meridian Wool Runner' ? 'for the trip in March' : undefined,
       quantity: 1,
+      // One item carries a target that the observed run actually reaches, and one carries a
+      // target still some way off — the two states the treatment has to tell apart.
+      desiredPrice:
+        item.title === 'Meridian Wool Runner'
+          ? '85.00'
+          : item.title === 'Kestrel Rain Shell'
+            ? '150.00'
+            : undefined,
     });
   }
 
@@ -436,6 +444,14 @@ async function captureWeb() {
   const history = page.locator('#history-heading');
   await history.scrollIntoViewIfNeeded();
   await shootAll(page, 'web-price-history', WEB_WIDTHS);
+
+  // The diagnostics disclosure open, which is where both URLs live. The canonical address is
+  // what the fingerprint is built from, and seeing it beside the source is how a tester
+  // notices a variant parameter that did not survive.
+  await page.getByText('Where this came from').click();
+  await page.getByText('Canonical address', { exact: true }).waitFor({ timeout: 10_000 });
+  await page.getByText('Canonical address', { exact: true }).scrollIntoViewIfNeeded();
+  await shootAll(page, 'web-item-provenance', WEB_WIDTHS);
 
   await page.goto(`${appUrl}/app/diagnostics`, { waitUntil: 'domcontentloaded' }).catch(() => {});
   await shootAll(page, 'web-diagnostics', WEB_WIDTHS);

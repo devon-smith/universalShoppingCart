@@ -265,11 +265,24 @@ export interface ToastProps {
   /** An undo, normally. Destructive actions need one within reach, not in a menu. */
   action?: ReactNode;
   className?: string;
+  /**
+   * Whether this toast is its own live region.
+   *
+   * Default true. Set false when the surrounding region already announces it — the dashboard
+   * mounts one persistent region and swaps the toast inside it, and two nested `status` roles
+   * make a screen reader say the message twice and `getByRole('status')` match twice.
+   * Same flag, same reason, as `Callout`.
+   */
+  announce?: boolean;
 }
 
-export function Toast({ message, action, className }: ToastProps): ReactElement {
+export function Toast({ message, action, className, announce = true }: ToastProps): ReactElement {
   return (
-    <div className={cn('uc-toast', className)} role="status" aria-live="polite">
+    <div
+      className={cn('uc-toast', className)}
+      role={announce ? 'status' : undefined}
+      aria-live={announce ? 'polite' : undefined}
+    >
       <span className="uc-toast__message">{message}</span>
       {action}
     </div>
