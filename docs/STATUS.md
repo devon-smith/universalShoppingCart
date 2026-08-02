@@ -188,14 +188,31 @@ Deferred, each for a stated reason rather than for lack of time: persisting
 `variantAvailability` to `items` and `item_observations` and showing both facts (lands with
 comparison).
 
-Strikethrough original prices landed 2026-07-31: the DOM layer reads a struck-through
-figure within two hops of the element the current price came from, keyed on markup rather
-than discount language, with a strictly-greater guard on every path so an instalment or a
-range's low end can never become a discount. The live shapes are encoded as unit fixtures
-(Nike's plain `<s>`, Zalando's struck-vs-plain pair, Amazon's inline `line-through`,
-AeroPress's "Sale price" with nothing struck). Needs a `pnpm score:live` pass on the real
-pages to confirm — the scorer's `original` column should move on amazon/wayfair/zalando/oos
-and stay `·` on uniqlo/aeropress/stockx.
+Strikethrough original prices: the DOM layer reads a struck-through figure within two hops
+of the element the current price came from, keyed on rendering rather than discount
+language, with a strictly-greater guard on every path so an instalment or a range's low
+end can never become a discount.
+
+**The first version (51d64e6) was inert on all sixteen live pages**, found by the
+score:live pass diffed against its true parent. It matched only `s`/`del`/`strike` and
+inline `line-through` — markup that the real pages do not use: Zalando and Nike strike
+through via CSS classes, and the string `line-through` appears zero times in
+zalando.html. The unit fixtures claimed to encode "the live shapes" while actually
+encoding the rule's own assumption, so they passed by construction — the same
+green-proved-less shape as the WXT_E2E permission, the pgTAP clock, and the stale
+`next start`.
+
+The rule now also reads the computed `text-decoration` (the shorthand — jsdom fills only
+that; browsers fill `textDecorationLine` too, so both are checked) via
+`ownerDocument.defaultView`, taking the innermost struck element so an inherited strike
+on a wrapper cannot concatenate two prices. Verification is tiered, honestly: the
+class-based case is unit-tested on a windowed document; the offline scorer stays blind
+wherever the striking CSS lives in an external file it never loads, so `original` on
+zalando/oos can only be confirmed by a live capture through the extension — a
+browser-tier check per VALIDATION.md, added to the manual checklist. Two open questions
+from the score pass: amazon and wayfair extract no price at all (no anchor to search
+from, pre-existing), and oos's captured DOM does not contain the price string the ground
+truth records — worth one look at capture timing before trusting that page's file.
 
 The `selectedVariant` hygiene queue is now empty. The Shopify variant id landed 2026-07-31:
 opaque `?variant=` tokens and `variants[].id` land in `identifiers.variantId`, ranked above

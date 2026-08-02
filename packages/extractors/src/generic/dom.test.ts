@@ -50,12 +50,13 @@ describe('domExtractor — price discipline', () => {
 });
 
 describe('domExtractor — the former price is the struck one', () => {
-  // Each shape here was captured from a live page. The heuristic keys on strikethrough
-  // markup beside the current price, never on discount language — the live set showed the
-  // words lying in both directions.
+  // The heuristic keys on strikethrough rendering beside the current price, never on
+  // discount language — the live set showed the words lying in both directions. The
+  // semantics here come from the live pages; the markup is synthetic, because the real
+  // pages strike through with CSS classes that only a live window can compute (see the
+  // class-based test below, and the inert-rule finding in docs/STATUS.md).
 
   it('reads a plain <s> with no price-ish class, beside the price', () => {
-    // Nike: <s>$120</s> next to $94.97, classes saying nothing.
     const result = extract(`
       <div class="buy-box">
         <span itemprop="price" content="94.97">$94.97</span>
@@ -69,10 +70,11 @@ describe('domExtractor — the former price is the struck one', () => {
   });
 
   it('takes the struck reference, not the plain-text one', () => {
-    // Zalando shows two candidate originals: "Ursprünglich: 119,95 €" in plain text and a
-    // struck-through "47,95 €" carrying the -25% badge. Only the struck figure matches the
-    // advertised percentage; showing 119.95 beside -25% would assert a relationship the
-    // page does not claim.
+    // Zalando's semantics: two candidate originals, "Ursprünglich: 119,95 €" in plain
+    // text and a visually struck "47,95 €" carrying the -25% badge. Only the struck
+    // figure matches the advertised percentage; showing 119.95 beside -25% would assert
+    // a relationship the page does not claim. (Zalando's actual strike is a CSS class —
+    // the <s> here stands in for the rendering, not the markup.)
     const result = extract(`
       <div class="price-block">
         <span data-price="35.95">35,95 €</span>
@@ -84,6 +86,32 @@ describe('domExtractor — the former price is the struck one', () => {
 
     expect(result.offer?.priceAmount).toBe('35.95');
     expect(result.offer?.originalPriceAmount).toBe('47.95');
+  });
+
+  it('reads a class-based strikethrough when a live window computes styles', () => {
+    // The commonest real shape — Zalando and Nike strike through via a CSS class, with
+    // no <s>, no <del>, and no inline style, so the markup tiers see nothing at all. A
+    // DOMParser document has no window and cannot compute styles, which is why this test
+    // runs on the environment's global document — and why an offline scorer reading
+    // saved HTML whose CSS lives in external files under-reports on exactly these pages.
+    // In the extension the capture script runs in the rendered page, where the computed
+    // style is available.
+    document.head.innerHTML = '<style>.price-was { text-decoration: line-through; }</style>';
+    document.body.innerHTML = `
+      <div class="price-block">
+        <span data-price="50.97">$50.97</span>
+        <span class="price-was">$55.65</span>
+        <span>Typical price</span>
+      </div>`;
+    try {
+      const result = domExtractor.extract({ document, url: 'https://shop.example/p/1' });
+
+      expect(result.offer?.priceAmount).toBe('50.97');
+      expect(result.offer?.originalPriceAmount).toBe('55.65');
+    } finally {
+      document.head.innerHTML = '';
+      document.body.innerHTML = '';
+    }
   });
 
   it('reports no original when a sale label has nothing struck through', () => {
@@ -147,7 +175,8 @@ describe('domExtractor — the former price is the struck one', () => {
   });
 
   it('reads an inline line-through style as struck', () => {
-    // Amazon's "Typical price" renders the strike through CSS rather than <s>.
+    // The inline-style tier works even on a windowless document, where computed styles
+    // do not exist.
     const result = extract(`
       <div class="a-price-block">
         <span data-price="50.97">$50.97</span>
