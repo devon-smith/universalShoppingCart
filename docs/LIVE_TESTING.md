@@ -42,6 +42,25 @@ Paste that into `.live/<name>.html`, and add `.live/<name>.json` holding
 canonical URL and variant parameters both feed extraction, and the scorer refuses to guess
 one.
 
+While the page is in front of you, also write `.live/<name>.truth.json` with the values you
+read off it — this is the ground truth, captured at the same moment as the DOM so the two
+cannot drift apart:
+
+```json
+{
+  "price": "23.96",
+  "currency": "USD",
+  "original": null,
+  "availability": "in_stock",
+  "variant": { "Color": "Rumble Crumble" }
+}
+```
+
+Every field is optional. Set one to `null` to assert it must be **absent** — that is how
+AeroPress's "Sale price" with no former price becomes a test that fails if extraction
+invents one. Without this sidecar the scorer can only tell you a value came out, not whether
+it is right.
+
 **Capture the hydrated DOM, not the saved page.** Ctrl/Cmd+S → _Webpage, HTML only_ writes
 the HTML the server sent, which is not what the extension reads. On StockX the server
 response has the title and colourway but no size-dependent price — that arrives
@@ -54,8 +73,12 @@ pnpm score:live --save .live/baseline.json   # record where extraction stands
 pnpm score:live --baseline .live/baseline.json   # after a change, see what moved
 ```
 
-The scorer reports whether a field is **present**, not whether it is **right**. A confidently
-wrong price scores as a win. Read it against the ground-truth column above, never on its own.
+The presence grid (✓/·) still answers only "did a value come out". The **correctness**
+section below it answers "is it right", by comparing against the truth sidecars — its
+`SILENTLY WRONG` count is a present value that disagrees with truth or one fabricated where
+truth says none, and driving that number to zero is the gate in
+[VALIDATION.md](VALIDATION.md). Pages without a truth sidecar still score on presence alone,
+so read those against the ground-truth column above rather than trusting the ✓.
 
 ## What to include
 

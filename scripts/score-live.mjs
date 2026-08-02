@@ -17,6 +17,23 @@
  * parameters all feed extraction — and is taken from, in order: a sidecar
  * `.live/<name>.json` containing `{"url": "..."}`, a `<link rel="canonical">` in the page,
  * or `og:url`. A page with no discoverable URL is reported rather than guessed at.
+ *
+ * ## Correctness, not just presence
+ *
+ * The ✓/· grid answers "did a value come out", which is not the same question as "is it
+ * right" — a confidently wrong price shows ✓. That gap is what let an inert extraction
+ * change look like it worked (docs/STATUS.md). So a page may also carry a truth sidecar,
+ * `.live/<name>.truth.json`, holding the values a human read off the page:
+ *
+ *   { "price": "23.96", "currency": "USD", "original": null,
+ *     "availability": "in_stock", "variant": { "Color": "Rumble Crumble" } }
+ *
+ * Each field is optional; only the ones present are checked. A value of `null` asserts the
+ * field must be ABSENT — that is how "AeroPress labels its price a sale but shows no former
+ * price" becomes a test that fails if the extractor invents one. The correctness section
+ * counts SILENTLY WRONG (a present value that disagrees, or one fabricated where truth
+ * says none) separately from MISSING, because the gate in docs/VALIDATION.md blocks on the
+ * first and tolerates the second.
  */
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
@@ -38,6 +55,19 @@ const FIELDS = [
   ['availability', (c) => (c.offer.availability === 'unknown' ? null : c.offer.availability)],
   ['variant', (c) => (Object.keys(c.selectedVariant).length > 0 ? 'yes' : null)],
 ];
+
+/**
+ * How each scalar truth field reads its extracted counterpart. `variant` is handled apart
+ * because its truth is a map of expected options, not one value.
+ */
+const TRUTH_SCALARS = {
+  title: (c) => c.product.title,
+  price: (c) => c.offer.priceAmount,
+  currency: (c) => c.offer.currency,
+  original: (c) => c.offer.originalPriceAmount,
+  availability: (c) => (c.offer.availability === 'unknown' ? null : c.offer.availability),
+  image: (c) => (c.product.selectedImageUrl ? 'present' : null),
+};
 
 function parseArgs(argv) {
   const args = { json: false, save: null, baseline: null };
@@ -67,6 +97,63 @@ function urlFor(name, document) {
   return document.querySelector('meta[property="og:url"]')?.getAttribute('content') ?? null;
 }
 
+/** The recorded truth for a page, or null when none was written. */
+function truthFor(name) {
+  const path = join(liveDir, `${name}.truth.json`);
+  if (!existsSync(path)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A single field's verdict.
+ *
+ *   expected null  → the field must be absent; a value is a fabrication ('unexpected')
+ *   expected value → equality after trimming ('ok' | 'wrong'), or 'missing' if nothing came out
+ */
+function verdictFor(expected, actual) {
+  if (expected === null) {
+    return actual === null || actual === undefined ? 'ok' : 'unexpected';
+  }
+  if (actual === null || actual === undefined) return 'missing';
+  return String(actual).trim() === String(expected).trim() ? 'ok' : 'wrong';
+}
+
+/** Compare a capture against recorded truth, one entry per checked field. */
+function checkTruth(capture, truth) {
+  const checks = [];
+
+  for (const [field, read] of Object.entries(TRUTH_SCALARS)) {
+    if (!(field in truth)) continue;
+    const expected = truth[field];
+    const actual = read(capture) ?? null;
+    checks.push({ field, expected, actual, verdict: verdictFor(expected, actual) });
+  }
+
+  if (truth.variant && typeof truth.variant === 'object') {
+    const selected = capture.selectedVariant ?? {};
+    // Case-insensitive key match, because a retailer's "Colour" is our "Color".
+    const byLowerKey = new Map(
+      Object.entries(selected).map(([key, value]) => [key.toLowerCase(), value]),
+    );
+    for (const [key, expected] of Object.entries(truth.variant)) {
+      const actual = byLowerKey.get(key.toLowerCase()) ?? null;
+      checks.push({
+        field: `variant.${key}`,
+        expected,
+        actual,
+        verdict: verdictFor(expected, actual),
+      });
+    }
+  }
+
+  return checks;
+}
+
 function scorePage(file) {
   const name = basename(file, '.html');
   const html = readFileSync(join(liveDir, file), 'utf8');
@@ -86,6 +173,9 @@ function scorePage(file) {
       FIELDS.map(([field, read]) => [field, read(capture) ?? null]),
     );
 
+    const truth = truthFor(name);
+    const checks = truth ? checkTruth(capture, truth) : null;
+
     return {
       name,
       url,
@@ -93,6 +183,7 @@ function scorePage(file) {
       extractor: `${capture.extraction.extractorId}@${capture.extraction.extractorVersion}`,
       confidence: Number(capture.extraction.overallConfidence.toFixed(3)),
       fields,
+      checks,
     };
   } catch (error) {
     return { name, url, error: error instanceof Error ? error.message : String(error) };
@@ -101,6 +192,64 @@ function scorePage(file) {
 
 function mark(value) {
   return value === null || value === undefined ? '·' : '✓';
+}
+
+function showValue(value) {
+  return value === null || value === undefined ? '(absent)' : String(value);
+}
+
+function reportCorrectness(rows) {
+  const checked = rows.filter((row) => !row.error && row.checks && row.checks.length > 0);
+  if (checked.length === 0) {
+    console.log(
+      '\ncorrectness: no .live/<name>.truth.json sidecars found — presence only.\n' +
+        '  Add one holding the values you read off the page to catch confidently-wrong output:\n' +
+        '  { "price": "23.96", "original": null, "variant": { "Color": "Rumble Crumble" } }',
+    );
+    return;
+  }
+
+  console.log('\ncorrectness (pages with a truth sidecar):');
+
+  const wrong = [];
+  const unexpected = [];
+  const missing = [];
+  let ok = 0;
+
+  for (const row of checked) {
+    for (const check of row.checks) {
+      const label = `${row.name} ${check.field}`;
+      if (check.verdict === 'ok') {
+        ok += 1;
+      } else if (check.verdict === 'wrong') {
+        wrong.push(label);
+        console.log(
+          `  WRONG       ${label}: extracted ${showValue(check.actual)}, truth ${showValue(check.expected)}`,
+        );
+      } else if (check.verdict === 'unexpected') {
+        unexpected.push(label);
+        console.log(
+          `  FABRICATED  ${label}: extracted ${showValue(check.actual)}, truth says none`,
+        );
+      } else {
+        missing.push(label);
+        console.log(
+          `  missing     ${label}: truth ${showValue(check.expected)}, extracted nothing`,
+        );
+      }
+    }
+  }
+
+  const silentlyWrong = wrong.length + unexpected.length;
+  console.log();
+  console.log(
+    `  SILENTLY WRONG: ${silentlyWrong}` +
+      (silentlyWrong > 0
+        ? `   (${[...wrong, ...unexpected].join(', ')})`
+        : '   — the gate is this number'),
+  );
+  console.log(`  missing:        ${missing.length}`);
+  console.log(`  ok:             ${ok}`);
 }
 
 function report(rows, baseline) {
@@ -142,6 +291,8 @@ function report(rows, baseline) {
     console.log(`  failed:   ${failed.map((row) => row.name).join(', ')}`);
   }
 
+  reportCorrectness(rows);
+
   if (!baseline) return;
 
   console.log('\nagainst baseline:');
@@ -182,6 +333,9 @@ if (files.length === 0) {
       'then paste it into .live/<name>.html.\n\n' +
       'Add .live/<name>.json holding {"url": "<the page URL, with variant parameters>"},\n' +
       'so extraction sees the canonical URL and anything that selects a variant.\n\n' +
+      'Optionally add .live/<name>.truth.json with the values you read off the page —\n' +
+      '  { "price": "23.96", "original": null, "variant": { "Color": "Rumble Crumble" } }\n' +
+      'so a confidently-wrong value is caught rather than scored as a win.\n\n' +
       'Do not use Cmd+S — it saves the HTML the server sent, not the DOM after hydration,\n' +
       'which is not what the extension reads.',
   );

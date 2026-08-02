@@ -120,6 +120,11 @@ Building resumes — Phase 6 or anything else — when all of these are true.
 - [ ] Anything still unsupported is written down in `STATUS.md` under known
       limitations rather than left implicit.
 - [ ] **No silently wrong value.** See the distinction below — flagged is not silent.
+      `pnpm score:live` now counts this directly: give each `.live/` page a
+      `<name>.truth.json` sidecar of the values a human read off it (a field set to
+      `null` asserts it must be absent, which catches a fabricated discount), and the
+      correctness section reports `SILENTLY WRONG` — a present value that disagrees with
+      truth, or one invented where truth says none. The gate is that number reaching zero.
 - [ ] **At most three flagged-and-present fields across the sixteen live pages.**
       Flagged-and-absent is tracked but uncapped.
 
