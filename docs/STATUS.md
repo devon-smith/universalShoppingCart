@@ -60,6 +60,16 @@ Nothing between the draft PR and comparison adds a feature. The live-capture pas
 extraction against the pages that matter and the fixes are driven by what it finds — no
 speculative retailer adapters before then.
 
+**Comparison logic core landed ahead of the view** (`apps/web/src/features/compare/`): a
+pure `compareItems(2–4)` that returns a structured, view-agnostic `Comparison` for the
+compare view to render. It carries the two hard rules where they can be tested once rather
+than scattered through JSX — a row is `comparable` only where agreement is meaningful (price,
+availability), never for variant options, because a Zara "M" and a Nike "M" are different
+garments; and money is compared by exact decimal string within a single currency, so a
+mixed-currency set reports no "cheapest" rather than guessing across an exchange rate we do
+not have. 22 unit tests. The view is a rendering job over this structure and lands with the
+comparison milestone on the finished redesign shell.
+
 The scorer reports whether a field is **present**, not whether it is **right**: a
 confidently wrong price scores as a win there. The baseline is read against the tester's
 ground-truth column, never on its own, and how many pages report a _wrong_ price is what
