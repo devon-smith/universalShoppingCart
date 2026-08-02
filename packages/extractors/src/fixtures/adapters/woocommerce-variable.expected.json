@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://fieldcraft.example/product/alder-cutting-board",
+    "canonicalUrl": "https://fieldcraft.example/product/alder-cutting-board",
+    "domain": "fieldcraft.example",
+    "retailerName": "Fieldcraft",
+    "pageTitle": "Alder Cutting Board — Fieldcraft Supply"
+  },
+  "product": {
+    "title": "Alder Cutting Board",
+    "brand": null,
+    "description": null,
+    "imageUrls": ["https://fieldcraft.example/wp-content/uploads/alder-board-large.jpg"],
+    "selectedImageUrl": "https://fieldcraft.example/wp-content/uploads/alder-board-large.jpg",
+    "identifiers": {
+      "sku": "ACB-L-OIL"
+    },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "68.00",
+    "originalPriceAmount": "78.00",
+    "currency": "GBP",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Size": "Large — 45cm",
+    "Finish": "Oiled"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": ".product_title",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "select[name^=\"attribute_\"]",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "variations_form.display_price",
+      "confidence": 0.96
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "confidence": 0.94
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": "variations_form.is_in_stock",
+      "confidence": 0.94
+    },
+    {
+      "field": "offer.currency",
+      "source": "adapter",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "h1[class*=\"product\"]",
+      "confidence": 0.55
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "dom",
+      "confidence": 0.55
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "dom",
+      "confidence": 0.55
+    },
+    {
+      "field": "selectedVariant",
+      "source": "dom",
+      "confidence": 0.6
+    }
+  ],
+  "extraction": {
+    "extractorId": "woocommerce",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.936,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://stockx.com/halyard-mid-bracken",
+    "canonicalUrl": "https://stockx.com/halyard-mid-bracken",
+    "domain": "stockx.com",
+    "retailerName": "Stockx",
+    "pageTitle": "Halyard Mid Bracken | Example"
+  },
+  "product": {
+    "title": "Halyard Mid Bracken",
+    "brand": "Halyard",
+    "description": null,
+    "imageUrls": ["https://images.example.com/360/Halyard-Mid-Bracken/Images/hero.jpg?w=1000"],
+    "selectedImageUrl": "https://images.example.com/360/Halyard-Mid-Bracken/Images/hero.jpg?w=1000",
+    "identifiers": {
+      "mpn": "HY5678-200"
+    },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": null,
+    "originalPriceAmount": null,
+    "currency": null,
+    "availability": "unknown"
+  },
+  "selectedVariant": {
+    "Size": "US Men's 13",
+    "Color": "Bracken/Sand"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": "[data-component=\"primary-product-title\"]",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "Size: / Colorway",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.title",
+      "source": "json_ld",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.title",
+      "source": "meta",
+      "selector": "meta[property=\"og:title\"]",
+      "confidence": 0.75
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "meta",
+      "selector": "link[rel=\"canonical\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "meta",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "document h1",
+      "confidence": 0.27999999999999997
+    }
+  ],
+  "extraction": {
+    "extractorId": "stockx",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.417,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

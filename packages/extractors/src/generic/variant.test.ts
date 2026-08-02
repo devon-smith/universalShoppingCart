@@ -1,0 +1,274 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  extractSelectedVariantFromDom,
+  extractSelectedVariantFromUrl,
+  extractVariantIdFromUrl,
+  mergeVariants,
+} from './variant';
+
+function parse(body: string): Document {
+  return new DOMParser().parseFromString(
+    `<!doctype html><html><body>${body}</body></html>`,
+    'text/html',
+  );
+}
+
+describe('extractSelectedVariantFromDom — select elements', () => {
+  it('reads the selected option with its label', () => {
+    const document = parse(`
+      <label for="size">Size</label>
+      <select id="size">
+        <option value="s">Small</option>
+        <option value="m" selected>Medium</option>
+      </select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Size: 'Medium' });
+  });
+
+  it('strips a trailing colon from the label', () => {
+    const document = parse(`
+      <label for="size">Size:</label>
+      <select id="size"><option value="m" selected>Medium</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Size: 'Medium' });
+  });
+
+  it('ignores a placeholder option with no value', () => {
+    const document = parse(`
+      <label for="size">Size</label>
+      <select id="size">
+        <option value="" selected>Choose a size</option>
+        <option value="m">Medium</option>
+      </select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('reads a fieldset legend when there is no label', () => {
+    const document = parse(`
+      <fieldset><legend>Storage</legend>
+        <select><option value="256" selected>256 GB</option></select>
+      </fieldset>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Storage: '256 GB' });
+  });
+});
+
+describe('extractSelectedVariantFromDom — radio inputs', () => {
+  it('reads the checked radio and its group name', () => {
+    const document = parse(`
+      <fieldset data-option-name="Finish">
+        <label for="a">Brushed Brass</label>
+        <input type="radio" id="a" name="finish" value="brass" checked />
+        <label for="b">Matte Black</label>
+        <input type="radio" id="b" name="finish" value="black" />
+      </fieldset>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Finish: 'Brushed Brass' });
+  });
+
+  it('reads a radiogroup labelled by another element', () => {
+    const document = parse(`
+      <span id="colour-label">Colour</span>
+      <div role="radiogroup" aria-labelledby="colour-label">
+        <label for="c1">Sand</label>
+        <input type="radio" id="c1" name="colour" value="sand" checked />
+      </div>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Colour: 'Sand' });
+  });
+
+  it('reports nothing when no radio is checked', () => {
+    const document = parse(`
+      <fieldset data-option-name="Finish">
+        <input type="radio" id="a" name="finish" value="brass" />
+      </fieldset>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+});
+
+describe('extractSelectedVariantFromDom — ARIA controls', () => {
+  it('reads aria-checked buttons', () => {
+    const document = parse(`
+      <div role="radiogroup" aria-label="Size">
+        <button aria-checked="true" aria-label="US 10">10</button>
+        <button aria-checked="false" aria-label="US 11">11</button>
+      </div>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Size: 'US 10' });
+  });
+
+  it('reads aria-pressed buttons', () => {
+    const document = parse(`
+      <fieldset data-option-name="Length">
+        <button aria-pressed="true">Regular</button>
+      </fieldset>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Length: 'Regular' });
+  });
+
+  it('never reports the unselected options', () => {
+    const document = parse(`
+      <div role="radiogroup" aria-label="Size">
+        <button aria-checked="true" aria-label="10">10</button>
+        <button aria-checked="false" aria-label="11">11</button>
+        <button aria-checked="false" aria-label="12">12</button>
+      </div>
+    `);
+
+    const variant = extractSelectedVariantFromDom(document);
+    expect(Object.values(variant)).toEqual(['10']);
+  });
+});
+
+describe('extractSelectedVariantFromUrl', () => {
+  it('reads option-like parameters', () => {
+    expect(extractSelectedVariantFromUrl('https://shop.example/p?color=blue&size=M')).toEqual({
+      Color: 'blue',
+      Size: 'M',
+    });
+  });
+
+  it('ignores parameters that are not options', () => {
+    expect(
+      extractSelectedVariantFromUrl('https://shop.example/p?utm_source=x&page=2&ref=abc'),
+    ).toEqual({});
+  });
+
+  it('returns nothing for an unparseable URL', () => {
+    expect(extractSelectedVariantFromUrl('not a url')).toEqual({});
+  });
+
+  it('routes an opaque ?variant= token to the id, not the options', () => {
+    // AeroPress and Everlane both contributed `Variant=47776291946739` — Shopify's row id
+    // wearing an option's clothes. It identifies the variant, it does not describe it.
+    const url = 'https://shop.example/products/crew?variant=47776291946739';
+    expect(extractSelectedVariantFromUrl(url)).toEqual({});
+    expect(extractVariantIdFromUrl(url)).toBe('47776291946739');
+  });
+
+  it('keeps a readable ?variant= value as an option', () => {
+    // `?variant=harbour-blue` genuinely names what the shopper picked.
+    const url = 'https://shop.example/p?variant=harbour-blue';
+    expect(extractSelectedVariantFromUrl(url)).toEqual({ Variant: 'harbour-blue' });
+    expect(extractVariantIdFromUrl(url)).toBeNull();
+  });
+
+  it('leaves an opaque value under a non-variant name alone', () => {
+    // Lululemon's ?color=76616 stays an option: dropping it would silently remove the
+    // colour from the fingerprint, and recovering its label is deferred hasVariant work.
+    const url = 'https://shop.example/p?color=76616';
+    expect(extractSelectedVariantFromUrl(url)).toEqual({ Color: '76616' });
+    expect(extractVariantIdFromUrl(url)).toBeNull();
+  });
+});
+
+describe('extractVariantIdFromUrl', () => {
+  it('reads variation= as well as variant=', () => {
+    expect(extractVariantIdFromUrl('https://shop.example/p?variation=99887766')).toBe('99887766');
+  });
+
+  it('requires the value to be opaque', () => {
+    expect(extractVariantIdFromUrl('https://shop.example/p?variant=red')).toBeNull();
+    // Six hex letters spell a word; without a digit it is not a token.
+    expect(extractVariantIdFromUrl('https://shop.example/p?variant=defaced')).toBeNull();
+  });
+
+  it('accepts hex-ish ids that contain a digit', () => {
+    expect(extractVariantIdFromUrl('https://shop.example/p?variant=a1b2c3d4e5')).toBe('a1b2c3d4e5');
+  });
+
+  it('returns null for an unparseable URL', () => {
+    expect(extractVariantIdFromUrl('not a url')).toBeNull();
+  });
+});
+
+describe('extractSelectedVariantFromDom — page controls are not options', () => {
+  it('ignores a quantity selector', () => {
+    // Chewy and Weber both contributed `Quantity: 1`. Quantity is a real user choice, but it
+    // has its own column on the item; in selectedVariant it also enters the fingerprint, so
+    // the same product saved at quantity 1 and at quantity 2 would become two items.
+    const document = parse(`
+      <label for="qty">Quantity</label>
+      <select id="qty"><option value="1" selected>1</option><option value="2">2</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('ignores review sort and filter controls', () => {
+    const document = parse(`
+      <label for="sort">Sort By</label>
+      <select id="sort"><option value="helpful" selected>Most Helpful</option></select>
+      <label for="filter">Filter By</label>
+      <select id="filter"><option value="all" selected>All Stars</option></select>
+      <label for="mentions">Filter by reviews that mention</label>
+      <select id="mentions"><option value="all" selected>show all</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('ignores a fulfilment chooser', () => {
+    // Walmart: "How do you want your item?" — shipping versus pickup is about the order.
+    const document = parse(`
+      <label for="fulfil">How do you want your item?</label>
+      <select id="fulfil"><option value="ship" selected>Shipping</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('still reads the options that describe the garment', () => {
+    const document = parse(`
+      <label for="qty">Quantity</label>
+      <select id="qty"><option value="1" selected>1</option></select>
+      <label for="size">Size</label>
+      <select id="size"><option value="m" selected>Medium</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Size: 'Medium' });
+  });
+
+  it('ignores a checkbox whose value is only its own state', () => {
+    // H&M's "Shipping online" toggle reports `on`, which says a box is ticked and nothing
+    // about the garment. It was invisible until composition rows stopped outranking it.
+    const document = parse(`
+      <div role="radiogroup" aria-label="Shipping online">
+        <input type="radio" checked value="on" />
+      </div>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({});
+  });
+
+  it('does not reject an option whose name merely begins with the same letters', () => {
+    const document = parse(`
+      <label for="fit">Fit</label>
+      <select id="fit"><option value="reg" selected>Regular</option></select>
+    `);
+
+    expect(extractSelectedVariantFromDom(document)).toEqual({ Fit: 'Regular' });
+  });
+});
+
+describe('mergeVariants', () => {
+  it('lets the DOM win over the URL', () => {
+    // A client-side variant switch updates the DOM before it updates the URL.
+    expect(mergeVariants({ Color: 'Red' }, { Color: 'Blue', Size: 'M' })).toEqual({
+      Color: 'Red',
+      Size: 'M',
+    });
+  });
+});

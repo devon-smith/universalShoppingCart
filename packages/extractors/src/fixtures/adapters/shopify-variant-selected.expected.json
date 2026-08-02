@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://shop.northwind.example/products/meridian-wool-runner?variant=4400220002",
+    "canonicalUrl": "https://shop.northwind.example/products/meridian-wool-runner",
+    "domain": "shop.northwind.example",
+    "retailerName": "Northwind",
+    "pageTitle": "Meridian Wool Runner — Northwind Supply"
+  },
+  "product": {
+    "title": "Meridian Wool Runner",
+    "brand": "Northwind",
+    "description": null,
+    "imageUrls": [
+      "https://cdn.shopify.com/s/files/1/meridian-default.jpg",
+      "https://cdn.shopify.com/s/files/1/meridian-slate.jpg"
+    ],
+    "selectedImageUrl": "https://cdn.shopify.com/s/files/1/meridian-slate.jpg",
+    "identifiers": {
+      "sku": "MWR-41-SLT",
+      "gtin": "00191234567891",
+      "productId": "7712340001",
+      "variantId": "4400220002"
+    },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "108.00",
+    "originalPriceAmount": "130.00",
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Size": "41",
+    "Colour": "Slate"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": "ProductJson.title",
+      "confidence": 0.97
+    },
+    {
+      "field": "product.brand",
+      "source": "adapter",
+      "selector": "ProductJson.vendor",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "ProductJson.variants[].price",
+      "confidence": 0.4,
+      "value": "108.00"
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "selector": "ProductJson.variants[].compare_at_price",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": "ProductJson.variants[].available",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.95
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "ProductJson.options + variant.optionN",
+      "confidence": 0.97
+    },
+    {
+      "field": "offer.currency",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.title",
+      "source": "json_ld",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "json_ld",
+      "confidence": 0.4,
+      "value": "98.00"
+    },
+    {
+      "field": "offer.currency",
+      "source": "json_ld",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "json_ld",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.title",
+      "source": "meta",
+      "selector": "meta[property=\"og:title\"]",
+      "confidence": 0.75
+    },
+    {
+      "field": "offer.currency",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "meta",
+      "selector": "link[rel=\"canonical\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "meta",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "main h1",
+      "confidence": 0.45
+    }
+  ],
+  "extraction": {
+    "extractorId": "shopify",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.768,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

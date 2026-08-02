@@ -1,0 +1,53 @@
+name: Database
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'packages/contracts/src/database.types.ts'
+      - '.github/workflows/database-check.yml'
+
+concurrency:
+  group: db-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrations:
+    name: migrations · RLS · generated types
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Start Supabase
+        run: pnpm supabase:start
+
+      - name: Apply every migration to a clean database
+        run: pnpm supabase:reset
+
+      - name: Run pgTAP tests
+        run: pnpm test:db
+
+      - name: Verify the committed types match the schema
+        run: |
+          pnpm db:types
+          if ! git diff --exit-code -- packages/contracts/src/database.types.ts; then
+            echo "::error::packages/contracts/src/database.types.ts is stale. Run \`pnpm db:types\` and commit the result."
+            exit 1
+          fi
+
+      - name: Stop Supabase
+        if: ${{ always() }}
+        run: pnpm supabase:stop

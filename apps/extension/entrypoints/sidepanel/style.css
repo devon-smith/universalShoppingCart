@@ -1,0 +1,234 @@
+:root {
+  color-scheme: light dark;
+  --panel-ink: #10141a;
+  --panel-ink-muted: #5b6472;
+  --panel-line: #e3e6ec;
+  --panel-surface: #ffffff;
+  --panel-accent: #2f6df6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --panel-ink: #eef1f6;
+    --panel-ink-muted: #9aa4b4;
+    --panel-line: #2a303a;
+    --panel-surface: #0d1015;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  background: var(--panel-surface);
+  color: var(--panel-ink);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem;
+}
+
+.panel__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.panel__subtitle,
+.panel__footer {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--panel-ink-muted);
+}
+
+.panel__section-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--panel-ink-muted);
+}
+
+.panel__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.panel__list-item {
+  border: 1px solid var(--panel-line);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.panel__footer a {
+  color: var(--panel-accent);
+}
+
+.panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.panel__label {
+  font-size: 0.75rem;
+  color: var(--panel-ink-muted);
+}
+
+.panel__input {
+  border: 1px solid var(--panel-line);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
+  background: var(--panel-surface);
+  color: var(--panel-ink);
+}
+
+.panel__button {
+  border: 1px solid var(--panel-line);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--panel-ink);
+  cursor: pointer;
+}
+
+.panel__button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.panel__button--primary {
+  background: var(--panel-accent);
+  border-color: var(--panel-accent);
+  color: #fff;
+}
+
+.panel__link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 0.75rem;
+  color: var(--panel-accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.panel__divider {
+  margin: 0;
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--panel-ink-muted);
+}
+
+.panel__error {
+  margin: 0;
+  border: 1px solid #f0a3a3;
+  background: #fdf1f1;
+  color: #8c1c1c;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .panel__error {
+    border-color: #6b2020;
+    background: #2a1414;
+    color: #f4b8b8;
+  }
+}
+
+.panel__success {
+  margin: 0;
+  border: 1px solid #a5d6a7;
+  background: #f1f8f2;
+  color: #1b5e20;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.panel__notice {
+  margin: 0;
+  border: 1px solid #f0d58c;
+  background: #fdf8ec;
+  color: #6b4e04;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.panel__preview-image {
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  border: 1px solid var(--panel-line);
+  border-radius: 0.375rem;
+  background: #fff;
+}
+
+.panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel__chip {
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--panel-ink-muted);
+}
+
+.panel__meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--panel-ink-muted);
+}
+
+.panel__list-item a {
+  color: var(--panel-accent);
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .panel__success {
+    border-color: #1f4620;
+    background: #10210f;
+    color: #b6e0b8;
+  }
+
+  .panel__notice {
+    border-color: #574611;
+    background: #241f10;
+    color: #edd9a3;
+  }
+}
