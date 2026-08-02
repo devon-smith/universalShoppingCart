@@ -293,6 +293,56 @@ build. It fails silently by design. Making it work needs an optional host permis
 granted per origin at the user's request; until then, refresh a saved item by capturing it
 again.
 
+## Merging the baseline and the stacked redesign
+
+Two pull requests are open, and one is stacked on the other, which makes the **merge
+strategy for the first one load-bearing** — the wrong choice turns the second into a
+self-conflicting mess.
+
+- **PR #1** — the baseline (`claude/phase-prompts-build-plan-lcnf4u`) → `main`.
+- **PR #2** — the UI redesign (`claude/ui-redesign-v1`), whose base is the **baseline
+  branch, not `main`**. It contains every baseline commit plus the redesign delta on top.
+
+### Why the strategy matters
+
+`main` is a strict ancestor of the baseline branch, so PR #1 has no conflicts and could
+even fast-forward. But PR #2 references the baseline commits **by their original hashes**.
+Squash-merge and rebase-merge both rewrite those commits into new hashes on `main`; the
+redesign branch would then still carry the originals, and retargeting PR #2 to `main`
+would replay all ~44 baseline changes as conflicts against their rewritten twins.
+
+**So merge PR #1 with a merge commit** ("Create a merge commit" in the GitHub UI), or
+fast-forward it. Do **not** squash and do **not** rebase-merge. A merge commit keeps
+`136ce1d` (and every commit under it) an ancestor of the new `main`, which is exactly what
+keeps the stack clean.
+
+### The sequence
+
+1. **Take PR #1 out of draft, review, and merge it into `main` with a merge commit.**
+   All five checks are green and `main` is a strict ancestor, so this is conflict-free.
+2. **Point Vercel's production branch back to `main`** (it currently builds the baseline
+   branch for staging — see the Staging section). The next deploy then comes from `main`.
+3. **Rebase the redesign onto the new `main` and retarget PR #2:**
+   ```bash
+   git fetch origin
+   git checkout claude/ui-redesign-v1
+   git rebase origin/main            # baseline commits are now in main by hash, so
+                                     # this replays ONLY the redesign delta
+   git push --force-with-lease origin claude/ui-redesign-v1
+   ```
+   Then change PR #2's base to `main` in the GitHub UI. Its diff should collapse to the
+   redesign commits alone. If the rebase surfaces conflicts, the merge strategy in step 1
+   was wrong — stop and check it was a merge commit, not a squash.
+4. **Re-run the full suite on the merged `main`** — `lint`, `typecheck`, `test`,
+   `build`, `test:db`, `test:e2e` — plus a `pnpm score:live` correctness pass over the
+   `.live/` corpus. The two branches have only ever been tested stacked; this is the first
+   run on the unified tree, and the `SILENTLY WRONG` count must still be zero.
+5. **Review and merge PR #2 into `main`**, merge commit again for consistency, and the two
+   tracks are one.
+
+Only after this does comparison (the next milestone) build on a single branch rather than
+forking across two.
+
 ## Releases
 
 - **Web** — staging as above. Production Vercel wiring is Phase 9.
