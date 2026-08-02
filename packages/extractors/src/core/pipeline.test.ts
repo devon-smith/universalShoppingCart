@@ -163,6 +163,28 @@ describe('extractProductCapture', () => {
     expect(result.capture.offer.originalPriceAmount).toBeNull();
   });
 
+  it('reads a cue-labelled struck former price far from a JSON-LD price (Wayfair shape)', () => {
+    // Wayfair: the price is in JSON-LD, the DOM tier finds none of its own, and the struck
+    // former price sits three wrappers above the rendered current price behind a "was" cue —
+    // one hop past bare adjacency. The merged current price anchors it and the cue admits it.
+    const result = run(
+      `<!doctype html><html><head><title>Sofa</title>
+      <script type="application/ld+json">
+        {"@type":"Product","name":"Sectional","offers":{"price":"672.96","priceCurrency":"USD"}}
+      </script></head><body>
+        <div class="price-wrap">
+          <div class="left-col"><div class="current"><span>$672.96</span></div></div>
+          was <s>$993.97</s>
+        </div>
+      </body></html>`,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.capture.offer.priceAmount).toBe('672.96');
+    expect(result.capture.offer.originalPriceAmount).toBe('993.97');
+  });
+
   it('does not override an original price a layer already captured', () => {
     // JSON-LD states the former price outright; the DOM scan must not second-guess it.
     const result = run(
