@@ -219,6 +219,39 @@ describe('struckOriginalForValue — anchor on the price value, not a DOM price 
   it('returns null when the current price is nowhere on the page', () => {
     expect(find('<div><span>$50.00</span><s>$120</s></div>', '94.97')).toBeNull();
   });
+
+  it('reads a cue-labelled struck former price a wrapper past bare adjacency', () => {
+    // Wayfair: "$672.96 was $993.97", the former price struck three parent hops above the
+    // current one — past struckPriceNear's two-hop reach, so adjacency alone misses it. The
+    // "was" cue is the discriminator that admits it at this range.
+    const body = `
+      <div class="price-wrap">
+        <div class="left-col"><div class="current"><span class="amt">$672.96</span></div></div>
+        was <s class="former">$993.97</s>
+      </div>`;
+    expect(find(body, '672.96')?.amount).toBe('993.97');
+  });
+
+  it('requires the cue: a distant struck price with no cue word is left alone', () => {
+    // Without "was"/"original"/… before it, a struck price this far out is as likely a
+    // neighbour's as a former price, so it stays out.
+    const body = `
+      <div class="price-wrap">
+        <div class="left-col"><div class="current"><span class="amt">$672.96</span></div></div>
+        <s class="former">$993.97</s>
+      </div>`;
+    expect(find(body, '672.96')).toBeNull();
+  });
+
+  it('keeps the strictly-greater guard on the cued path', () => {
+    // A cue word before a struck price at or below the current one is still not a discount.
+    const body = `
+      <div class="price-wrap">
+        <div class="left-col"><div class="current"><span class="amt">$672.96</span></div></div>
+        was <s class="former">$500.00</s>
+      </div>`;
+    expect(find(body, '672.96')).toBeNull();
+  });
 });
 
 describe('domExtractor — the product root', () => {
