@@ -116,6 +116,36 @@ describe('compareItems — price', () => {
     expect(price.cells.find((c) => c.itemId === 'a')!.present).toBe(false);
     expect(price.lowestItemIds).toEqual(['b']);
   });
+
+  it('defines allAgree on the price row — it is always a compared row', () => {
+    // The contract (CompareRow.allAgree): a comparable row carries allAgree. A view keying off
+    // its presence to mean "compared" must never see Price, of all rows, as "not compared".
+    const comparison = compareItems([
+      input({ id: 'a', current_price: '98.00' }),
+      input({ id: 'b', current_price: '84.00' }),
+    ]);
+    const price = row(comparison, 'price')!;
+    expect(price.comparable).toBe(true);
+    expect(price.allAgree).toBe(false);
+  });
+
+  it('reports agreement when every priced item is the same price', () => {
+    const comparison = compareItems([
+      input({ id: 'a', current_price: '79.95' }),
+      input({ id: 'b', current_price: '79.95' }),
+    ]);
+    expect(row(comparison, 'price')!.allAgree).toBe(true);
+  });
+
+  it('does not call two equal amounts in different currencies the same price', () => {
+    // Mixed currency already suppresses "lowest"; agreement must be currency-aware too, or the
+    // view would assert "same price" across USD and EUR on matching numbers.
+    const comparison = compareItems([
+      input({ id: 'a', current_price: '79.95', currency: 'USD' }),
+      input({ id: 'b', current_price: '79.95', currency: 'EUR' }),
+    ]);
+    expect(row(comparison, 'price')!.allAgree).toBe(false);
+  });
 });
 
 describe('compareItems — the "Was" row is only a real former price', () => {

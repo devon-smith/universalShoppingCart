@@ -188,7 +188,26 @@ function priceRow(inputs: readonly CompareInput[], mixedCurrency: boolean): Comp
     if (lowestItemIds.includes(c.itemId)) c.annotations.push('lowest');
   }
 
-  return { key: 'price', label: 'Price', kind: 'money', comparable: true, cells, lowestItemIds };
+  // Comparable, so `allAgree` must be defined (see CompareRow.allAgree). Omitting it left a
+  // view keying off its presence labelling Price "not compared" — the one thing this row must
+  // never say. For money, agreement means the same amount in the same currency: two 79.95s in
+  // different currencies are not "the same price", which is why this is currency-aware where
+  // the scalar `agreement` helper, comparing text alone, is not.
+  const priced = cells.filter((c) => c.present);
+  const allAgree =
+    priced.length < 2
+      ? priced.length === 1
+      : priced.every((c) => c.amount === priced[0]!.amount && c.currency === priced[0]!.currency);
+
+  return {
+    key: 'price',
+    label: 'Price',
+    kind: 'money',
+    comparable: true,
+    cells,
+    allAgree,
+    lowestItemIds,
+  };
 }
 
 function originalPriceRow(inputs: readonly CompareInput[]): CompareRow | null {
