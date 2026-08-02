@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { domExtractor } from './dom';
+import { domExtractor, struckOriginalForValue } from './dom';
 
-function extract(body: string, url = 'https://shop.example/p/1') {
-  const document = new DOMParser().parseFromString(
+function parseBody(body: string): Document {
+  return new DOMParser().parseFromString(
     `<!doctype html><html><head><title>Page</title></head><body>${body}</body></html>`,
     'text/html',
   );
-  return domExtractor.extract({ document, url });
+}
+
+function extract(body: string, url = 'https://shop.example/p/1') {
+  return domExtractor.extract({ document: parseBody(body), url });
 }
 
 describe('domExtractor — price discipline', () => {
@@ -186,6 +189,35 @@ describe('domExtractor — the former price is the struck one', () => {
     `);
 
     expect(result.offer?.originalPriceAmount).toBe('55.65');
+  });
+});
+
+describe('struckOriginalForValue — anchor on the price value, not a DOM price find', () => {
+  const find = (body: string, amount: string) => struckOriginalForValue(parseBody(body), amount);
+
+  it('finds a strikethrough beside the element showing the current price', () => {
+    const result = find('<div><span>$94.97</span><s>$120</s></div>', '94.97');
+    expect(result?.amount).toBe('120.00');
+  });
+
+  it('reads a former price out of an aria-label that names one', () => {
+    const result = find(
+      '<div aria-label="current price $94.97, original price $120"></div>',
+      '94.97',
+    );
+    expect(result?.amount).toBe('120.00');
+  });
+
+  it('ignores an aria-label that names no original', () => {
+    expect(find('<div aria-label="price $94.97"></div>', '94.97')).toBeNull();
+  });
+
+  it('returns null for a struck price at or below the current one', () => {
+    expect(find('<div><span>$94.97</span><s>$80.00</s></div>', '94.97')).toBeNull();
+  });
+
+  it('returns null when the current price is nowhere on the page', () => {
+    expect(find('<div><span>$50.00</span><s>$120</s></div>', '94.97')).toBeNull();
   });
 });
 

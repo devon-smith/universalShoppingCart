@@ -215,14 +215,22 @@ green-proved-less shape as the WXT_E2E permission, the pgTAP clock, and the stal
 The rule now also reads the computed `text-decoration` (the shorthand — jsdom fills only
 that; browsers fill `textDecorationLine` too, so both are checked) via
 `ownerDocument.defaultView`, taking the innermost struck element so an inherited strike
-on a wrapper cannot concatenate two prices. Verification is tiered, honestly: the
-class-based case is unit-tested on a windowed document; the offline scorer stays blind
-wherever the striking CSS lives in an external file it never loads, so `original` on
-zalando/oos can only be confirmed by a live capture through the extension — a
-browser-tier check per VALIDATION.md, added to the manual checklist. Two open questions
-from the score pass: amazon and wayfair extract no price at all (no anchor to search
-from, pre-existing), and oos's captured DOM does not contain the price string the ground
-truth records — worth one look at capture timing before trusting that page's file.
+on a wrapper cannot concatenate two prices.
+
+**The D1 live capture then failed, and it was a third layer of the same defect** — the
+fifth green-proved-less instance. The rule matched the right markup and was never called:
+`struckPriceNear` anchors on a price element the DOM tier found, and on Nike, Wayfair,
+Zalando and Amazon the price comes from JSON-LD, so the DOM tier finds none — no anchor,
+no scan, even though the struck former price is visible. Fixed (2026-08-02): the pipeline
+resolves the former price post-merge, when the current price is known from any layer, with
+`struckOriginalForValue` — it anchors on the element displaying that exact value, or on an
+`aria-label` that names an original price ("current price $94.97, original price $120"),
+and applies the same strictly-greater guard. Nine tests, including the JSON-LD-price shape
+D1 exposed. This still needs the D1 re-run to confirm on the real pages, since only a live
+capture loads the class-based striking CSS — the offline scorer stays blind to it, which
+is a measurement boundary, not a bug. Amazon and Wayfair extracting no price at all is
+separate and pre-existing (no reachable structured data); `oos`'s captured DOM was
+confirmed to carry both figures.
 
 The `selectedVariant` hygiene queue is now empty. The Shopify variant id landed 2026-07-31:
 opaque `?variant=` tokens and `variants[].id` land in `identifiers.variantId`, ranked above

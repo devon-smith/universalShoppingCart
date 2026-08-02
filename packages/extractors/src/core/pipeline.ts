@@ -2,7 +2,7 @@ import type { ProductCaptureV1 } from '@universal-cart/contracts';
 import { CAPTURE_SCHEMA_VERSION, safeParseProductCaptureV1 } from '@universal-cart/contracts';
 
 import { RETAILER_ADAPTERS } from '../adapters/registry';
-import { domExtractor } from '../generic/dom';
+import { domExtractor, struckOriginalForValue } from '../generic/dom';
 import { jsonLdExtractor } from '../generic/json-ld';
 import { metaExtractor } from '../generic/meta';
 import { extractVariantIdFromUrl } from '../generic/variant';
@@ -11,6 +11,7 @@ import { domainFromUrl, retailerNameFromDomain } from '../normalizers/text';
 
 import { mergeCaptures, overallConfidence } from './merge';
 import type { ExtractionContext, ProductExtractor } from './types';
+import { evidence } from './types';
 
 /**
  * The generic extraction pipeline (BUILD_PLAN.md §10.2).
@@ -177,6 +178,21 @@ export function extractProductCapture(
     if (urlVariantId) identifiers.variantId = urlVariantId;
   }
 
+  // A former price the DOM shows but no layer captured. The strikethrough rule inside the
+  // DOM extractor anchors on a price element the DOM tier found — but on pages whose price
+  // comes from JSON-LD (Nike, Wayfair, Zalando, Amazon) the DOM tier finds none, so the
+  // rule never runs even though the struck former price is visible. Here the merged current
+  // price supplies the anchor by value, so it works whichever layer produced the price.
+  // Resolved rather than merged, like the canonical URL and the variant id above.
+  let originalPriceAmount = merged.offer?.originalPriceAmount ?? null;
+  if (originalPriceAmount === null && merged.offer?.priceAmount) {
+    const struck = struckOriginalForValue(context.document, merged.offer.priceAmount);
+    if (struck) {
+      originalPriceAmount = struck.amount;
+      merged.evidence.push(evidence('offer.originalPriceAmount', 'dom', 0.5, struck.selector));
+    }
+  }
+
   const draft = {
     schemaVersion: CAPTURE_SCHEMA_VERSION,
     source: {
@@ -197,7 +213,7 @@ export function extractProductCapture(
     },
     offer: {
       priceAmount: merged.offer?.priceAmount ?? null,
-      originalPriceAmount: merged.offer?.originalPriceAmount ?? null,
+      originalPriceAmount,
       currency: merged.offer?.currency ?? null,
       availability,
       ...(productAvailability === undefined ? {} : { productAvailability }),

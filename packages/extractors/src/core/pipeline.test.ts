@@ -113,6 +113,73 @@ describe('extractProductCapture', () => {
     expect(result.capture.extraction.overallConfidence).toBe(0);
   });
 
+  it('reads a struck former price the DOM shows when the price came from JSON-LD', () => {
+    // The D1 defect: on Nike/Wayfair/Zalando/Amazon the price is in JSON-LD, the DOM tier
+    // finds no price of its own, so the strikethrough rule inside the DOM extractor had no
+    // anchor and never ran — even though the struck former price is visible. The merged
+    // current price now supplies the anchor by value.
+    const result = run(
+      `<!doctype html><html><head><title>Dunk</title>
+      <script type="application/ld+json">
+        {"@type":"Product","name":"Dunk Low","offers":{"price":"94.97","priceCurrency":"USD"}}
+      </script></head><body>
+        <div class="pricebox"><span>$94.97</span><s>$120</s><span>20% off</span></div>
+      </body></html>`,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.capture.offer.priceAmount).toBe('94.97');
+    expect(result.capture.offer.originalPriceAmount).toBe('120.00');
+  });
+
+  it('reads a former price named in an aria-label, the accessible pairing', () => {
+    const result = run(
+      `<!doctype html><html><head><title>Dunk</title>
+      <script type="application/ld+json">
+        {"@type":"Product","name":"Dunk Low","offers":{"price":"94.97","priceCurrency":"USD"}}
+      </script></head><body>
+        <div aria-label="current price $94.97, original price $120"></div>
+      </body></html>`,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.capture.offer.originalPriceAmount).toBe('120.00');
+  });
+
+  it('does not invent a former price at or below the current one', () => {
+    const result = run(
+      `<!doctype html><html><head><title>Dunk</title>
+      <script type="application/ld+json">
+        {"@type":"Product","name":"Dunk Low","offers":{"price":"94.97","priceCurrency":"USD"}}
+      </script></head><body>
+        <div class="pricebox"><span>$94.97</span><s>$80.00</s></div>
+      </body></html>`,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.capture.offer.originalPriceAmount).toBeNull();
+  });
+
+  it('does not override an original price a layer already captured', () => {
+    // JSON-LD states the former price outright; the DOM scan must not second-guess it.
+    const result = run(
+      `<!doctype html><html><head><title>Dunk</title>
+      <script type="application/ld+json">
+        {"@type":"Product","name":"Dunk Low",
+         "offers":{"price":"94.97","priceCurrency":"USD","listPrice":"110.00"}}
+      </script></head><body>
+        <div class="pricebox"><span>$94.97</span><s>$120</s></div>
+      </body></html>`,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.capture.offer.originalPriceAmount).toBe('110.00');
+  });
+
   it('rejects a page that is not on an http(s) URL', () => {
     const result = extractProductCapture({
       document: page('<html><body></body></html>'),
