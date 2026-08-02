@@ -2,6 +2,9 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 
+import { MAX_COMPARE_ITEMS } from '@/features/compare/compare';
+import { CompareTray } from '@/features/compare/CompareTray';
+import { toggleSelection } from '@/features/compare/selection';
 import { AppShell, type ShellCart } from '@/features/shell/AppShell';
 
 import { archiveItem, deleteItem, setItemStatus, updateItem } from './actions';
@@ -57,6 +60,15 @@ export function ItemsView({
   );
   const [openItem, setOpenItem] = useState<SavedItem | null>(null);
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set());
+  /**
+   * The comparison selection.
+   *
+   * Ids rather than items, so an item edited or refreshed while selected stays selected and
+   * the tray reads its current title. Held here rather than in the URL because the dashboard
+   * is where you *assemble* a comparison; the URL owns it once you open one, which is what
+   * makes that page shareable (see `compare/selection.ts`).
+   */
+  const [comparing, setComparing] = useState<string[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const announcementTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The control that opened the drawer, so closing can hand focus back to it rather than to
@@ -262,10 +274,21 @@ export function ItemsView({
   }
 
   const activeSection = SECTIONS.find((entry) => entry.id === section) ?? SECTIONS[0]!;
+
+  // Only items that still exist, in selection order — an archived or deleted item leaving the
+  // list must leave the comparison with it, or the tray offers a link to a dead column.
+  const comparingItems = comparing
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is SavedItem => item !== undefined)
+    .map((item) => ({ id: item.id, title: item.title }));
+
   const cardProps = {
     onOpen: openDrawer,
     onStatusChange: (target: SavedItem, status: ItemStatus) => void changeStatus(target, status),
     onArchive: (target: SavedItem) => void archive(target),
+    onToggleCompare: (target: SavedItem) =>
+      setComparing((current) => toggleSelection(current, target.id)),
+    comparisonFull: comparingItems.length >= MAX_COMPARE_ITEMS,
   };
 
   return (
@@ -281,7 +304,15 @@ export function ItemsView({
       search={filters.search}
       onSearchChange={(search) => setFilters({ ...filters, search })}
     >
-      <section aria-labelledby="items-heading" className="flex flex-col gap-4">
+      {/* The tray is fixed to the bottom, so the list needs room to scroll clear of it —
+          otherwise the last product sits permanently underneath the thing you are using to
+          choose products. Only while it is there. */}
+      <section
+        aria-labelledby="items-heading"
+        className={['flex flex-col gap-4', comparingItems.length > 0 ? 'pb-44 sm:pb-36' : ''].join(
+          ' ',
+        )}
+      >
         <CartHeader
           section={activeSection}
           cartName={carts.find((cart) => cart.id === cartId)?.name ?? null}
@@ -324,6 +355,7 @@ export function ItemsView({
                   item={item}
                   summary={summaries.get(item.id)}
                   busy={busyIds.has(item.id)}
+                  comparing={comparing.includes(item.id)}
                   {...cardProps}
                 />
               ) : (
@@ -332,6 +364,7 @@ export function ItemsView({
                   item={item}
                   summary={summaries.get(item.id)}
                   busy={busyIds.has(item.id)}
+                  comparing={comparing.includes(item.id)}
                   {...cardProps}
                 />
               ),
@@ -348,6 +381,18 @@ export function ItemsView({
           onDelete={remove}
         />
       ) : null}
+
+      <CompareTray
+        items={comparingItems}
+        onRemove={(id) => setComparing((current) => current.filter((entry) => entry !== id))}
+        onClear={() => setComparing([])}
+      />
+
+      {/* Explains the disabled Compare buttons once four are chosen. Rendered once, outside
+          the list, because every blocked button points at the same sentence. */}
+      <p id="compare-full-hint" className="uc-sr-only">
+        Four products is the most that can be compared. Remove one to choose another.
+      </p>
 
       <Announcements announcement={announcement} />
     </AppShell>

@@ -430,6 +430,28 @@ async function captureWeb() {
     document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined,
   );
 
+  /*
+    Comparison, the visible half. Two states worth photographing: the tray while choosing, and
+    the table itself. The seeded catalogue deliberately shares a size label across retailers,
+    which is the case the table must NOT call agreement.
+  */
+  for (const title of ['Meridian Wool Runner', 'Kestrel Rain Shell', 'Alpenrose Down Jacket']) {
+    await page
+      .locator('[data-testid="item-card"]')
+      .filter({ hasText: title })
+      .first()
+      .getByRole('checkbox', { name: /^Compare/ })
+      .check();
+  }
+  await page.locator('[data-testid="compare-tray"]').waitFor({ timeout: 10_000 });
+  await shootAll(page, 'web-compare-tray', WEB_WIDTHS);
+
+  await page.locator('[data-testid="compare-open"]').click();
+  await page.locator('[data-testid="compare-table"]').waitFor({ timeout: 10_000 });
+  await shootAll(page, 'web-compare', WEB_WIDTHS);
+  await page.goBack();
+  await page.locator('[data-testid="item-card"]').first().waitFor({ timeout: 10_000 });
+
   // A section reached from the navigation, rather than from a status select competing with it.
   await page.getByRole('button', { name: /^Archived/ }).click();
   await page.waitForTimeout(300);

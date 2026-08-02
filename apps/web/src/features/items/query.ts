@@ -33,6 +33,17 @@ export interface SavedItem {
    * gone while the product is still sold (supabase/migrations/…_product_availability.sql).
    */
   product_availability: ItemAvailability | null;
+  /**
+   * Fibre content exactly as the page published it — "100% cotton", or a labelled two-part
+   * string like "Shell: 100% wool; Lining: 52% polyester" — with no normalization
+   * (docs/DECISIONS.md, 2026-08-02).
+   *
+   * Retailer-observed, so the `reject_observed_field_writes` trigger owns it and no client
+   * can write it. The compare view renders it as a *descriptive* row: two garments both
+   * reading "100% cotton" is a real shared fact, but nothing here can assert that
+   * "100% cotton" and "Cotton 100%" mean the same thing until the strings are normalized.
+   */
+  composition: string | null;
   selected_variant: Record<string, string> | null;
   identifiers: Record<string, string> | null;
   note: string | null;

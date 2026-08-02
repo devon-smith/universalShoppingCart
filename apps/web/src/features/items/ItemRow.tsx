@@ -4,6 +4,7 @@ import { ProductImage, StatusBadge } from '@universal-cart/ui';
 import { useState } from 'react';
 
 import {
+  CompareCheckbox,
   ItemActions,
   ItemAnnotations,
   ItemFreshness,
@@ -23,6 +24,9 @@ export interface ItemRowProps {
   onStatusChange: (item: SavedItem, status: ItemStatus) => void;
   onArchive: (item: SavedItem) => void;
   busy?: boolean;
+  comparing: boolean;
+  onToggleCompare: (item: SavedItem) => void;
+  comparisonFull: boolean;
 }
 
 /**
@@ -42,7 +46,17 @@ export interface ItemRowProps {
  * worth having for the fields you scan *down* to compare: price, availability, status. A size
  * and a colour are read with the product they belong to.
  */
-export function ItemRow({ item, summary, onOpen, onStatusChange, onArchive, busy }: ItemRowProps) {
+export function ItemRow({
+  item,
+  summary,
+  onOpen,
+  onStatusChange,
+  onArchive,
+  busy,
+  comparing,
+  onToggleCompare,
+  comparisonFull,
+}: ItemRowProps) {
   const [imageUsable, setImageUsable] = useState(true);
   const image = imageUsable ? item.image_url : null;
 
@@ -51,6 +65,7 @@ export function ItemRow({ item, summary, onOpen, onStatusChange, onArchive, busy
       data-testid="item-card"
       data-item-id={item.id}
       data-status={item.status}
+      data-comparing={comparing}
       className={[
         'uc-surface uc-surface--raised grid grid-cols-1 gap-3 p-3 transition-opacity',
         // Five columns: image, product, money, state, actions. The wrapper below is
@@ -59,21 +74,28 @@ export function ItemRow({ item, summary, onOpen, onStatusChange, onArchive, busy
         busy ? 'opacity-60' : '',
       ].join(' ')}
     >
-      {/* Product: image and name travel together at every width. */}
+      {/* Product: selection, image and name travel together at every width. */}
       <div className="flex gap-3 md:contents">
-        {image ? (
-          <ProductImage
-            src={image}
-            alt=""
-            width={64}
-            className="shrink-0 md:w-full"
-            onUnavailable={() => setImageUsable(false)}
+        {/* The first grid column: the checkbox above the thumbnail. Keeping selection here
+            rather than in the action cluster is what stops a fifth control squeezing the
+            columns at 1024 — see `CompareCheckbox`. */}
+        <div className="flex shrink-0 flex-col items-start gap-2 md:w-full">
+          <CompareCheckbox
+            item={item}
+            comparing={comparing}
+            onToggleCompare={onToggleCompare}
+            comparisonFull={comparisonFull}
           />
-        ) : (
-          // The grid column still exists on desktop, so rows stay aligned when one has no
-          // photograph. On mobile it collapses to nothing rather than showing an empty box.
-          <div className="hidden md:block" aria-hidden="true" />
-        )}
+          {image ? (
+            <ProductImage
+              src={image}
+              alt=""
+              width={64}
+              className="md:w-full"
+              onUnavailable={() => setImageUsable(false)}
+            />
+          ) : null}
+        </div>
 
         <div className="flex min-w-0 flex-col gap-1">
           <ItemSource item={item} />

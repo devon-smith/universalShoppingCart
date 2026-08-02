@@ -300,3 +300,57 @@ export function ItemActions({
     </div>
   );
 }
+
+/**
+ * Pick this product for the comparison.
+ *
+ * A checkbox at the start of the row, not a button among the actions. It began as a fifth
+ * button beside Details and "Move to cart", and at 1024px that stole enough width from the
+ * grid to wrap the title onto two lines and collide the price with the freshness line — the
+ * same squeeze Phase 3 fixed by moving the variant out of its own column. Selection is also
+ * not an action: it is a state you set on several rows before doing one thing with them, and
+ * a leading checkbox is where people already look for that.
+ *
+ * The accessible name carries the product, because "Compare" repeated down a list of four
+ * tells a screen-reader user nothing about which one they are on.
+ */
+export function CompareCheckbox({
+  item,
+  comparing,
+  onToggleCompare,
+  comparisonFull,
+  showLabel = false,
+}: {
+  item: SavedItem;
+  comparing: boolean;
+  onToggleCompare: (item: SavedItem) => void;
+  comparisonFull: boolean;
+  /** Cards have room for the word; the list's 3.5rem column does not. */
+  showLabel?: boolean;
+}) {
+  const blocked = comparisonFull && !comparing;
+  const name = displayTitle(item.title, item.retailer_name, item.domain);
+
+  return (
+    <label
+      className={[
+        'flex items-center gap-1.5 text-xs',
+        blocked ? 'cursor-not-allowed opacity-55' : 'cursor-pointer',
+      ].join(' ')}
+    >
+      <input
+        type="checkbox"
+        data-testid="compare-toggle"
+        className="uc-focusable"
+        checked={comparing}
+        disabled={blocked}
+        aria-describedby={blocked ? 'compare-full-hint' : undefined}
+        onChange={() => onToggleCompare(item)}
+      />
+      <span className={showLabel ? 'text-[var(--uc-foreground-muted)]' : 'uc-sr-only'}>
+        Compare
+      </span>
+      <span className="uc-sr-only">{name}</span>
+    </label>
+  );
+}

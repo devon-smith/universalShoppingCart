@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
  * be silently approximated on the way out (BUILD_PLAN.md §6.2).
  */
 const ITEM_COLUMNS =
-  'id, cart_id, title, brand, description, retailer_name, domain, source_url, canonical_url, image_url, currency, current_price::text, original_price::text, availability, product_availability, selected_variant, identifiers, note, quantity, priority, desired_price::text, status, last_observed_at, created_at, updated_at';
+  'id, cart_id, title, brand, description, retailer_name, domain, source_url, canonical_url, image_url, currency, current_price::text, original_price::text, availability, product_availability, composition, selected_variant, identifiers, note, quantity, priority, desired_price::text, status, last_observed_at, created_at, updated_at';
 
 /**
  * The dashboard route.

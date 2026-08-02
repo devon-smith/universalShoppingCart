@@ -4,6 +4,7 @@ import { ProductImage, StatusBadge } from '@universal-cart/ui';
 import { useState } from 'react';
 
 import {
+  CompareCheckbox,
   ItemActions,
   ItemAnnotations,
   ItemFreshness,
@@ -25,6 +26,9 @@ export interface ItemCardProps {
   onStatusChange: (item: SavedItem, status: ItemStatus) => void;
   onArchive: (item: SavedItem) => void;
   busy?: boolean;
+  comparing: boolean;
+  onToggleCompare: (item: SavedItem) => void;
+  comparisonFull: boolean;
 }
 
 /**
@@ -45,6 +49,9 @@ export function ItemCard({
   onStatusChange,
   onArchive,
   busy,
+  comparing,
+  onToggleCompare,
+  comparisonFull,
 }: ItemCardProps) {
   const [imageUsable, setImageUsable] = useState(true);
   const image = imageUsable ? item.image_url : null;
@@ -54,6 +61,7 @@ export function ItemCard({
       data-testid="item-card"
       data-item-id={item.id}
       data-status={item.status}
+      data-comparing={comparing}
       className={[
         'uc-surface uc-surface--raised flex flex-col overflow-hidden transition-opacity',
         busy ? 'opacity-60' : '',
@@ -76,6 +84,14 @@ export function ItemCard({
           </div>
           <StatusBadge tone="neutral">{STATUS_LABELS[item.status]}</StatusBadge>
         </div>
+
+        <CompareCheckbox
+          item={item}
+          comparing={comparing}
+          onToggleCompare={onToggleCompare}
+          comparisonFull={comparisonFull}
+          showLabel
+        />
 
         <ItemPrice item={item} size="lg" />
         <ItemPriceChange item={item} summary={summary} />
