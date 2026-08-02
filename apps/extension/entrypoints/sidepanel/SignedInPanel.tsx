@@ -39,6 +39,9 @@ export function SignedInPanel({
   // late — or a preferred cart deleted on another device — cannot leave the two disagreeing.
   const [chosenCartId, setChosenCartId] = useState<string | null>(null);
   const [view, setView] = useState<View>('capture');
+  // Which way the user entered settings, so it can put the keyboard back where they left it
+  // rather than at the top of the screen. Reset on every hop, not just the one that reads it.
+  const [enteredSettingsFrom, setEnteredSettingsFrom] = useState<'panel' | 'privacy'>('panel');
   const cartSelect = useRef<HTMLSelectElement>(null);
   const accountButton = useRef<HTMLButtonElement>(null);
   // Set when a subview was opened from this panel, so focus returns only after a real trip
@@ -86,6 +89,7 @@ export function SignedInPanel({
         carts={carts}
         preferences={preferences}
         onPreferences={onPreferences}
+        arrivedFrom={enteredSettingsFrom}
         onPrivacy={() => setView('privacy')}
         onBack={() => setView('capture')}
       />
@@ -93,7 +97,14 @@ export function SignedInPanel({
   }
 
   if (view === 'privacy') {
-    return <PrivacyView onBack={() => setView('settings')} />;
+    return (
+      <PrivacyView
+        onBack={() => {
+          setEnteredSettingsFrom('privacy');
+          setView('settings');
+        }}
+      />
+    );
   }
 
   return (
@@ -104,6 +115,7 @@ export function SignedInPanel({
         onCartChange={setChosenCartId}
         onAccount={() => {
           returning.current = true;
+          setEnteredSettingsFrom('panel');
           setView('settings');
         }}
         cartSelectRef={cartSelect}

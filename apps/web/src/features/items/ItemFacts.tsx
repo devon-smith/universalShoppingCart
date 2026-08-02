@@ -3,7 +3,7 @@
 import { Price, StatusBadge } from '@universal-cart/ui';
 import { useRef, useState } from 'react';
 
-import { useDismissable } from '@/features/shell/useDismissable';
+import { useDismissable, useReturnFocus } from '@/features/shell/useDismissable';
 
 import { displayTitle, sourceLine } from './display';
 import { availabilityLabel, formatMoney, relativeTime } from './format';
@@ -132,8 +132,13 @@ export function ItemFreshness({ item }: { item: SavedItem }) {
       ].join(' ')}
     >
       {stale ? <span aria-hidden="true">⚠</span> : null}
-      <span>{availabilityLabel(item.availability)}</span>
-      <span aria-hidden="true">·</span>
+      {/* The separator belongs to the label before it. As its own flex item it could wrap
+          onto a line of its own — which is what the 768 and 1024 rows did, leaving a lone
+          "·" above "checked 3d ago" and reading as a rendering fault. */}
+      <span>
+        {availabilityLabel(item.availability)}
+        <span aria-hidden="true"> ·</span>
+      </span>
       <span>{stale ? age.label : `checked ${relativeTime(item.last_observed_at)}`}</span>
     </p>
   );
@@ -205,9 +210,13 @@ export function ItemActions({
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   useDismissable(open, container, () => setOpen(false));
+  useReturnFocus(open, trigger);
 
   const next = NEXT_STATUS[item.status];
+  const name = displayTitle(item.title, item.retailer_name, item.domain);
+  const panelId = `item-actions-${item.id}`;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -242,18 +251,27 @@ export function ItemActions({
       <div className="relative" ref={container}>
         <button
           type="button"
+          ref={trigger}
           className="uc-icon-button uc-focusable"
-          aria-label={`More actions for ${displayTitle(item.title, item.retailer_name, item.domain)}`}
+          aria-label={`More actions for ${name}`}
           aria-expanded={open}
-          aria-haspopup="menu"
+          // No `aria-haspopup` — see AccountMenu. Announcing a menu and then rendering
+          // ordinary buttons is a promise of keyboard behaviour that is not kept.
+          aria-controls={panelId}
           onClick={() => setOpen((current) => !current)}
         >
           <span aria-hidden="true">⋯</span>
         </button>
 
-        {/* Ordinary controls, not `role="menu"` — see AccountMenu for why. */}
+        {/* Ordinary controls, not `role="menu"` — see AccountMenu for why. Named for the item
+            it acts on, so a screen reader user who opens two of these can tell them apart. */}
         {open ? (
-          <div className="uc-surface uc-surface--overlay absolute right-0 z-20 mt-1 flex w-48 flex-col gap-0.5 p-1.5">
+          <div
+            id={panelId}
+            role="group"
+            aria-label={`Actions for ${name}`}
+            className="uc-surface uc-surface--overlay absolute right-0 z-20 mt-1 flex w-48 flex-col gap-0.5 p-1.5"
+          >
             <a
               href={item.source_url}
               target="_blank"

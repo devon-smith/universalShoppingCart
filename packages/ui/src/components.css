@@ -9,6 +9,32 @@
  * Every value here comes from `tokens.css`. No literal colours, no literal radii.
  */
 
+/**
+ * Reduced motion, for everything the tokens cannot reach.
+ *
+ * `tokens.css` zeroes `--uc-duration-*`, which covers every transition written against a
+ * token — but not one written by a utility class. The dashboard's cards carry Tailwind's
+ * `transition-opacity`, whose duration comes from Tailwind's own variable, and any future
+ * utility would arrive with the same gap. So the preference is honoured once, here, for
+ * everything, rather than per component where the next addition forgets.
+ *
+ * 1ms rather than 0s: `transitionend` and `animationend` still fire, so a component that
+ * waits for one is stopped rather than hung. The `!important` is what lets this reach
+ * utilities and inline styles, which is the whole point of the rule.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Visually hidden but read aloud. Used where the visible layout splits a value across
    several elements and only the whole of it means anything — a price and its list price. */
 .uc-sr-only {

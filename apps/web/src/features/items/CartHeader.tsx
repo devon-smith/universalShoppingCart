@@ -77,14 +77,19 @@ export function CartHeader({
           type="button"
           className="uc-button uc-button--primary uc-focusable"
           aria-expanded={showHowTo}
+          aria-controls="how-to-add"
           onClick={() => setShowHowTo((current) => !current)}
         >
           Add a product
         </button>
       </div>
 
+      {/* A disclosure, not a status. `role="status"` made this a live region, so the whole
+          explanation was read out the instant it opened — and stayed live afterwards, ready to
+          re-announce on any change inside it. The user pressed a button to reveal text they
+          can now read; `aria-expanded` on that button is the whole of what needs saying. */}
       {showHowTo ? (
-        <div className="uc-callout" role="status">
+        <div id="how-to-add" className="uc-callout">
           <span className="uc-callout__title">Products come from the extension</span>
           <span>
             Open any product page in your browser, click the Universal Cart icon, and press{' '}

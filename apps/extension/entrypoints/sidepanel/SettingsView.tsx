@@ -33,6 +33,7 @@ export function SettingsView({
   onPreferences,
   onPrivacy,
   onBack,
+  arrivedFrom = 'panel',
 }: {
   session: Session;
   carts: Cart[];
@@ -40,10 +41,19 @@ export function SettingsView({
   onPreferences: (patch: Partial<Preferences>) => void;
   onPrivacy: () => void;
   onBack: () => void;
+  /**
+   * Where the user came from, which decides where the keyboard lands.
+   *
+   * Arriving from the panel is a new destination and the heading announces it. Coming *back*
+   * from privacy is a return, and a return that dumps focus at the top of the screen makes
+   * the user hunt for the link they just followed.
+   */
+  arrivedFrom?: 'panel' | 'privacy';
 }) {
   const [signingOut, setSigningOut] = useState(false);
   const [shortcut, setShortcut] = useState<string | null | 'unknown'>('unknown');
   const heading = useRef<HTMLHeadingElement>(null);
+  const privacyLink = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -55,9 +65,14 @@ export function SettingsView({
     };
   }, []);
 
-  // Focus lands on the view's name, so arriving here is announced rather than silent.
+  // Focus lands on the view's name, so arriving here is announced rather than silent — or on
+  // the link that led away, when this is the way back from it.
   useEffect(() => {
-    heading.current?.focus();
+    if (arrivedFrom === 'privacy') privacyLink.current?.focus();
+    else heading.current?.focus();
+    // Once, on arrival. A later re-render is not a navigation and must not move focus out of
+    // whatever control the user is currently operating.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const accountDefault = carts.find((cart) => cart.is_default);
@@ -157,7 +172,12 @@ export function SettingsView({
           Universal Cart reads a product page only when you ask it to, and never your cookies, your
           history, or your other tabs.
         </p>
-        <button type="button" className="settings__link uc-focusable" onClick={onPrivacy}>
+        <button
+          type="button"
+          ref={privacyLink}
+          className="settings__link uc-focusable"
+          onClick={onPrivacy}
+        >
           What Universal Cart can see
         </button>
       </div>

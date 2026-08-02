@@ -102,6 +102,89 @@ output is a dataset, not a checkbox.
 | --- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | D1  | Capture a page whose former price is struck through by a CSS class (Zalando and Nike both are) through the panel, in real Chrome. | The preview shows the struck figure as the original price. The offline scorer CANNOT verify this: it reads saved HTML whose striking CSS lives in external files it never loads, so its `original` column under-reports on exactly these pages. Only a live capture proves it. |
 
+#### D1 — re-run 2026-08-03 after `9067454`, **PASSES**
+
+The first run (2026-08-02) failed and is kept below, because the reason it failed is
+the whole value of the check.
+
+Re-run against `.live/oos.html` (Nike Dunk Low Retro), served to a real Chromium at
+its own canonical URL so adapter selection and URL-variant logic behave normally,
+with the built extension loaded unpacked, capturing **through the side panel**:
+
+|                             |                                |
+| --------------------------- | ------------------------------ |
+| Panel preview, spoken       | `$94.97, reduced from $120.00` |
+| Panel preview, visible      | `$94.97` · `$120.00` · `−21%`  |
+| `offer.originalPriceAmount` | `120.00`                       |
+
+**The strikethrough path was verified in isolation, not just the outcome.** Nike ships
+both signals — an `aria-label="current price $94.97, original price $120"` and a
+class-struck `$120` — and `struckOriginalForValue` tries the label first, so a passing
+capture alone would not have shown that the class-based strike works. Stripping all 17
+price-bearing `aria-label`s from the live document and re-running the helper returns
+`{ amount: "120.00", selector: "strikethrough near current price" }`. Both paths resolve
+it independently, which is what D1 was written to establish.
+
+##### The other three pages, and what is actually blocking them
+
+D1 names Zalando and Nike. Nike passes. The remaining pages were probed the same way
+and each fails for a different, now-precise reason — none of them the rule this check
+was about:
+
+| page    | current price extracted | struck figure present in the saved DOM  | blocker                                                           |
+| ------- | ----------------------- | --------------------------------------- | ----------------------------------------------------------------- |
+| wayfair | **no**                  | yes — real `<s>$993.97</s>`, "was"      | two: no price anchor at all, **and** the hop limit (below)        |
+| zalando | yes (35.95)             | **no** — strike CSS is external         | measurement boundary; only a live capture can load the stylesheet |
+| amazon  | **no**                  | **no** — `data-a-strike` + external CSS | two: no price anchor, and the strike is invisible to `isStruck`   |
+
+**The wayfair finding is concrete and actionable.** Given its real current price,
+`struckOriginalForValue("672.96")` still returns `null`, and measurement says why: the
+struck `$993.97` is **3 parent hops** from the `$672.96` element, while
+`STRUCK_PRICE_HOPS = 2`. The scope at hop 3 reads exactly `"$672.96 was$993.97"` — as
+tight and unambiguous a pairing as the corpus contains, one hop out of reach. Raising
+the limit is not obviously safe (adjacency is what keeps a sponsored tile's own
+strikethrough out), so it wants its own change with its own evidence, not a nudge here.
+
+Zalando and Amazon cannot be settled from a saved page at all: probing every ancestor
+up to twelve hops finds no struck element anywhere near their prices, because the CSS
+that would strike them was never fetched. That is the measurement boundary this
+document already names, not an extraction defect — and for Amazon it is moot until a
+price is extracted at all.
+
+None of the three is a silently-wrong value. `pnpm score:live` reports each as
+`missing`, and the gate's `SILENTLY WRONG` count is **0** across all four sidecars
+(8 ok, 7 missing).
+
+<details>
+<summary>The original failing run, 2026-08-02 — kept because the failure is the finding</summary>
+
+Same page, same method, before `9067454`:
+
+|                                                     |                                                               |
+| --------------------------------------------------- | ------------------------------------------------------------- |
+| Struck element, per Chrome's own `getComputedStyle` | `$120` — class `css-1i6dsa8`, `text-decoration: line-through` |
+| The page's own accessibility label                  | `aria-label="current price $94.97, original price $120"`      |
+| Panel preview                                       | `$94.97`, **no former price**                                 |
+| `offer.originalPriceAmount`                         | `null`                                                        |
+
+Detection was not the problem; reachability was. `1969a15` made `isStruck()` read
+computed style and it worked — Chrome resolved the class, the probe saw the strike, the
+unit test passed. But `struckPriceNear()` anchored to a **current-price element found by
+the DOM tier**, and on this page the DOM tier finds no price at all: its entire offer is
+`{ variantAvailability: 'out_of_stock' }`, the price arriving from JSON-LD. No anchor,
+no scan.
+
+That made it the fifth instance of the green-proved-less shape in `STATUS.md`, one level
+deeper than the fourth: the rule no longer matched the wrong markup — it matched the
+right markup and was never invoked. The unit test built `<span data-price="50.97">`,
+precisely the DOM-price anchor the real pages do not provide, so it passed by
+construction.
+
+`9067454` moved resolution post-merge and anchored it on the current-price **value**,
+which is why the re-run above passes.
+
+</details>
+
 ## The gate
 
 Building resumes — Phase 6 or anything else — when all of these are true.

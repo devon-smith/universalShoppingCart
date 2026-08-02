@@ -370,3 +370,136 @@ being diffed against.
 
 The pattern is the same each time — a cached artifact that looks like a result. It is worth
 checking what a green or red run is actually running against before believing either.
+
+## Phase 5 — accessibility hardening
+
+No new features. Six defects, one of them the most consequential thing this redesign has
+touched.
+
+### The focus ring failed contrast, in both themes
+
+`--uc-focus-ring` was `primary` at 40% alpha. The token measures 7.51 against the light
+background and 5.89 against the dark one, which is what made it look settled. What a browser
+actually paints is the token composited onto the surface behind it: `#b1ace5` and `#434771`,
+measuring **2.02 and 1.99** against the gap inside the ring — against the 3:1 that WCAG
+1.4.11 asks of anything carrying state.
+
+It is the one affordance a keyboard user cannot work without, and the phase that exists to
+make the product keyboard-operable found it first.
+
+The ring is now drawn at full `primary`, and declared **once** instead of four times: both
+`var()`s inside it resolve when an element computes its `box-shadow`, so the theme blocks
+inherit the right ring without repeating it. Three hand-maintained copies of a colour went
+away with it.
+
+The wider fix is `contrast.test.ts`, which reads `tokens.css` and re-derives every ratio the
+file's header comment claims — 73 assertions covering each text colour on each surface it
+appears on, each non-text mark against what sits behind it, and the two hand-duplicated dark
+palettes against each other. The comment had said "every pair below was measured rather than
+assumed", which was true when written and cannot stay true on its own. Verified by reverting
+the ring to its old value and watching the suite go red.
+
+Every pair Phase 4 added passes unchanged: sparkline stroke 5.89/4.81, target bar 6.89/4.81
+above and 6.22/8.24 reached, change-since-saved text 6.78/10.08.
+
+### Reduced motion had a hole the tokens could not reach
+
+`tokens.css` zeroes `--uc-duration-*`, which covers every transition written against a token.
+The dashboard's rows carry Tailwind's `transition-opacity`, whose duration comes from
+Tailwind's own variable — measured at 0.15s with the preference set. One rule in
+`components.css` now neutralises transitions and animations globally, at `1ms` rather than
+`0s` so `transitionend` still fires and nothing waiting on it hangs.
+
+The test measures `getComputedStyle` across every element in the page, and asserts the
+emulation took effect first — an emulation that silently fails would have made it pass by
+measuring a browser that was never asked to reduce anything. `test.use({ reducedMotion })` did
+silently fail here; `page.emulateMedia` does not.
+
+### Five keyboard traps
+
+- **No way past the navigation.** Eight identical tab stops before the first product, on every
+  visit (WCAG 2.4.1). A skip link now precedes them, hidden until focused.
+- **Dismissing a popover dropped focus onto `<body>`.** The account menu and each card's
+  overflow are deliberately not focus-trapped — they do not cover the page. But they still
+  unmount, taking anything focused inside them. `useReturnFocus` gives the keyboard back to
+  the trigger, and only when the popover had it: if the user clicked another control, that
+  choice is respected.
+- **The delete confirmation replaced the button that opened it**, so answering "are you sure?"
+  lost the keyboard. Focus now follows the decision, and the confirm button is described by
+  the question so a screen reader reads the prompt rather than four words.
+- **Editing a value in the capture preview.** Flagged fields already took focus; the affordance
+  for correcting a value the extractor _was_ confident about swapped a heading for an input and
+  left focus nowhere.
+- **Leaving the privacy view** landed on the Settings heading rather than the link that led
+  there. Arriving is a navigation and should announce; returning is a return.
+
+### Two live-region defects
+
+`aria-haspopup="menu"` survived on both disclosures whose own comments explain at length why
+they are _not_ menus — and every value of that attribute names a widget, with `true` a synonym
+for `menu`, so there is no honest one to use. Removed; `aria-expanded` with `aria-controls` is
+the disclosure pattern, which is what these are. The panels also gained `role="group"`, without
+which their `aria-label` attaches to nothing and is dropped — the account menu had been
+reaching screen readers unnamed.
+
+The genuine double-announcement was in the panel: entering the preview mounted an amber
+`role="status"` callout at the same instant the panel's own `aria-live` region announced the
+same event, so a screen reader queued both. The callout is no longer a live region and the
+panel's message carries the whole outcome, including what to do about it. `capture.spec.ts`
+asserted on the callout's `status` role; that assertion was rewritten rather than deleted, and
+now checks both halves more precisely — the instruction is visible, and it is announced
+exactly once.
+
+The dashboard's "Add a product" help was also `role="status"`: static text, revealed by a
+button, announced on open and left live afterwards.
+
+### Bundle
+
+Side panel, release build:
+
+|     | raw     | gzip    |
+| --- | ------- | ------- |
+| js  | 542,897 | 150,573 |
+| css | 24,369  | 4,463   |
+
+Phase 5 alone: **js +684, css +16** — the reduced-motion rule almost exactly offset by the
+three focus-ring declarations it became possible to delete.
+
+Across 2A–5, from the pre-redesign baseline:
+
+|     | before  | after   | delta           |
+| --- | ------- | ------- | --------------- |
+| js  | 513,341 | 542,897 | +29,556 (+5.8%) |
+| css | 11,727  | 24,369  | +12,642 (+108%) |
+
+The CSS doubling is the design system itself — two themes plus two forced-theme blocks, and
+every primitive's styles, shared by both clients. 4.5 kB gzipped for that is not something to
+optimise. The JS growth is three views the panel did not have (onboarding, settings, privacy),
+the preferences and shortcut modules, and the primitives; ~29 kB raw across four phases is
+proportionate, and nothing in it is a dependency — no charting library, no font, no
+component runtime.
+
+### D1 — failed, then passed
+
+The manual check this phase was meant to close failed on first run, and the reason was worth
+more than the pass would have been: the strikethrough rule read a class-based strike
+correctly and was never invoked on the pages that motivated it, because it anchored to a
+current price the DOM tier does not find. The fifth green-proved-less instance — and this
+time the environment did not supply the trap, the test did, by building the `data-price`
+anchor the real pages lack.
+
+`9067454` moved resolution post-merge and anchored it on the current-price **value**. The
+re-run passes: the panel previews `$94.97, reduced from $120.00` on Nike, captured through
+the side panel in real Chrome.
+
+Worth recording how it was confirmed, because the obvious check would have been too weak.
+Nike ships two signals — an `aria-label` naming the original price, and a class-struck
+`$120` — and the label is tried first, so a green capture proves only that _something_
+worked. Stripping all seventeen price-bearing `aria-label`s from the live document and
+re-running the helper still returns
+`{ amount: "120.00", selector: "strikethrough near current price" }`. The class-based path
+works on its own, which is the thing D1 exists to establish.
+
+Full write-up, including the three pages that still fail and precisely what blocks each, is
+in VALIDATION.md — it is extraction work, not UI. The actionable one: Wayfair's struck
+`$993.97` sits three parent hops from its price element while the scan reaches two.

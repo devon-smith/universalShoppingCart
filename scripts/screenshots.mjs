@@ -405,6 +405,31 @@ async function captureWeb() {
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await page.waitForTimeout(200);
 
+  /*
+    The focus ring, which Phase 5 changed and nothing else photographs.
+
+    It was `primary` at 40% alpha, which measures 2.02 against the gap inside it — under the
+    3:1 that WCAG 1.4.11 asks of a focus indicator, and invisible enough on a busy card that
+    a keyboard user loses their place. `contrast.test.ts` now enforces the number; this is
+    what it looks like. The skip link renders in the same shot, which is the other half of
+    the keyboard story: it is the first thing Tab reaches and is hidden until then.
+  */
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(150);
+  await shootAll(page, 'web-focus-skip-link', WEB_WIDTHS);
+
+  const detailsButton = page
+    .locator('[data-testid="item-card"]')
+    .filter({ hasText: 'Meridian Wool Runner' })
+    .first()
+    .getByRole('button', { name: 'Details' });
+  await detailsButton.focus();
+  await page.waitForTimeout(150);
+  await shootAll(page, 'web-focus-ring', WEB_WIDTHS);
+  await page.evaluate(() =>
+    document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined,
+  );
+
   // A section reached from the navigation, rather than from a status select competing with it.
   await page.getByRole('button', { name: /^Archived/ }).click();
   await page.waitForTimeout(300);

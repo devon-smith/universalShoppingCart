@@ -761,6 +761,7 @@ trip before first paint, and a row to keep in step with `carts.is_default`.
 a cart here changes only where this panel starts, which is why the control says so. The stored
 value is validated on read like any other untrusted input — extension storage is versionless
 and writable by any past or future build.
+
 ## 2026-07-31 — The navigation owns item status; the filter row does not
 
 **Context.** The dashboard had a Status select in its filter row. Phase 3 adds a left
@@ -913,7 +914,6 @@ not in `identifiers`. In the compare structure it is `comparable: false`: two ga
 "100% cotton" is a genuine shared fact, but until the strings are normalized the tool cannot
 assert that "100% cotton" and "Cotton 100%" agree, and asserting it on raw strings would
 fabricate a match. Non-comparable is the honest setting until normalization lands.
-
 ## 2026-08-02 — A former price farther than adjacency, gated on a cue word, not on distance
 
 **Decision.** `struckOriginalForValue` gains a third path, `struckCueOriginalNear`: a struck

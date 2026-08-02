@@ -1,5 +1,5 @@
 import { Button, Callout } from '@universal-cart/ui';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { publicEnv } from '@/lib/env';
 import { getSupabase } from '@/lib/supabase/client';
@@ -39,6 +39,14 @@ export function KnownItemState({
   const [error, setError] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [archived, setArchived] = useState(false);
+  const moveSelect = useRef<HTMLSelectElement>(null);
+
+  // The button reveals a select and nothing else happens, so a keyboard user presses it and
+  // has no way of knowing anything appeared — the control they asked for is one Tab further
+  // on, past the archive button. Move the keyboard to it instead.
+  useEffect(() => {
+    if (moving) moveSelect.current?.focus();
+  }, [moving]);
 
   const cartName = carts.find((cart) => cart.id === item.cart_id)?.name;
   const elsewhere = carts.filter((cart) => cart.id !== item.cart_id);
@@ -124,7 +132,12 @@ export function KnownItemState({
 
       <div className="saved-state__actions">
         {elsewhere.length > 0 ? (
-          <Button onClick={() => setMoving((open) => !open)} disabled={busy !== null}>
+          <Button
+            onClick={() => setMoving((open) => !open)}
+            disabled={busy !== null}
+            aria-expanded={moving}
+            aria-controls="move-target"
+          >
             Move to another cart
           </Button>
         ) : null}
@@ -140,6 +153,7 @@ export function KnownItemState({
           </label>
           <select
             id="move-target"
+            ref={moveSelect}
             className="uc-input uc-focusable"
             defaultValue=""
             onChange={(event) => {
