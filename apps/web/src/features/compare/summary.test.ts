@@ -65,7 +65,26 @@ describe('buildComparisonFacts', () => {
     const price = f.facts.find((row) => row.key === 'price');
     expect(price).toBeDefined();
     expect(price!.comparable).toBe(true);
-    expect(price!.values).toEqual(['120.00', '99.00']);
+    // Currency rides with the amount so the model is never handed a bare number.
+    expect(price!.values).toEqual(['120.00 USD', '99.00 USD']);
+  });
+
+  it('carries currency into money values so the model does not invent a currency gap', () => {
+    // The exact live failure: three USD prices reached the model as bare numbers, and it
+    // reported "no currency stated" in the authoritative gaps callout — an invented gap.
+    const f = facts([
+      item({ id: 'a', title: 'A', current_price: '84.00', currency: 'USD' }),
+      item({ id: 'b', title: 'B', current_price: '189.00', currency: 'USD' }),
+      item({ id: 'c', title: 'C', current_price: '242.50', currency: 'USD' }),
+    ]);
+
+    const price = f.facts.find((row) => row.key === 'price')!;
+    expect(price.values).toEqual(['84.00 USD', '189.00 USD', '242.50 USD']);
+
+    // The currency is present on every price, so nothing about currency is a gap.
+    expect(f.missing.join(' ')).not.toMatch(/currency/i);
+    const { user } = buildSummaryMessages(f);
+    expect(user).toContain('84.00 USD');
   });
 
   it('never sends page HTML, cookies, or derived rows — only stored fields', () => {
