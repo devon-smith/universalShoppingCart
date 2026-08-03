@@ -995,3 +995,29 @@ accessible name always carries the product title — "Compare" repeated four tim
 tells a screen-reader user nothing about which row they are on. The dashboard gains bottom
 padding while the tray is open, so the last product is not permanently underneath the control
 being used to choose products.
+
+## 2026-08-03 — Shared-cart invitations are hashed bearer tokens, not email-bound
+
+**Decision.** An invitation is a **bearer token**: `create_cart_invitation` mints 256 bits of
+randomness, stores only its SHA-256 hash, and returns the raw token once; `accept_cart_invitation`
+hashes a presented token and redeems it. `email` on the row is informational, never an access
+check — whoever holds the link can accept. Single-use (`accepted_at` under a row lock) and
+expiry are the controls that make that safe.
+
+**Context.** The obvious alternative is email-bound acceptance: the accepter's `auth.email()`
+must equal the invitation's email. It was rejected for the friends-scale MVP. The inviter would
+have to know the exact address the friend signs in with — Google and magic-link can differ — and
+a mismatch is a dead end with no security gain over a single-use, expiring, 256-bit token. A
+bearer link is also what "share a cart with a friend" actually means to the user.
+
+**Consequences.** Because the link is a bearer capability, the token is never stored in a
+replayable form (hash only), redemption is single-use and expiry-checked, and the invitee needs
+no direct read on `cart_invitations` — acceptance is a SECURITY DEFINER RPC, and the table has no
+update grant so a client cannot forge `accepted_*` or un-expire a row. The membership grant is
+**escalate-only**: `cart_role` is declared `owner < editor < viewer`, so `least(existing, invited)`
+keeps the more-privileged role — an owner testing their own link stays owner, an editor is not
+demoted by a viewer invite. `owner` is unrepresentable as an invited role in three places (a
+CHECK constraint, the create RPC, and the Zod contract), because ownership is `carts.owner_id`
+and immutable. Email-bound acceptance and a `security_events` audit table (§17.5) are recorded as
+deferred, not built — the audit table waits for a second reason to exist rather than being added
+speculatively here.

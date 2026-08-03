@@ -58,6 +58,29 @@ complete; authority itself comes from `carts.owner_id`.
 
 Index: `cart_members_user_id_idx (user_id)`.
 
+### `cart_invitations`
+
+Bearer-token invitations to shared carts (Phase 6). The table stores **only the SHA-256 hash**
+of the token; the raw token is returned once by `create_cart_invitation` and never persisted,
+so a leak of this table cannot be replayed into access.
+
+| Column        | Type             | Notes                                                  |
+| ------------- | ---------------- | ------------------------------------------------------ |
+| `id`          | `uuid`           | PK                                                     |
+| `cart_id`     | `uuid`           | cascade on cart delete                                 |
+| `email`       | `text`           | informational only — acceptance is by token, not email |
+| `role`        | `cart_role` enum | `editor` \| `viewer`; `owner` blocked by a CHECK       |
+| `token_hash`  | `text`           | SHA-256 hex of the raw token; unique, 64-hex CHECK     |
+| `invited_by`  | `uuid`           | the owner who minted it                                |
+| `expires_at`  | `timestamptz`    | checked at accept                                      |
+| `accepted_at` | `timestamptz`    | set with `accepted_by`, only by the accept RPC         |
+| `accepted_by` | `uuid`           | paired with `accepted_at` by a CHECK                   |
+| timestamps    | `timestamptz`    | `updated_at` by trigger                                |
+
+Indexes: `cart_invitations_cart_id_idx (cart_id)` and a partial
+`cart_invitations_cart_pending_idx (cart_id, created_at desc) where accepted_at is null` — the
+owner's pending-invites view. `token_hash` is unique.
+
 ### `items`
 
 A saved product. The columns fall into three groups, and the grouping is the point.
@@ -168,19 +191,26 @@ otherwise re-enter. They answer a yes/no question about the calling user only, a
 
 ## Row Level Security
 
-RLS is enabled on all three tables. `anon` has no grants at all, so an unauthenticated
+RLS is enabled on every user-facing table. `anon` has no grants at all, so an unauthenticated
 request is rejected before any policy is consulted.
 
-| Table          | select                   | insert                  | update              | delete                          |
-| -------------- | ------------------------ | ----------------------- | ------------------- | ------------------------------- |
-| `profiles`     | own row                  | own row                 | own row             | —                               |
-| `carts`        | `can_read_cart(id)`      | `owner_id = auth.uid()` | `can_edit_cart(id)` | owner only                      |
-| `cart_members` | `can_read_cart(cart_id)` | owner of the cart       | owner of the cart   | owner, or the member themselves |
+| Table              | select                   | insert                     | update              | delete                          |
+| ------------------ | ------------------------ | -------------------------- | ------------------- | ------------------------------- |
+| `profiles`         | own row                  | own row                    | own row             | —                               |
+| `carts`            | `can_read_cart(id)`      | `owner_id = auth.uid()`    | `can_edit_cart(id)` | owner only                      |
+| `cart_members`     | `can_read_cart(cart_id)` | owner of the cart          | owner of the cart   | owner, or the member themselves |
+| `cart_invitations` | owner of the cart        | owner, `invited_by` = self | — (no policy)       | owner of the cart               |
 
 | `items` | `can_read_cart(cart_id)` | `can_edit_cart` **and** `created_by = auth.uid()` | `can_edit_cart(cart_id)` | `can_edit_cart(cart_id)` |
 | `item_observations` | via the item's cart | — (function only) | — | — |
 
-Coverage lives in `supabase/tests/` and runs with `pnpm test:db` — 56 assertions.
+`cart_invitations` has **no update policy and no update grant** on purpose: `accepted_at` /
+`accepted_by` are writable only by the `accept_cart_invitation` definer RPC, so a client can
+neither mark an invitation accepted nor un-expire one. An invitee never selects the table at
+all — they present the token to the accept RPC.
+
+Coverage lives in `supabase/tests/` and runs with `pnpm test:db` — 132 assertions across nine
+files.
 
 ## `ingest_product_capture`
 
@@ -214,6 +244,26 @@ The fingerprint is computed by the client (`packages/extractors/src/fingerprint.
 because the URL and variant normalization it depends on must produce identical values on
 every surface. The server verifies its shape and scopes it to the cart, so a wrong value
 can only affect the caller's own deduplication.
+
+## `create_cart_invitation` / `accept_cart_invitation`
+
+```sql
+create_cart_invitation(
+  p_cart_id uuid, p_role cart_role, p_email text default null,
+  p_ttl interval default interval '7 days'
+) returns jsonb  -- { id, token, role, expiresAt }
+
+accept_cart_invitation(p_token text) returns jsonb  -- { cartId, role }
+```
+
+Both are `SECURITY DEFINER`. `create` is owner-only (checked in the body, since it bypasses
+RLS as the table owner), rejects the `owner` role, mints 256 bits of randomness as a 64-hex
+token, stores **only its SHA-256**, and returns the raw token once. `accept` hashes the
+presented token, takes a row lock so two concurrent redemptions cannot both pass the
+single-use check, rejects an already-accepted or expired invitation, adds the `cart_members`
+row, and stamps `accepted_at` / `accepted_by`. The membership grant is **escalate-only**:
+`cart_role` is declared `owner < editor < viewer`, so `least(existing, invited)` never
+downgrades a member who already holds a stronger role.
 
 ## Conventions
 
