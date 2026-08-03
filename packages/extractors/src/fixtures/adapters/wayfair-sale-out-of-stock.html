@@ -1,0 +1,293 @@
+<!doctype html>
+<!--
+  Wayfair — a sale price beside a struck former price, on an out-of-stock listing.
+
+  Sanitized and reduced from the structure of a real product page: the `data-test-id` and
+  `data-node-id` hooks, the `data-hb-id="BoxV3"` wrappers, the hashed `_6o3atz*` class names,
+  the visually-hidden "was", and the `data-clio-context` payload on each option swatch are
+  reproduced faithfully. The product, prices, images and option names are invented. No
+  account data, no cookies, no tokens, no real listing.
+
+  ## Why this fixture exists
+
+  The page carries NO Product JSON-LD — only WebSite and BreadcrumbList, exactly as the real
+  page does. That is the whole reason Wayfair currently extracts no price at all: there is no
+  offer for the structured-data tier to read, and the generic DOM heuristics do not recognise
+  `data-test-id="PriceDisplay"`. Do not add a Product node to this fixture; its absence IS the
+  case under test.
+
+  ## The trap this fixture sets
+
+  `[data-test-id="PriceDisplay"]` is NOT unique. On the real page it appears 36 times: twice
+  for this product, and 34 more inside sponsored and recommendation tiles. The same is true of
+  `StandardPricingPrice-SALE` (16) and `-PREVIOUS` (17). An adapter that takes the first match
+  in document order happens to be right today and is one layout change away from reporting a
+  sponsored sofa's price as this product's.
+
+  So a sponsored tile is included below, carrying its own SALE/PREVIOUS/PriceDisplay trio at
+  $940.00 was $1,610.00. An adapter that returns those numbers is wrong. The scoping selector
+  that holds is `[data-node-id^="ListingPricing::"]`, which is unique on the real page (1 of 1)
+  because the node id is generated per listing, not per tile.
+-->
+<html lang="en">
+  <head>
+    <title>Calder 3-Piece Boucle Modular Sectional with Loose Back | Example</title>
+    <link
+      rel="canonical"
+      href="https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html"
+    />
+    <meta property="og:site_name" content="Wayfair" />
+    <meta
+      property="og:title"
+      content="Harbour &amp; Vale Calder 3-Piece Boucle Modular Sectional with Loose Back &amp; Reviews | Wayfair"
+    />
+    <meta
+      property="og:url"
+      content="https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back"
+    />
+    <meta
+      property="og:image"
+      content="https://assets.example.com/im/11223344/compr-r85/1020/102030405/Calder+3-Piece+Boucle+Modular+Sectional+with+Loose+Back.jpg"
+    />
+
+    <!-- The real page ships exactly these two nodes and no Product. Preserved deliberately. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Example",
+        "url": "https://www.wayfair.com"
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Furniture",
+            "item": "https://www.wayfair.com/furniture/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Sectionals",
+            "item": "https://www.wayfair.com/furniture/sb0/sectionals-c413893.html"
+          }
+        ]
+      }
+    </script>
+  </head>
+
+  <body>
+    <h1
+      data-hb-id="Heading"
+      data-rtl-id="listingHeaderNameHeading"
+      class="_6o3atz18y hapmhk7 hapmhkf hapmhkl"
+    >
+      Calder 3-Piece Boucle Modular Sectional with Loose Back
+    </h1>
+
+    <div data-hb-id="BoxV3">
+      <img
+        data-hb-id="FixedImage"
+        alt="Calder 3-Piece Boucle Modular Sectional with Loose Back"
+        src="https://assets.example.com/im/11223344/compr-r85/1020/102030405/Calder+3-Piece+Boucle+Modular+Sectional+with+Loose+Back.jpg"
+      />
+    </div>
+
+    <!--
+      THE PRODUCT'S OWN PRICE.
+
+      `data-node-id="ListingPricing::<id>"` is the scope that makes this block identifiable.
+      Inside it the sale price and the former price are siblings, and the former price is a
+      real <s> preceded by a visually-hidden "was" — which is the cue the post-merge
+      `struckOriginalForValue` resolver keys on.
+    -->
+    <div data-node-id="ListingPricing::58711__R_1qblblfiuliv7llb_" data-name="Pricing">
+      <div data-hb-id="BoxV3" class="_6o3atz13e _6o3atz14x _6o3atzhp _6o3atz1bd">
+        <div data-hb-id="BoxV3" class="_6o3atzc7 _6o3atz1bd">
+          <div data-hb-id="BoxV3" class="_6o3atz13e _6o3atzml _6o3atzhp _6o3atz9r _6o3atz1bd">
+            <div data-hb-id="BoxV3" class="_6o3atz13e _6o3atz158 _6o3atz1bd">
+              <div data-hb-id="BoxV3" class="_6o3atz13e _6o3atzml _6o3atzhp _6o3atz9r _6o3atz1bd">
+                <span data-test-id="StandardPricingPrice-SALE" style="align-self: end">
+                  <span data-hb-id="BoxV3" class="_6o3atz18y _6o3atz1bd">
+                    <span
+                      data-hb-id="BoxV3"
+                      data-test-id="PriceDisplay"
+                      data-name-id="PriceDisplay"
+                      class="_6o3atzbl _6o3atzc7 _6o3atz1d9 _6o3atz1bd"
+                      >$612.50</span
+                    >
+                  </span>
+                </span>
+                <span data-test-id="StandardPricingPrice-PREVIOUS" style="align-self: end">
+                  <span data-hb-id="BoxV3" class="_6o3atz18y _6o3atz1bd">
+                    <span class="mtsvz50" data-hb-id="VisuallyHidden">was</span
+                    ><s
+                      data-hb-id="BoxV3"
+                      data-test-id="PriceDisplay"
+                      data-name-id="PriceDisplay"
+                      class="_6o3atzbl _6o3atzc7 _6o3atz1d9 _6o3atz1bd"
+                      >$875.00</s
+                    >
+                  </span>
+                </span>
+              </div>
+            </div>
+            <span style="align-self: end">
+              <span
+                data-hb-id="BoxV3"
+                data-test-id="PricingMessage-sale"
+                class="_6o3atz1d9 _6o3atz1bd"
+              >
+                <span data-hb-id="Text" class="_6o3atzbl _6o3atz18y">30% Off</span>
+              </span>
+            </span>
+          </div>
+          <span
+            data-hb-id="Text"
+            data-test-id="StandardSalesPromo-text"
+            class="_6o3atzbl _6o3atz18y"
+            >Sale</span
+          >
+        </div>
+      </div>
+    </div>
+
+    <!--
+      Availability. Two agreeing signals: the badge text a shopper reads, and a machine-readable
+      `inventoryStatus` inside the tracking metadata. The real page shows a "Notify Me" button
+      here rather than "Add to Cart", so add-to-cart presence is a third, weaker signal.
+    -->
+    <div
+      data-node-id="DetailedInventoryWidget::undefined__R_2pqblb"
+      data-tracking-metadata='{"metadata":{"inventoryStatus":"OUT_OF_STOCK"}}'
+      data-name="DetailedInventoryWidget"
+      data-hb-id="BoxV3"
+      data-test-id="detailedInventoryWidget"
+    >
+      <div data-hb-id="BoxV3">
+        <span
+          data-hb-id="Badge"
+          data-test-id="InventoryWidgetDisplay-Text"
+          data-name-id="InventoryWidgetDisplay"
+          ><span>Out of Stock</span></span
+        >
+      </div>
+    </div>
+    <button data-hb-id="Button" data-test-id="NotifyMe-NotifyMeOverlay-Button">Notify Me</button>
+
+    <!--
+      Selected options. Each category is a `pdp-ch-categoryComponent` whose first <p> is the
+      label ("Fabric:") and whose second <p> is the CURRENTLY SELECTED value. The swatch buttons
+      that follow describe the OTHER choices, each carrying its own `data-clio-context` — note
+      `optionName` there is the swatch's name, not the selection. Reading the swatches instead
+      of the second <p> is the obvious wrong turn.
+    -->
+    <div class="" data-test-id="pdp-ch-categoryComponent">
+      <div tabindex="0" data-hb-id="BoxV3" class="_6o3atzbl _6o3atz1de _6o3atzc7 _6o3atz1bd">
+        <p data-hb-id="Text" class="_6o3atz5h _6o3atzbl _6o3atz18y _6o3atz1cl _1lxwj2q1">
+          Fabric<!-- -->:
+        </p>
+        <p data-hb-id="Text" class="_6o3atzbl _6o3atz18y _6o3atz1dh _1lxwj2q1">Sand Boucle</p>
+      </div>
+      <div data-hb-id="BoxV3" class="_6o3atz17 _6o3atz1bd">
+        <div
+          class="_1eqhru12"
+          data-clio-id="MarketplaceListingChoice::_R_b7kablblfiuliv7llb_"
+          data-clio-context='{"interactionType":"option_selected","optionCategory":"Fabric","optionName":"Moss Boucle","optionCategoryId":"12","optionId":"640565357","isOutOfStock":false,"listingUrl":"https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html?piid=640565355%2C640565357","isOpenBox":false}'
+        >
+          <button
+            type="button"
+            data-test-id="pdp-ch-selectableComponent"
+            data-optionid-id="640565357"
+            class="_6o3atz1bf _1onsdpbt"
+          >
+            <div></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="" data-test-id="pdp-ch-categoryComponent">
+      <div tabindex="0" data-hb-id="BoxV3" class="_6o3atzbl _6o3atz1de _6o3atzc7 _6o3atz1bd">
+        <p data-hb-id="Text" class="_6o3atz5h _6o3atzbl _6o3atz18y _6o3atz1cl _1lxwj2q1">
+          Orientation<!-- -->:
+        </p>
+        <p data-hb-id="Text" class="_6o3atzbl _6o3atz18y _6o3atz1dh _1lxwj2q1">Right Hand Facing</p>
+      </div>
+      <div data-hb-id="BoxV3" class="_6o3atz17 _6o3atz1bd">
+        <div
+          class="_1eqhru12"
+          data-clio-id="MarketplaceListingChoice::_R_bbkablblfiuliv7llb_"
+          data-clio-context='{"interactionType":"option_selected","optionCategory":"Orientation","optionName":"Left Hand Facing","optionCategoryId":"59","optionId":"640565354","isOutOfStock":true,"listingUrl":"https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html?piid=640565354%2C640565351","isOpenBox":false}'
+        >
+          <button
+            type="button"
+            data-test-id="pdp-ch-selectableComponent"
+            data-optionid-id="640565354"
+            class="_6o3atz1bf _1onsdpbt"
+          >
+            <div></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!--
+      ===== THE TRAP =====
+      A sponsored tile with the identical price markup. Nothing inside this subtree belongs to
+      the product being viewed. An adapter that reports $940.00 or $1,610.00 has failed this
+      fixture, and that is the point of including it.
+    -->
+    <div
+      data-node-id="WebElement::PRODUCTOPTIONSKU_UNIVERSAL_DISPLAY"
+      data-hb-id="BoxV3"
+      data-enzyme-id="Display-Ad-Container"
+      data-test-id="Display-Ad-Container"
+    >
+      <div data-node-id="WebElement::PRODUCTOPTIONSKU_DISPLAY_BANNERS__">
+        <div data-enzyme-id="Product-Banner-Container-xl">
+          <div data-hb-id="BoxV3">
+            <div data-enzyme-id="ProductBanner-ContentBlocks">
+              <a href="/furniture/pdp/example-nakash-l-shaped-sectional-w111111111.html"
+                >Nakash L-Shaped Sectional Modular Sofa with Storage Ottoman</a
+              >
+              <div data-hb-id="BoxV3" data-enzyme-id="ProductBannerPricingWrapper">
+                <div data-hb-id="BoxV3">
+                  <div data-hb-id="BoxV3">
+                    <span data-test-id="StandardPricingPrice-SALE">
+                      <span data-hb-id="BoxV3">
+                        <span
+                          data-hb-id="BoxV3"
+                          data-test-id="PriceDisplay"
+                          data-name-id="PriceDisplay"
+                          >$940.00</span
+                        >
+                      </span>
+                    </span>
+                    <span data-test-id="StandardPricingPrice-PREVIOUS">
+                      <span data-hb-id="BoxV3">
+                        <span class="mtsvz50" data-hb-id="VisuallyHidden">was</span
+                        ><s
+                          data-hb-id="BoxV3"
+                          data-test-id="PriceDisplay"
+                          data-name-id="PriceDisplay"
+                          >$1,610.00</s
+                        >
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span>Sponsored</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

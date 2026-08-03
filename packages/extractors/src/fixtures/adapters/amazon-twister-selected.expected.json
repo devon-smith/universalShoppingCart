@@ -1,0 +1,48 @@
+{
+  "_note": "GROUND TRUTH, hand-written from the fixture beside it — not a pipeline snapshot. The committed adapter fixtures carry a full ProductCaptureV1 including an `evidence` array and `extraction.overallConfidence`; generate those in the M2 PR and keep the values below unchanged.",
+  "_fixtureUrl": "https://www.amazon.com/Northwind-Standard-Washed-Indigo-32x32/dp/B0EXAMPLE1",
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.amazon.com/Northwind-Standard-Washed-Indigo-32x32/dp/B0EXAMPLE1",
+    "canonicalUrl": "https://www.amazon.com/Northwind-Mens-Standard-Fit-Jeans/dp/B0PARENT99",
+    "domain": "www.amazon.com",
+    "retailerName": "Amazon",
+    "pageTitle": "Northwind Men's Standard Fit Jeans | Example"
+  },
+  "product": {
+    "title": "Northwind Men's Standard Fit Jeans (Also Available in Big & Tall)",
+    "brand": "Northwind",
+    "description": null,
+    "imageUrls": ["https://m.media-example.com/images/I/41NgDv59BaL._AC_SX679_.jpg"],
+    "selectedImageUrl": "https://m.media-example.com/images/I/41NgDv59BaL._AC_SX679_.jpg",
+    "identifiers": { "productId": "B0EXAMPLE1" },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "56.80",
+    "originalPriceAmount": "71.00",
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Color": "Washed Indigo",
+    "Special Size": "Standard"
+  },
+  "_mustNotExtract": {
+    "priceAmount": ["71.20", "63.40"],
+    "originalPriceAmount": ["80.00"],
+    "selectedVariant.Size": "Select",
+    "why": "71.20/80.00 and 63.40 belong to UNSELECTED colour swatches (#color_name_0, #color_name_1). Only #color_name_2 carries .a-button-selected. And Size is offered but not chosen — the dropdown still reads 'Select', so Size must be absent from the variant map rather than recorded as 'Select'."
+  },
+  "_signals": {
+    "title": "#productTitle — FIRST match only; the id is duplicated on the real page",
+    "brand": "#bylineInfo text, minus the 'Visit the ' prefix and ' Store' suffix",
+    "price": "[id^=\"color_name_\"].a-button-selected .apex-pricetopay-value [aria-hidden] — corroborated by #corePrice_feature_div and by its data-csa-c-asin matching the /dp/ segment of the URL",
+    "original": ".a-button-selected .apex-basisprice-value[data-a-strike=\"true\"] .a-offscreen",
+    "savingsCheck": "the accessibility label reads '$56.80 with 20 percent savings'; 56.80/71.00 = 0.80 exactly, so the stated saving and the two figures agree",
+    "currency": "the $ glyph and .a-price-symbol; the page states no ISO code",
+    "availability": "#twisterAvailability and #availability both read 'In Stock'",
+    "variant": "each [id^=\"inline-twister-expanded-dimension-text-\"], labelled by its sibling [id^=\"inline-twister-dim-title-\"]",
+    "canonicalTrap": "link[rel=canonical] is the PARENT ASIN B0PARENT99 while the page is child B0EXAMPLE1. Keep both — fingerprinting on canonical alone collapses every colour into one item."
+  }
+}

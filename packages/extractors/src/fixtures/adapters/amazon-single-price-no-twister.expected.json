@@ -1,0 +1,39 @@
+{
+  "_note": "GROUND TRUTH, hand-written from the fixture beside it — not a pipeline snapshot. See amazon-twister-selected.expected.json for the full caveat.",
+  "_fixtureUrl": "https://www.amazon.com/Northwind-Cotton-Chore-Jacket/dp/B0EXAMPLE7",
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.amazon.com/Northwind-Cotton-Chore-Jacket/dp/B0EXAMPLE7",
+    "canonicalUrl": "https://www.amazon.com/Northwind-Cotton-Chore-Jacket/dp/B0EXAMPLE7",
+    "domain": "www.amazon.com",
+    "retailerName": "Amazon",
+    "pageTitle": "Northwind Cotton Chore Jacket | Example"
+  },
+  "product": {
+    "title": "Northwind Cotton Chore Jacket, Unlined",
+    "brand": "Northwind",
+    "description": null,
+    "imageUrls": ["https://m.media-example.com/images/I/61ChoreJacket._AC_SX679_.jpg"],
+    "selectedImageUrl": "https://m.media-example.com/images/I/61ChoreJacket._AC_SX679_.jpg",
+    "identifiers": { "productId": "B0EXAMPLE7" },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "46.00",
+    "originalPriceAmount": null,
+    "currency": "USD",
+    "availability": "out_of_stock"
+  },
+  "selectedVariant": {},
+  "_mustNotExtract": {
+    "originalPriceAmount": ["110.00"],
+    "priceAmount": ["96.16"],
+    "why": "Both belong to the sponsored 'Ridgeline Waxed Canvas Field Coat' in #sp_detail. Pairing List: $110.00 with this jacket's $46.00 would invent a 58% discount."
+  },
+  "_signals": {
+    "price": "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen — note the id differs from the twister page's #corePrice_feature_div; Amazon ships both",
+    "original": "absent — there is no .apex-basisprice-value on this page",
+    "availability": "#availability prose 'Currently unavailable.' → out_of_stock. There is no #twisterAvailability and no add-to-cart button.",
+    "noSelectedSwatch": ".a-button-selected does not exist here, so it cannot be a precondition for reading a price"
+  }
+}
