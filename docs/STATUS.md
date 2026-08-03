@@ -353,9 +353,15 @@ pipeline over a `linkedom` server DOM exactly as tested. Its orchestration (`run
 `processRefreshJob`) is injected-and-unit-tested (44 refresh tests). The Supabase Cron that drives
 it is per-environment config (Vault + `cron.schedule`, in the RunBook), not a migration. Still
 human-gated: enabling `pg_cron`/`pg_net`, setting `CRON_SECRET` + `SUPABASE_SERVICE_ROLE_KEY`, and
-scheduling the job. `linkedom`'s DOM fidelity is the local host's live check. **Automatic
-enrollment** of items into `refresh_jobs` (`enqueue_refresh_job` from the save path) is the one
-remaining follow-up — until then, enqueue by hand to test.
+scheduling the job. `linkedom`'s DOM fidelity is the local host's live check.
+
+**Automatic enrollment landed** as an `AFTER INSERT` trigger on `items` (`enroll_item_refresh`):
+every saved item is enrolled into `refresh_jobs` once, with a strategy mirroring `classifyRefresh`
+(the client-rendered brand-adapter sites `browser_required`, else `public_fetch`; a lookalike
+domain is not mistaken for a brand). A trigger, not a client call, because the save path is the
+extension and importing the refresh package there risks pulling `node:dns`/`ipaddr.js` into the
+MV3 bundle (DECISIONS.md, 2026-08-03). 8 pgTAP. So the cloud side of Phase 7 is complete — the
+only remaining work is the human dashboard steps (Cron + secrets).
 
 ## Phase 6 — Sharing web surface (M3)
 

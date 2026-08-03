@@ -29,6 +29,9 @@ export interface ClassifiableItem {
 /**
  * Domains whose product data is client-rendered — a public fetch cannot reproduce their price.
  * These are exactly the brand-adapter domains, verified client-rendered in the live-capture pass.
+ *
+ * This set (and BROWSER_ONLY_EXTRACTORS below) is mirrored in SQL by the `enroll_item_refresh`
+ * trigger, which is what actually enrols saved items. Keep the two in sync — three names each.
  */
 const BROWSER_REQUIRED_DOMAINS = ['amazon.com', 'wayfair.com', 'stockx.com'] as const;
 
