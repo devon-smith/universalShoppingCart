@@ -98,5 +98,3 @@ export async function summarizeComparison(rawItemIds: unknown): Promise<Summariz
     return { status: 'error', message: 'Something went wrong generating the summary.' };
   }
 }
-
-export { MAX_COMPARE_ITEMS };
