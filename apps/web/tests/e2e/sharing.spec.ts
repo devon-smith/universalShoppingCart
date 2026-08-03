@@ -186,28 +186,16 @@ test.describe('shared carts', () => {
       'the owner should not be able to remove themselves',
     ).toHaveCount(0);
 
-    // The Server Action is fired and not awaited — `remove()` drops the row from local state
-    // optimistically and `void`s the call, exactly as `revoke()` does. So the count below would
-    // go to 1 whether or not the delete ever reached Postgres, and reloading straight afterwards
-    // races the request: the first version of this test reloaded immediately, aborted the
-    // in-flight POST, and reported a member who had genuinely not been removed.
-    //
-    // Waiting on the response makes the reload assertion mean what it claims. A fixed sleep
-    // would also pass and would be a worse test — it would go green on a slow machine that had
-    // silently dropped the write.
-    const removed = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        response.url().includes('/app/share') &&
-        response.status() < 400,
-    );
+    // Since M5.1 the row is dropped only once the Server Action confirms `ok`, so the count
+    // going to 1 *is* the confirmation — it can no longer be reached by an optimistic update
+    // whose write never landed. `sharing-durability.spec.ts` is what holds that property down;
+    // here it just means this assertion no longer needs to race the response.
     await membersAfter
       .filter({ hasText: 'Member' })
       .getByRole('button', { name: 'Remove' })
       .click();
     await expect(membersAfter).toHaveCount(1);
     await expect(membersAfter.first()).toContainText('You');
-    await removed;
 
     // Survives a reload, so the row is really gone rather than only dropped from local state.
     await page.reload();
