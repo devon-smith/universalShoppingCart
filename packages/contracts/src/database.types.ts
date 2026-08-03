@@ -315,6 +315,44 @@ export type Database = {
           },
         ]
       }
+      notification_events: {
+        Row: {
+          created_at: string
+          currency: string | null
+          id: number
+          item_id: string
+          observed_value: string | null
+          seen_at: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          id?: never
+          item_id: string
+          observed_value?: string | null
+          seen_at?: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          id?: never
+          item_id?: string
+          observed_value?: string | null
+          seen_at?: string | null
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -459,6 +497,15 @@ export type Database = {
         }
         Returns: Json
       }
+      record_notification: {
+        Args: {
+          p_currency?: string
+          p_item_id: string
+          p_observed_value?: string
+          p_type: Database["public"]["Enums"]["notification_type"]
+        }
+        Returns: Json
+      }
       record_refresh_result: {
         Args: { p_item_id: string; p_ok: boolean }
         Returns: Json
@@ -477,6 +524,10 @@ export type Database = {
         | "unknown"
       item_priority: "low" | "normal" | "high"
       item_status: "saved" | "cart" | "purchased" | "archived"
+      notification_type:
+        | "price_below_desired"
+        | "back_in_stock"
+        | "became_unavailable"
       observation_source: "capture" | "revisit" | "manual" | "background"
       refresh_strategy: "public_fetch" | "api" | "browser_required" | "disabled"
     }
