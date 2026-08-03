@@ -29,24 +29,26 @@ describe('createInvitationInputSchema', () => {
 
   it('rejects a ttl beyond the maximum', () => {
     const base = { cartId: crypto.randomUUID(), role: 'viewer' as const };
-    expect(createInvitationInputSchema.safeParse({ ...base, ttlHours: MAX_INVITE_TTL_HOURS }).success).toBe(
-      true,
-    );
     expect(
-      createInvitationInputSchema.safeParse({ ...base, ttlHours: MAX_INVITE_TTL_HOURS + 1 }).success,
+      createInvitationInputSchema.safeParse({ ...base, ttlHours: MAX_INVITE_TTL_HOURS }).success,
+    ).toBe(true);
+    expect(
+      createInvitationInputSchema.safeParse({ ...base, ttlHours: MAX_INVITE_TTL_HOURS + 1 })
+        .success,
     ).toBe(false);
   });
 
   it('rejects a non-uuid cart id', () => {
-    expect(createInvitationInputSchema.safeParse({ cartId: 'not-a-uuid', role: 'viewer' }).success).toBe(
-      false,
-    );
+    expect(
+      createInvitationInputSchema.safeParse({ cartId: 'not-a-uuid', role: 'viewer' }).success,
+    ).toBe(false);
   });
 
   it('treats email as optional and informational', () => {
-    expect(createInvitationInputSchema.safeParse({ cartId: crypto.randomUUID(), role: 'viewer' }).success).toBe(
-      true,
-    );
+    expect(
+      createInvitationInputSchema.safeParse({ cartId: crypto.randomUUID(), role: 'viewer' })
+        .success,
+    ).toBe(true);
     expect(
       createInvitationInputSchema.safeParse({
         cartId: crypto.randomUUID(),
