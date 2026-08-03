@@ -1,37 +1,49 @@
 #!/usr/bin/env node
 /**
- * Preflight for `pnpm test:db`: confirm the local database has the newest migration applied
+ * Preflight for `pnpm test:db`: confirm the local database has every committed migration applied
  * before pg_prove runs.
  *
  * A database that predates a migration makes the pgTAP suite fail deep inside with a cryptic
- * `function public.… does not exist`, which reads exactly like a real regression — it has cost
- * real diagnosis time more than once. This turns that into one line naming the fix.
+ * `… does not exist`, which reads like a real regression and has cost diagnosis time more than
+ * once. This turns that into one line naming the fix.
  *
- * **Fail-open by design.** It short-circuits *only* when it positively confirms the newest
- * object is absent. If it cannot determine the answer for any reason — Docker not installed, the
- * stack not running, an unexpected result — it prints a note and lets the tests run. It may only
- * turn a confusing red into a clear one; it must never block a healthy database.
+ * It compares the newest migration FILE version against the newest version applied in the local
+ * database (`supabase_migrations.schema_migrations`). That is self-maintaining: it never needs
+ * updating when a migration lands — which the previous single-object probe did, and didn't, so it
+ * went blind to exactly the drift it existed to catch.
+ *
+ * Fail-open: it short-circuits only when it positively confirms the database is behind. Docker
+ * absent, the stack not running, an unreadable table — it prints a note and lets the tests run.
+ * It may only turn a confusing red into a clear one, never block a healthy database.
  */
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-/**
- * The newest object the migrations create — `create_cart_invitation` (2026-08-03). When a
- * database is missing the latest migrations this is the first thing absent, and it is exactly
- * what the pgTAP suite trips over. `to_regprocedure` returns NULL for a missing function rather
- * than raising, so the probe itself never errors. Update this when a newer migration lands.
- */
-const PROBE =
-  "select to_regprocedure('public.create_cart_invitation(uuid, public.cart_role, text, interval)') is not null;";
+const migrationsDir = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'supabase',
+  'migrations',
+);
 
-const RESET_HINT =
-  'Local database is missing the latest migrations.\n' +
-  '  Run `pnpm supabase:reset` to apply them, then re-run `pnpm test:db`.';
-
-/** Give up on checking and let the tests run — the guard never blocks on its own uncertainty. */
 function proceed(note) {
   if (note) console.warn(`[test:db preflight] ${note} — skipping the check.`);
   process.exit(0);
 }
+
+// Newest migration on disk: the timestamp prefix of the highest-sorting `<version>_*.sql` file.
+let latestFileVersion = '';
+try {
+  for (const name of readdirSync(migrationsDir)) {
+    const match = /^(\d+)_.*\.sql$/.exec(name);
+    if (match && match[1] > latestFileVersion) latestFileVersion = match[1];
+  }
+} catch (error) {
+  proceed(`could not read ${migrationsDir} (${error.message})`);
+}
+if (latestFileVersion === '') proceed('no migrations found on disk');
 
 // Find the running Supabase database container without hard-coding the project id.
 const ps = spawnSync('docker', ['ps', '--filter', 'name=supabase_db_', '--format', '{{.Names}}'], {
@@ -45,17 +57,32 @@ const container = (ps.stdout ?? '')
   .filter(Boolean)[0];
 if (!container) proceed('no running Supabase database container found');
 
+// Newest migration the local database has applied. A missing table (fresh stack) errors here and
+// falls through to fail-open rather than a false alarm.
 const probe = spawnSync(
   'docker',
-  ['exec', container, 'psql', '-U', 'postgres', '-d', 'postgres', '-tAc', PROBE],
+  [
+    'exec',
+    container,
+    'psql',
+    '-U',
+    'postgres',
+    '-d',
+    'postgres',
+    '-tAc',
+    "select coalesce(max(version), '') from supabase_migrations.schema_migrations",
+  ],
   { encoding: 'utf8' },
 );
-if (probe.error || probe.status !== 0) proceed('could not query the local database');
+if (probe.error || probe.status !== 0) proceed('could not read applied migrations');
 
-const answer = (probe.stdout ?? '').trim();
-if (answer === 't') process.exit(0); // migrations applied — say nothing, run the tests
-if (answer === 'f') {
-  console.error(`\n✗ ${RESET_HINT}\n`);
-  process.exit(1);
-}
-proceed(`unexpected probe result ${JSON.stringify(answer)}`);
+// Timestamp prefixes are fixed-width, so a string comparison is a chronological one.
+const appliedVersion = (probe.stdout ?? '').trim();
+if (appliedVersion !== '' && appliedVersion >= latestFileVersion) process.exit(0);
+
+console.error(
+  '\n✗ Local database is behind the migrations on disk' +
+    ` (applied ${appliedVersion || 'none'}, latest on disk ${latestFileVersion}).\n` +
+    '  Run `pnpm supabase:reset` to apply them, then re-run `pnpm test:db`.\n',
+);
+process.exit(1);

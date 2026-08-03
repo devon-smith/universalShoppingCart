@@ -78,11 +78,12 @@ pnpm db:types    # regenerate packages/contracts/src/database.types.ts after a m
 ```
 
 `test:db` runs a preflight first (`scripts/preflight-db.mjs`): if the running local database is
-missing the newest migration, it stops with `run pnpm supabase:reset` instead of letting pgTAP
-fail deep inside with a cryptic `function … does not exist`. The check is fail-open — no Docker,
-no running stack, or an unexpected result and it simply lets the tests run — so it can only
-clarify a stale-database red, never block a healthy one. After adding a migration that introduces
-a new object, point the probe in that script at it.
+behind the migrations on disk, it stops with `run pnpm supabase:reset` instead of letting pgTAP
+fail deep inside with a cryptic `function … does not exist`. It compares the newest migration
+file's version against the newest applied in `supabase_migrations.schema_migrations`, so it is
+self-maintaining — a new migration never needs a change here. The check is fail-open: no Docker,
+no running stack, or an unreadable table and it simply lets the tests run, so it can only clarify
+a stale-database red, never block a healthy one.
 
 ### Google sign-in locally
 

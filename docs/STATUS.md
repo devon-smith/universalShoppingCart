@@ -3,18 +3,18 @@
 Updated after every phase. See [BUILD_PLAN.md §22](../BUILD_PLAN.md) for phase definitions
 and acceptance criteria.
 
-| Phase                                  | State                                                          |
-| -------------------------------------- | -------------------------------------------------------------- |
-| 0 — Repository foundation              | Complete                                                       |
-| 1 — Authentication and authorization   | Complete                                                       |
-| 2 — Generic capture vertical slice     | Complete                                                       |
-| 3 — Cart dashboard and core UX         | Complete                                                       |
-| 4 — Observations and revisit refresh   | Complete                                                       |
-| 5 — Real retailer adapters             | Complete                                                       |
-| 6 — Sharing and comparison             | Complete — compare view + sharing backend + web surface landed |
-| 7 — Background refresh and alerts      | Not started                                                    |
-| 8 — Product matching and AI comparison | Not started                                                    |
-| 9 — Release hardening                  | Not started                                                    |
+| Phase                                  | State                                                               |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| 0 — Repository foundation              | Complete                                                            |
+| 1 — Authentication and authorization   | Complete                                                            |
+| 2 — Generic capture vertical slice     | Complete                                                            |
+| 3 — Cart dashboard and core UX         | Complete                                                            |
+| 4 — Observations and revisit refresh   | Complete                                                            |
+| 5 — Real retailer adapters             | Complete                                                            |
+| 6 — Sharing and comparison             | Complete — compare view + sharing backend + web surface landed      |
+| 7 — Background refresh and alerts      | In progress — cloud core landed (rolling PR); worker + Cron pending |
+| 8 — Product matching and AI comparison | Not started                                                         |
+| 9 — Release hardening                  | Not started                                                         |
 
 ## Roadmap from here
 
@@ -319,6 +319,35 @@ so lululemon's `?color=76616` recovers "Rumble Crumble" from the survivors' agre
 narrowed subset can state a price the whole family disagrees on, and a no-match or
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
+
+## Phase 7 — Background refresh + alerts (cloud core, rolling PR)
+
+**The testable core is built; the worker that runs it and the Cron that fires it are the pending
+human/deploy pieces.** New `@universal-cart/refresh` package plus SQL:
+
+- **build-freshness guard** — Playwright's webServer refuses a stale `.next` from a direct
+  `playwright test` (the build-tier analogue of M4's DB preflight; local-only).
+- **7a classify** — `classifyRefresh(domain, item) → public_fetch | api | browser_required |
+disabled`, conservative and grounded in the live-capture pass (the three client-rendered
+  brand-adapter domains are `browser_required`), not a speculative table.
+- **7b SSRF-safe fetch** — `safeFetch`: http/https only; host must resolve to a public unicast
+  address (loopback/private/link-local incl. `169.254.169.254`, and IPv6/IPv4-mapped forms
+  refused, via `ipaddr.js`); manual redirects re-validated per hop; size/redirect/timeout caps;
+  no cookie/authorization headers. Injectable DNS + fetch, so the orchestration is unit-tested
+  without a network (18 tests). Live-network behaviour is the local host's check.
+- **7c record_background_observation** — the system observation path (service_role only) with the
+  same suppression as ingest; never touches user-authored fields (20 pgTAP).
+- **7d refresh_jobs** — per-item schedule, `select_due_refresh_jobs` (FOR UPDATE SKIP LOCKED),
+  and `record_refresh_result` with exponential backoff + disable-after-5 (20 pgTAP).
+- **7f alerts** — pure transition-based `evaluateAlerts` (fires on the crossing, not the state;
+  exact decimal money compare), and `notification_events` written by service_role, read by the
+  user via `can_read_cart` (15 unit + 11 pgTAP).
+
+Verified in cloud: `typecheck` 8/8, `lint` 8/8, `format:check` clean, `pnpm test` (refresh) **35**.
+The Docker tiers are the local host's: **pgTAP** for 7c/7d/7f, a **`pnpm db:types`** regeneration
+to confirm the hand-updated `database.types.ts`, and the **live SSRF** check for 7b. Still pending
+and human-gated: **7e** — the Edge Function that fetches (7b) → parses → records (7c), and the
+Supabase Cron that fires the due selector (7d), needing `CRON_SECRET` in the dashboard.
 
 ## Phase 6 — Sharing web surface (M3)
 

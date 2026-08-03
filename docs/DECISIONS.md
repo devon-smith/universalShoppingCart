@@ -1066,3 +1066,29 @@ ahead of the hero, so a regression to the DOM selector fails. The lesson general
 trap: **a non-unique selector whose first match is wrong needs a fixture decoy for every field it
 touches, not only the one that first bit.** The image is now the one field this adapter sources
 from a meta tag rather than a DOM hook, because the DOM hook has no unique form.
+
+## 2026-08-03 — SSRF-safe fetch uses `ipaddr.js`, and a new `@universal-cart/refresh` package
+
+**Decision.** Phase 7's background refresh needs a server-side fetcher that cannot be turned into
+an SSRF primitive (BUILD_PLAN.md §17.3). The IP-range classification at its core uses the
+`ipaddr.js` library (a small, zero-dependency, widely-used package) rather than hand-rolled range
+checks, and the refresh logic lives in a new pure package, `@universal-cart/refresh`.
+
+**Context.** The one genuinely dangerous line in an SSRF filter is "is this address private?" —
+and IPv6, IPv4-mapped IPv6 (`::ffff:169.254.169.254`), unique-local (`fc00::/7`), and link-local
+(`fe80::/10`) are exactly where a hand-written check grows a hole that a live test may not probe.
+`ipaddr.js` classifies all of these correctly (`.range()` → `unicast` is the only category we
+allow out) and unwraps IPv4-mapped addresses via `.toIPv4Address()`. It is the responsible choice
+for security-critical parsing, and per §23.2 a new dependency gets this ADR. The `packages/refresh`
+home keeps the classifier (7a) and the fetcher (7b) as pure, framework-free logic that both the
+web app and a future Edge Function import, consistent with the `contracts`/`extractors` boundary.
+
+**Consequences.** `safeFetch` allows only http/https; requires the host to resolve to a public
+unicast address; follows redirects manually and re-validates every hop (a redirect to the metadata
+IP is refused exactly like a direct request); caps response size, redirect count, and time; and
+never sends cookie or authorization headers. The DNS resolver and fetch implementation are
+injectable so the redirect/size/timeout orchestration is unit-tested deterministically without a
+network — 18 unit tests. The remaining residual risk is DNS rebinding (resolve-public-then-connect
+races the address it validated); the fetcher resolves-and-checks rather than pinning the resolved
+IP into the connection, which is documented in the module and left for the live-network hardening
+the local host owns. Real-network behaviour against the private ranges is that live check.
