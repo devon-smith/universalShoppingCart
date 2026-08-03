@@ -106,3 +106,14 @@ export function roleDescription(role: InvitableRole): string {
     ? 'Can add, edit, and remove items'
     : 'Can view items, but not change them';
 }
+
+/**
+ * A role as a display label — real capitalised text ("Editor"), not a CSS `capitalize`.
+ *
+ * The distinction is load-bearing: `text-transform: capitalize` changes only the glyphs, so a
+ * form control labelled that way keeps a lowercase accessible name. Rendering the capital as
+ * actual text makes what a screen reader announces match what a sighted user sees.
+ */
+export function roleLabel(role: string): string {
+  return role.length === 0 ? role : `${role[0]!.toUpperCase()}${role.slice(1)}`;
+}
