@@ -91,6 +91,14 @@
     </h1>
 
     <div data-hb-id="BoxV3">
+      <!-- The real page's FIRST img[data-hb-id="FixedImage"] is a 36x36 "Wayfair Verified" trust
+           badge, not the hero. A broad first-match selector grabs this; the adapter reads og:image
+           instead and must land the hero below. -->
+      <img
+        data-hb-id="FixedImage"
+        alt="Wayfair Verified"
+        src="https://assets.example.com/im/badge/resize-h36-w36/default_name.jpg"
+      />
       <img
         data-hb-id="FixedImage"
         alt="Calder 3-Piece Boucle Modular Sectional with Loose Back"

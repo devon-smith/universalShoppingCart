@@ -109,11 +109,11 @@ match, it publishes **no Product structured data**, and without the adapter the 
 price at all. Each exposes stable `data-test-id` / `id` hooks that are load-bearing for its own
 engineers — a better stability bet than the classes beside them.
 
-| Adapter   | Detected by                                         | What it adds over generic extraction                                                                                         |
-| --------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `stockx`  | `stockx.com`, `data-testid="pdp-hero"`              | Buy Now for the selected size, and the retail price as the former price                                                      |
-| `wayfair` | `wayfair.com`, `[data-node-id^="ListingPricing::"]` | The sale/primary price scoped inside the per-listing node, past sponsored decoys with identical markup                       |
-| `amazon`  | `amazon.com`, `#productTitle`                       | The selected colour swatch's price (ASIN-corroborated), the child ASIN kept so the parent canonical cannot collapse variants |
+| Adapter   | Detected by                                         | What it adds over generic extraction                                                                                                                                          |
+| --------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stockx`  | `stockx.com`, `data-testid="pdp-hero"`              | Buy Now for the selected size, and the retail price as the former price                                                                                                       |
+| `wayfair` | `wayfair.com`, `[data-node-id^="ListingPricing::"]` | The sale/primary price scoped inside the per-listing node, past sponsored decoys with identical markup; the image from `og:image`, past a non-unique `FixedImage` trust badge |
+| `amazon`  | `amazon.com`, `#productTitle`                       | The selected colour swatch's price (ASIN-corroborated), the child ASIN kept so the parent canonical cannot collapse variants                                                  |
 
 Rules every adapter follows:
 
