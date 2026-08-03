@@ -1115,3 +1115,23 @@ per-environment config — a worker URL and a secret — so it lives in Supabase
 belong in version control). `linkedom`'s fidelity to the extractors' DOM expectations is the local
 host's live check; the orchestration is unit-tested with injected I/O. Enrolling items into
 `refresh_jobs` (`enqueue_refresh_job` from the save path) is a deliberate follow-up.
+
+## 2026-08-03 — Refresh enrolment is a SQL trigger that mirrors classifyRefresh
+
+**Decision.** Saved items are enrolled into `refresh_jobs` by an `AFTER INSERT` trigger on `items`
+(`enroll_item_refresh`), whose strategy rule is inlined in SQL — a mirror of `packages/refresh`
+`classifyRefresh` — rather than the client calling `enqueue_refresh_job` with the TS classifier.
+
+**Context.** The capture save path is the extension (`apps/extension/lib/capture/save.ts`).
+Enrolling from there would mean importing `@universal-cart/refresh` into the MV3 bundle, which
+risks pulling `safeFetch`'s `node:dns` and `ipaddr.js` into a browser bundle that has no business
+with them, and would need `enqueue_refresh_job` granted to `authenticated` with an edit-access
+check. A trigger keeps enrolment automatic, server-side, and reachable by no client — the item is
+enrolled the moment it exists, once (`on conflict do nothing`).
+
+**Consequences.** This is a deliberate, bounded departure from the fingerprint rule (2026-07-26),
+which keeps logic in one place because URL/variant normalisation is complex. Here the logic is
+three brand names, so it is duplicated across TS and SQL and cross-referenced in both, rather than
+adding a client round-trip and a browser bundling hazard. `classifyRefresh` remains the TS spec (and
+its tests the reference); the trigger is the operational authority. `browser_required` items are
+enrolled too, so they are recorded — the selector simply never fetches them.
