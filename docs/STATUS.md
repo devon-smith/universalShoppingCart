@@ -3,18 +3,18 @@
 Updated after every phase. See [BUILD_PLAN.md §22](../BUILD_PLAN.md) for phase definitions
 and acceptance criteria.
 
-| Phase                                  | State       |
-| -------------------------------------- | ----------- |
-| 0 — Repository foundation              | Complete    |
-| 1 — Authentication and authorization   | Complete    |
-| 2 — Generic capture vertical slice     | Complete    |
-| 3 — Cart dashboard and core UX         | Complete    |
-| 4 — Observations and revisit refresh   | Complete    |
-| 5 — Real retailer adapters             | Complete    |
-| 6 — Sharing and comparison             | Not started |
-| 7 — Background refresh and alerts      | Not started |
-| 8 — Product matching and AI comparison | Not started |
-| 9 — Release hardening                  | Not started |
+| Phase                                  | State                                               |
+| -------------------------------------- | --------------------------------------------------- |
+| 0 — Repository foundation              | Complete                                            |
+| 1 — Authentication and authorization   | Complete                                            |
+| 2 — Generic capture vertical slice     | Complete                                            |
+| 3 — Cart dashboard and core UX         | Complete                                            |
+| 4 — Observations and revisit refresh   | Complete                                            |
+| 5 — Real retailer adapters             | Complete                                            |
+| 6 — Sharing and comparison             | In progress — compare view + sharing backend landed |
+| 7 — Background refresh and alerts      | Not started                                         |
+| 8 — Product matching and AI comparison | Not started                                         |
+| 9 — Release hardening                  | Not started                                         |
 
 ## Roadmap from here
 
@@ -319,6 +319,23 @@ so lululemon's `?color=76616` recovers "Rumble Crumble" from the survivors' agre
 narrowed subset can state a price the whole family disagrees on, and a no-match or
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
+
+## Phase 6 — Sharing backend
+
+**Data and policy layer landed** (the web surface — `/invite/[token]` and the pending-invites
+list — is a separate slice). `cart_invitations` is a bearer-token table storing **only** the
+SHA-256 hash of the token; `create_cart_invitation` returns the raw token once and
+`accept_cart_invitation` redeems it — single-use under a row lock, expiry-checked, adding the
+`cart_members` row without ever downgrading a stronger existing role (`least()` over the
+`owner < editor < viewer` enum). The invitee never reads the table; acceptance is entirely a
+SECURITY DEFINER RPC, and no update grant exists, so `accepted_*` cannot be forged. `owner` is
+unrepresentable as an invited role in three independent places (CHECK, RPC, Zod contract).
+
+Verified: `typecheck`, `lint`, `format:check`, `test`, `build` green; 25 new pgTAP assertions
+(table + RLS 12, create/accept flow 13) take the suite to **132 across nine files** — these run
+on CI's `migrations · RLS · generated types` job, the tier this session cannot run without
+Docker. The design and its open decisions (email-bound accept and a `security_events` audit
+table, both deferred) are in DECISIONS.md, 2026-08-03.
 
 ## Phase 5 — Retailer adapters
 
