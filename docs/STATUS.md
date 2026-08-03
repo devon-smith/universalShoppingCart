@@ -340,8 +340,21 @@ the user owns are queried (`owner_id` filter, not a trust of `carts_select_reada
 the real gate on every read: a cart id in the URL the user does not own returns nothing.
 
 Verified: `typecheck` 7/7, `lint` 7/7, `format:check` clean, `build` 2/2, web tests **284**. The
-Playwright invite→accept e2e is the local host's tier (Docker); member removal is the one
-deliberate follow-up (a `cart_members` delete the RLS already permits).
+Playwright invite→accept e2e is the local host's tier (Docker).
+
+**M5 — member management + two defects the e2e caught.** The owner can now **Remove** a member
+(a `cart_members` delete under `cart_members_delete_owner_or_self`), optimistic like Revoke; the
+owner's own row has no Remove, because ownership is immutable and deleting it would only strip the
+listing. The local host's full invite→accept→revoke→expire→malformed spec also surfaced two real
+defects in the M3 panel, both now fixed: (1) the role radio's accessible name was polluted — the
+description sat inside the `<label>`, so a screen reader heard "Editor Can add, edit…"; it is now a
+sibling referenced by `aria-describedby`, with the role rendered as real capitalised text
+(`roleLabel`) so the accessible name matches the visible one, not a CSS `capitalize` that leaves
+the name lowercase. (2) The "Only you, so far" members empty state was dead — `handle_new_user`
+writes an owner row into `cart_members` for every cart, so the list is never empty — and is
+removed. Web tests **286**. `leaveCart` (a member leaving a cart they were invited to) is the
+remaining follow-up; it needs a member-facing surface on the dashboard, which does not exist yet,
+so it is deferred rather than shipped as an unwired action.
 
 ## Phase 6 — Sharing backend
 
