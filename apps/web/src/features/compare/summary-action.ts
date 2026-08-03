@@ -5,7 +5,6 @@ import { createServerSupabase } from '@/lib/supabase/server';
 
 import { compareItems, MIN_COMPARE_ITEMS, MAX_COMPARE_ITEMS } from './compare';
 import { loadCompareItems } from './compare-query';
-import { createClaudeSummaryCall } from './claude-call';
 import { parseSelection } from './selection';
 import { buildComparisonFacts, type ComparisonSummary } from './summary';
 import {
@@ -70,6 +69,10 @@ export async function summarizeComparison(rawItemIds: unknown): Promise<Summariz
   if (!isAiConfigured()) return { status: 'not_configured' };
 
   try {
+    // Load the Anthropic SDK only on the path that actually calls it. Keeping it out of this
+    // module's static graph means the common paths — not configured, cache hit — never pay to
+    // load a large provider SDK, and the action stays a fast DB-only round trip.
+    const { createClaudeSummaryCall } = await import('./claude-call');
     const generated = await generateComparisonSummary(comparison, createClaudeSummaryCall());
 
     if (cacheCartId) {
