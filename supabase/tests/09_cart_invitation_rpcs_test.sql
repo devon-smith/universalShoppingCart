@@ -152,7 +152,8 @@ select throws_ok(
 
 select throws_ok(
   $$select public.accept_cart_invitation(repeat('0', 64))$$,
-  '02000',
+  -- no_data_found resolves to PL/pgSQL's P0002, not the SQL-standard 02000 (which is `no_data`).
+  'P0002',
   null,
   'an unknown token is rejected'
 );
