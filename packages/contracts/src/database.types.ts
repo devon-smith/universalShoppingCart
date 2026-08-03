@@ -315,6 +315,44 @@ export type Database = {
           },
         ]
       }
+      notification_events: {
+        Row: {
+          created_at: string
+          currency: string | null
+          id: number
+          item_id: string
+          observed_value: string | null
+          seen_at: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          id?: never
+          item_id: string
+          observed_value?: string | null
+          seen_at?: string | null
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          id?: never
+          item_id?: string
+          observed_value?: string | null
+          seen_at?: string | null
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -341,6 +379,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      refresh_jobs: {
+        Row: {
+          consecutive_failures: number
+          created_at: string
+          disabled: boolean
+          item_id: string
+          last_ok: boolean | null
+          last_run_at: string | null
+          next_run_at: string
+          strategy: Database["public"]["Enums"]["refresh_strategy"]
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          created_at?: string
+          disabled?: boolean
+          item_id: string
+          last_ok?: boolean | null
+          last_run_at?: string | null
+          next_run_at?: string
+          strategy?: Database["public"]["Enums"]["refresh_strategy"]
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          created_at?: string
+          disabled?: boolean
+          item_id?: string
+          last_ok?: boolean | null
+          last_run_at?: string | null
+          next_run_at?: string
+          strategy?: Database["public"]["Enums"]["refresh_strategy"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refresh_jobs_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -382,6 +464,13 @@ export type Database = {
         }
         Returns: Json
       }
+      enqueue_refresh_job: {
+        Args: {
+          p_item_id: string
+          p_strategy?: Database["public"]["Enums"]["refresh_strategy"]
+        }
+        Returns: Json
+      }
       ingest_product_capture: {
         Args: {
           p_capture: Json
@@ -395,6 +484,35 @@ export type Database = {
       observation_refresh_interval: { Args: never; Returns: string }
       owns_cart: { Args: { p_cart_id: string }; Returns: boolean }
       parse_money: { Args: { p_value: string }; Returns: number }
+      record_background_observation: {
+        Args: {
+          p_availability?: string
+          p_confidence?: number
+          p_currency?: string
+          p_extractor_id?: string
+          p_extractor_version?: string
+          p_item_id: string
+          p_original_price?: string
+          p_price?: string
+        }
+        Returns: Json
+      }
+      record_notification: {
+        Args: {
+          p_currency?: string
+          p_item_id: string
+          p_observed_value?: string
+          p_type: Database["public"]["Enums"]["notification_type"]
+        }
+        Returns: Json
+      }
+      record_refresh_result: {
+        Args: { p_item_id: string; p_ok: boolean }
+        Returns: Json
+      }
+      refresh_base_interval: { Args: never; Returns: string }
+      refresh_max_failures: { Args: never; Returns: number }
+      select_due_refresh_jobs: { Args: { p_limit?: number }; Returns: Json }
     }
     Enums: {
       cart_role: "owner" | "editor" | "viewer"
@@ -406,7 +524,12 @@ export type Database = {
         | "unknown"
       item_priority: "low" | "normal" | "high"
       item_status: "saved" | "cart" | "purchased" | "archived"
+      notification_type:
+        | "price_below_desired"
+        | "back_in_stock"
+        | "became_unavailable"
       observation_source: "capture" | "revisit" | "manual" | "background"
+      refresh_strategy: "public_fetch" | "api" | "browser_required" | "disabled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -547,7 +670,13 @@ export const Constants = {
       ],
       item_priority: ["low", "normal", "high"],
       item_status: ["saved", "cart", "purchased", "archived"],
+      notification_type: [
+        "price_below_desired",
+        "back_in_stock",
+        "became_unavailable",
+      ],
       observation_source: ["capture", "revisit", "manual", "background"],
+      refresh_strategy: ["public_fetch", "api", "browser_required", "disabled"],
     },
   },
 } as const

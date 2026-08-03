@@ -1,7 +1,25 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.PLAYWRIGHT_WEB_PORT ?? 3100);
 const baseURL = `http://127.0.0.1:${port}`;
+
+// Outside CI, refuse to serve a stale `.next` from a direct `playwright test`. In CI everything
+// reaches the server through `pnpm test:e2e`, whose turbo graph builds first, so the guard is
+// unnecessary there and skipped to avoid a cache-restored build tripping a false positive.
+const startCommand = `pnpm exec next start --port ${port}`;
+const freshBuildCheck = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  'scripts',
+  'assert-fresh-web-build.mjs',
+);
+const webServerCommand = process.env.CI
+  ? startCommand
+  : `node ${JSON.stringify(freshBuildCheck)} && ${startCommand}`;
 
 /**
  * The suite exercises real sign-in, so it needs a Supabase project. `pnpm test:e2e`
@@ -37,7 +55,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm exec next start --port ${port}`,
+    command: webServerCommand,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
