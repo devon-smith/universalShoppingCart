@@ -7,6 +7,7 @@ import {
   inviteUrl,
   isPending,
   roleDescription,
+  roleLabel,
   ttlToInterval,
 } from './sharing';
 
@@ -121,5 +122,17 @@ describe('roleDescription', () => {
     expect(roleDescription('editor')).not.toBe(roleDescription('viewer'));
     expect(roleDescription('editor').length).toBeGreaterThan(0);
     expect(roleDescription('viewer').length).toBeGreaterThan(0);
+  });
+});
+
+describe('roleLabel', () => {
+  it('capitalises as real text, so a control accessible name matches the visible label', () => {
+    expect(roleLabel('editor')).toBe('Editor');
+    expect(roleLabel('viewer')).toBe('Viewer');
+    expect(roleLabel('owner')).toBe('Owner');
+  });
+
+  it('leaves an empty string alone', () => {
+    expect(roleLabel('')).toBe('');
   });
 });
