@@ -149,6 +149,50 @@ export type Database = {
         }
         Relationships: []
       }
+      comparison_summaries: {
+        Row: {
+          cart_id: string
+          created_at: string
+          created_by: string
+          id: string
+          item_ids: string[]
+          model: string
+          prompt_version: string
+          set_fingerprint: string
+          summary: Json
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          item_ids: string[]
+          model: string
+          prompt_version: string
+          set_fingerprint: string
+          summary: Json
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          item_ids?: string[]
+          model?: string
+          prompt_version?: string
+          set_fingerprint?: string
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comparison_summaries_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_observations: {
         Row: {
           availability: Database["public"]["Enums"]["item_availability"]

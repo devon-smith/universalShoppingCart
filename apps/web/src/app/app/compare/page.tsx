@@ -3,10 +3,15 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { CompareTable } from '@/features/compare/CompareTable';
-import type { CompareInput, CompareItem } from '@/features/compare/compare';
+import type { CompareInput } from '@/features/compare/compare';
 import { compareItems, MAX_COMPARE_ITEMS, MIN_COMPARE_ITEMS } from '@/features/compare/compare';
+import { loadCompareItems } from '@/features/compare/compare-query';
+import { ComparisonSummaryPanel } from '@/features/compare/ComparisonSummaryPanel';
 import { OpenAllByRetailer } from '@/features/compare/OpenAllByRetailer';
 import { parseSelection } from '@/features/compare/selection';
+import { buildComparisonFacts } from '@/features/compare/summary';
+import type { SummarizeResult } from '@/features/compare/summary-action';
+import { computeSetFingerprint, readCachedSummary } from '@/features/compare/summary-cache';
 import type { PriceSummary } from '@/features/items/query';
 import { createServerSupabase } from '@/lib/supabase/server';
 
@@ -15,16 +20,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Only what a comparison renders. The dashboard's column list is longer because its cards
- * show things — freshness, status — the table has no row for.
- *
- * Money is cast to `text` for the same reason as everywhere else: PostgREST would return
- * `numeric` as a JSON number, and a JSON number is an IEEE double (BUILD_PLAN.md §6.2).
- */
-const COMPARE_COLUMNS =
-  'id, cart_id, title, brand, description, retailer_name, domain, source_url, canonical_url, image_url, currency, current_price::text, original_price::text, availability, product_availability, composition, selected_variant, identifiers, note, quantity, priority, desired_price::text, status, last_observed_at, created_at, updated_at';
 
 /**
  * The compare route.
@@ -56,14 +51,7 @@ export default async function ComparePage({
     return <NotEnough count={requested.length} />;
   }
 
-  const { data: rows } = await supabase.from('items').select(COMPARE_COLUMNS).in('id', requested);
-
-  const found = (rows ?? []) as unknown as CompareItem[];
-  // Back into the order the link asked for. `in()` returns rows in whatever order Postgres
-  // finds them, and a shared comparison whose columns shuffle between loads is disorienting.
-  const items = requested
-    .map((id) => found.find((item) => item.id === id))
-    .filter((item): item is CompareItem => item !== undefined);
+  const items = await loadCompareItems(supabase, requested);
 
   // Fewer rows than ids means some belong to another account, or were deleted since the link
   // was made. Say so rather than silently comparing whatever survived.
@@ -94,6 +82,20 @@ export default async function ComparePage({
 
   const comparison = compareItems(inputs);
 
+  // A cached AI summary is shown immediately on a shared link, with no request and no tokens
+  // spent — generation itself is an explicit click in the panel. The cache is cart-scoped, so
+  // only look one up when every item shares a cart (see summary-action for why).
+  const comparedIds = items.map((item) => item.id);
+  const cartIds = new Set(items.map((item) => item.cart_id));
+  let initialSummary: SummarizeResult | null = null;
+  if (cartIds.size === 1) {
+    const fingerprint = computeSetFingerprint(buildComparisonFacts(comparison));
+    const cached = await readCachedSummary(supabase, items[0]!.cart_id, fingerprint);
+    if (cached) {
+      initialSummary = { status: 'ok', summary: cached.summary, model: cached.model, cached: true };
+    }
+  }
+
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8">
       <header className="flex flex-col gap-2">
@@ -115,6 +117,8 @@ export default async function ComparePage({
       </header>
 
       <CompareTable comparison={comparison} />
+
+      <ComparisonSummaryPanel itemIds={comparedIds} initial={initialSummary} />
 
       <OpenAllByRetailer items={items} />
     </main>
