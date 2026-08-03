@@ -356,6 +356,15 @@ removed. Web tests **286**. `leaveCart` (a member leaving a cart they were invit
 remaining follow-up; it needs a member-facing surface on the dashboard, which does not exist yet,
 so it is deferred rather than shipped as an unwired action.
 
+**M5.1 — Revoke and Remove are confirmed, not optimistic.** The M5 e2e's removal test failed
+until the assertion awaited the Server Action, which exposed a real product shape: both
+destructive actions dropped the row optimistically and fired the POST with `void`, so a reload or
+navigation mid-request left the UI claiming success the database never recorded. For **Revoke**
+that is the moment a leaked link is being pulled, so it matters. Both now keep the row until the
+action confirms `ok`, showing "Revoking…" / "Removing…" on the in-flight button (via
+`useTransition`, the shape `createInvitation` already used). Honest over instant for a
+security-relevant delete. The navigation-survival guard is the local host's e2e tier.
+
 ## Phase 6 — Sharing backend
 
 **Data and policy layer landed** (the web surface — `/invite/[token]` and the pending-invites

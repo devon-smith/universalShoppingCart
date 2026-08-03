@@ -68,6 +68,11 @@ export function SharePanel({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, startCreate] = useTransition();
+  // The id of the invitation / member whose destructive action is in flight, so its own button
+  // can show progress. See the note on `revoke` for why these are not optimistic.
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [, startAction] = useTransition();
 
   function submit() {
     setError(null);
@@ -99,26 +104,37 @@ export function SharePanel({
   }
 
   function revoke(id: string) {
-    // Optimistic: drop it now, restore on failure. A revoke that fails RLS never had an effect.
-    const previous = pending;
-    setPending((current) => current.filter((invite) => invite.id !== id));
-    void revokeInvitation(id).then((result) => {
-      if (!result.ok) {
+    // Confirmed, not optimistic. Revoking is how a leaked link is pulled, so the row must not
+    // disappear until the server says it is gone: an optimistic drop plus a fire-and-forget POST
+    // reads as "revoked" even when a reload or navigation aborts the request before it lands. The
+    // row stays, the button shows progress, and it clears only on a confirmed success.
+    setError(null);
+    setRevokingId(id);
+    startAction(async () => {
+      const result = await revokeInvitation(id);
+      if (result.ok) {
+        setPending((current) => current.filter((invite) => invite.id !== id));
+      } else {
         setError(result.error ?? 'That invitation could not be revoked.');
-        setPending(previous);
       }
+      setRevokingId(null);
     });
   }
 
   function remove(userId: string) {
-    // Optimistic, like revoke. RLS lets only the owner delete, so a failure never had an effect.
-    const previous = memberList;
-    setMemberList((current) => current.filter((member) => member.userId !== userId));
-    void removeMember(cartId, userId).then((result) => {
-      if (!result.ok) {
+    // Confirmed, not optimistic — same reasoning as `revoke`: the member stays listed until the
+    // delete is acknowledged, so navigating away mid-request cannot leave the UI claiming a
+    // removal that never reached the database.
+    setError(null);
+    setRemovingId(userId);
+    startAction(async () => {
+      const result = await removeMember(cartId, userId);
+      if (result.ok) {
+        setMemberList((current) => current.filter((member) => member.userId !== userId));
+      } else {
         setError(result.error ?? 'That member could not be removed.');
-        setMemberList(previous);
       }
+      setRemovingId(null);
     });
   }
 
@@ -294,9 +310,10 @@ export function SharePanel({
                 <button
                   type="button"
                   onClick={() => revoke(invite.id)}
+                  disabled={revokingId === invite.id}
                   className="uc-button uc-button--ghost uc-focusable shrink-0"
                 >
-                  Revoke
+                  {revokingId === invite.id ? 'Revoking…' : 'Revoke'}
                 </button>
               </li>
             ))}
@@ -330,9 +347,10 @@ export function SharePanel({
                     <button
                       type="button"
                       onClick={() => remove(member.userId)}
+                      disabled={removingId === member.userId}
                       className="uc-button uc-button--ghost uc-focusable"
                     >
-                      Remove
+                      {removingId === member.userId ? 'Removing…' : 'Remove'}
                     </button>
                   )}
                 </span>
