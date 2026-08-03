@@ -112,6 +112,11 @@ select is(
   '75.00',
   'the triggering value is stored'
 );
+select is(
+  (select currency from public.notification_events where item_id = pg_temp.item_id()),
+  'USD',
+  'the triggering currency is stored'
+);
 reset role;
 
 set local role authenticated;
