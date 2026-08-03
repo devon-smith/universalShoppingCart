@@ -359,7 +359,11 @@ test.describe('the compare route', () => {
     await expect(panel).toBeVisible();
 
     await panel.getByRole('button', { name: 'Summarize with AI' }).click();
-    await expect(panel).toContainText("AI summaries aren't enabled for this deployment yet.");
+    // The action is a DB-only round trip here (no key, so no provider call), but give it room
+    // beyond the default assertion timeout for a cold server-action chunk on the first click.
+    await expect(panel).toContainText("AI summaries aren't enabled for this deployment yet.", {
+      timeout: 15_000,
+    });
   });
 
   /** The link is user-controlled input, and RLS is the gate that makes that safe. */
