@@ -347,6 +347,23 @@ sellers; DECISIONS.md, 2026-07-26). New dependency `@anthropic-ai/sdk`; ADR in D
   cache keyed on a sha256 of the grounded facts; a cross-cart comparison is summarised but not
   stored (caching it could leak one cart's facts to a reader of the other). 12 pgTAP.
 
+**Live run (local host, real key):** three garments, one real `claude-opus-5` call in 18.1s,
+`prompt_version` stored as provenance; the second ask served from cache with no call. Grounding
+held — every `itemRefs` entry resolved, nothing fabricated, real gaps volunteered. It surfaced two
+faults, both now fixed:
+
+- **Currency was dropped on the way to the prompt.** `compare.ts` money cells carry the currency
+  in a separate field; the facts layer read only `text`, so the model got bare amounts, was told
+  the currency question matters, and — correctly for what it had — reported "no currency stated" in
+  the authoritative gaps callout. An invented gap is the mirror of an invented fact (CLAUDE.md), and
+  it suppressed the real cheapest verdict. Fixed at the facts layer: money values now read
+  "84.00 USD"; `SUMMARY_PROMPT_VERSION` bumped to `2026-08-03.2`. Regression-tested.
+- **A locally-configured key turned `test:e2e` red.** The e2e guessed config from the runner's
+  env; the `next start` server reads `.env.local` off disk, so the two disagreed, and Turbo 2
+  stripped `AI_PROVIDER_API_KEY` before the runner anyway. Fixed by surfacing the server's real
+  state as `data-ai-configured` (the test reads the deployment, not its shell) and adding the key to
+  `globalPassThroughEnv`.
+
 Verified in cloud: web `typecheck` clean, `lint` clean, `build` clean, **72** compare unit tests
 (15 summary + 22 orchestrator among them), full web build. The Docker tiers are the local host's:
 **pgTAP** for `comparison_summaries` (test 14), a **`pnpm db:types`** regeneration to confirm the

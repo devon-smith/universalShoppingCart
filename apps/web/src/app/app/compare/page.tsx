@@ -13,6 +13,7 @@ import { buildComparisonFacts } from '@/features/compare/summary';
 import type { SummarizeResult } from '@/features/compare/summary-action';
 import { computeSetFingerprint, readCachedSummary } from '@/features/compare/summary-cache';
 import type { PriceSummary } from '@/features/items/query';
+import { isAiConfigured } from '@/lib/ai/anthropic';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -118,7 +119,11 @@ export default async function ComparePage({
 
       <CompareTable comparison={comparison} />
 
-      <ComparisonSummaryPanel itemIds={comparedIds} initial={initialSummary} />
+      <ComparisonSummaryPanel
+        itemIds={comparedIds}
+        initial={initialSummary}
+        configured={isAiConfigured()}
+      />
 
       <OpenAllByRetailer items={items} />
     </main>
