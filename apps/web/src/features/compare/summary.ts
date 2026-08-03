@@ -31,7 +31,7 @@ import type { Comparison, CompareRow } from './compare';
  * stored summary. It is recorded with every generated summary (provenance, §16.2) and is part
  * of the cache key, so a prompt change regenerates rather than serving a stale answer.
  */
-export const SUMMARY_PROMPT_VERSION = '2026-08-03.1';
+export const SUMMARY_PROMPT_VERSION = '2026-08-03.2';
 
 /** The model this feature is pinned to. Recorded as provenance and part of the cache key. */
 export const SUMMARY_MODEL = 'claude-opus-5';
@@ -78,10 +78,25 @@ export interface ComparisonFacts {
 const OMITTED_ROW_KINDS = new Set(['image']);
 const OMITTED_ROW_KEYS = new Set(['original', 'price-change']);
 
-/** The plain text a row's cell offers the model — its `text`, never a re-derived value. */
-function cellText(row: CompareRow, index: number): string | null {
-  const value = row.cells[index]?.text ?? null;
-  return value === '' ? null : value;
+/**
+ * The value a row's cell offers the model — its stored `text`, never a re-derived one, but for
+ * money the currency is folded in so the model sees "84.00 USD", not a bare "84.00".
+ *
+ * A price cell carries its currency in a separate field (compare.ts moneyCell), and the model
+ * only ever received `text`. So it was handed three amounts with no currency, told the currency
+ * question matters, and — correctly, given what it had — hedged and flagged a currency gap that
+ * does not exist. That invented gap is the mirror of an invented fact (CLAUDE.md), and it lands
+ * in the "what we don't know" callout meant to read as authoritative. Carrying the currency here
+ * closes it at the facts layer, where the fix belongs, and lets the model name the real cheapest.
+ */
+function cellValue(row: CompareRow, index: number): string | null {
+  const cell = row.cells[index];
+  if (!cell || !cell.present) return null;
+  if (row.kind === 'money' && cell.amount != null && cell.amount !== '') {
+    return cell.currency ? `${cell.amount} ${cell.currency}` : cell.amount;
+  }
+  const value = cell.text;
+  return value == null || value === '' ? null : value;
 }
 
 /**
@@ -104,7 +119,7 @@ export function buildComparisonFacts(comparison: Comparison): ComparisonFacts {
   for (const row of comparison.rows) {
     if (OMITTED_ROW_KINDS.has(row.kind) || OMITTED_ROW_KEYS.has(row.key)) continue;
 
-    const values = items.map((_, i) => cellText(row, i));
+    const values = items.map((_, i) => cellValue(row, i));
 
     // A row every item leaves blank carries no fact; skip it rather than emit an empty row.
     if (values.every((v) => v === null)) continue;

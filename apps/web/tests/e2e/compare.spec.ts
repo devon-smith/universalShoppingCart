@@ -346,11 +346,6 @@ test.describe('the compare route', () => {
    * spent. The grounded content is unit-tested; this checks the surface and the graceful fallback.
    */
   test('offers an AI summary and reports when it is not configured', async ({ page }) => {
-    test.skip(
-      Boolean(process.env.AI_PROVIDER_API_KEY),
-      'AI is configured here, so the not-configured path does not apply',
-    );
-
     await openDashboard(page, 'aisummary');
     await choose(page, 'Meridian Wool Runner', 'Kestrel Rain Shell');
     await page.getByTestId('compare-open').click();
@@ -358,12 +353,22 @@ test.describe('the compare route', () => {
     const panel = page.getByTestId('ai-summary');
     await expect(panel).toBeVisible();
 
-    await panel.getByRole('button', { name: 'Summarize with AI' }).click();
-    // The action is a DB-only round trip here (no key, so no provider call), but give it room
-    // beyond the default assertion timeout for a cold server-action chunk on the first click.
-    await expect(panel).toContainText("AI summaries aren't enabled for this deployment yet.", {
-      timeout: 15_000,
-    });
+    // Read the *deployment's* config state, not the runner's environment — the server may load a
+    // key from .env.local that this process never sees, and guessing from process.env made the
+    // two disagree. With no key (the CI default) the button reports the not-configured state; with
+    // one, assert only the surface so the suite never spends a real provider call.
+    const configured = (await panel.getAttribute('data-ai-configured')) === 'true';
+    const summarize = panel.getByRole('button', { name: 'Summarize with AI' });
+    await expect(summarize).toBeVisible();
+
+    if (!configured) {
+      await summarize.click();
+      // A DB-only round trip here, but give it room beyond the default timeout for a cold
+      // server-action chunk on the first click.
+      await expect(panel).toContainText("AI summaries aren't enabled for this deployment yet.", {
+        timeout: 15_000,
+      });
+    }
   });
 
   /** The link is user-controlled input, and RLS is the gate that makes that safe. */

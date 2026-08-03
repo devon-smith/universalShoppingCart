@@ -6,7 +6,8 @@
   "globalPassThroughEnv": [
     "PLAYWRIGHT_BROWSERS_PATH",
     "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD",
-    "PLAYWRIGHT_WEB_PORT"
+    "PLAYWRIGHT_WEB_PORT",
+    "AI_PROVIDER_API_KEY"
   ],
   "tasks": {
     "build": {
