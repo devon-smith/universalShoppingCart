@@ -40,6 +40,21 @@ export function parseSelection(raw: string | string[] | undefined): string[] {
   return [...seen];
 }
 
+/**
+ * Parse a selection from an arbitrary caller-supplied value, not just a URL parameter.
+ *
+ * A Server Action receives its selection as a real `string[]` of individual ids, which
+ * {@link parseSelection} would misread: built for the URL contract, it treats an array as a
+ * repeated query parameter and reads only the first. Joining to the comma-separated form runs
+ * the same validate/dedupe/cap path for both callers. Anything that is not a string or array of
+ * strings yields an empty selection rather than throwing.
+ */
+export function parseSelectionInput(raw: unknown): string[] {
+  if (Array.isArray(raw)) return parseSelection(raw.map(String).join(','));
+  if (typeof raw === 'string') return parseSelection(raw);
+  return [];
+}
+
 /** The query-parameter value for a selection. */
 export function serializeSelection(ids: readonly string[]): string {
   return ids.join(',');

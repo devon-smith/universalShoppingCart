@@ -5,7 +5,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 
 import { compareItems, MIN_COMPARE_ITEMS, MAX_COMPARE_ITEMS } from './compare';
 import { loadCompareItems } from './compare-query';
-import { parseSelection } from './selection';
+import { parseSelectionInput } from './selection';
 import { buildComparisonFacts, type ComparisonSummary } from './summary';
 import {
   AiSummaryInvalidError,
@@ -45,7 +45,9 @@ export async function summarizeComparison(rawItemIds: unknown): Promise<Summariz
   } = await supabase.auth.getUser();
   if (!user) return { status: 'error', message: 'You need to sign in to summarize.' };
 
-  const requested = parseSelection(rawItemIds as string | string[] | undefined);
+  // The panel passes an array of individual ids; parseSelectionInput normalizes that (and a raw
+  // string) through the same validate/dedupe/cap path the URL uses.
+  const requested = parseSelectionInput(rawItemIds);
   if (requested.length < MIN_COMPARE_ITEMS || requested.length > MAX_COMPARE_ITEMS) {
     return { status: 'not_enough' };
   }
