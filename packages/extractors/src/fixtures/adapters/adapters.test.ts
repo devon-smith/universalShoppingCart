@@ -40,6 +40,30 @@ export const ADAPTER_FIXTURES: Fixture[] = [
     adapter: 'stockx',
   },
   {
+    name: 'Wayfair — sale price scoped past a sponsored decoy, out of stock',
+    file: 'wayfair-sale-out-of-stock.html',
+    url: 'https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html?piid=640565351%2C640565355',
+    adapter: 'wayfair',
+  },
+  {
+    name: 'Wayfair — primary price, no former price, in stock',
+    file: 'wayfair-primary-in-stock.html',
+    url: 'https://www.wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html?piid=771002908',
+    adapter: 'wayfair',
+  },
+  {
+    name: 'Amazon — the selected colour swatch, not the first one on the page',
+    file: 'amazon-twister-selected.html',
+    url: 'https://www.amazon.com/Northwind-Standard-Washed-Indigo-32x32/dp/B0EXAMPLE1',
+    adapter: 'amazon',
+  },
+  {
+    name: 'Amazon — single price, no twister, currently unavailable',
+    file: 'amazon-single-price-no-twister.html',
+    url: 'https://www.amazon.com/Northwind-Cotton-Chore-Jacket/dp/B0EXAMPLE7',
+    adapter: 'amazon',
+  },
+  {
     name: 'Shopify — the variant in the URL, not the default one',
     file: 'shopify-variant-selected.html',
     url: 'https://shop.northwind.example/products/meridian-wool-runner?variant=4400220002',
