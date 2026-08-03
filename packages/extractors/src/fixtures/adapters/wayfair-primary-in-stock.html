@@ -1,0 +1,123 @@
+<!doctype html>
+<!--
+  Wayfair — one price, no sale, in stock.
+
+  The other half of the Wayfair pair. Same sanitization rules as
+  `wayfair-sale-out-of-stock.html`: real structural hooks, invented product and prices.
+
+  ## What differs, and why it matters
+
+  1. The price sits under `data-test-id="StandardPricingPrice-PRIMARY"`, not `-SALE`. The real
+     page uses PRIMARY when there is no promotion, so an adapter keyed only on `-SALE` finds
+     nothing here. Both must be read.
+  2. There is NO `-PREVIOUS` block, so `originalPriceAmount` must come out null. A former price
+     invented by pairing this figure with a recommendation tile's strikethrough would be a
+     fabricated discount — the failure the cue-gated resolver was tightened to avoid.
+  3. Availability is IN_STOCK, and the page renders an Add to Cart button rather than Notify Me.
+  4. One option category, not two, so a variant map with a single entry is the expected shape.
+
+  Still no Product JSON-LD — that is constant for this retailer and is the reason an adapter is
+  needed at all.
+-->
+<html lang="en">
+  <head>
+    <title>Thorne Solid Wood 6-Drawer Dresser | Example</title>
+    <link
+      rel="canonical"
+      href="https://www.wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html"
+    />
+    <meta property="og:site_name" content="Wayfair" />
+    <meta
+      property="og:title"
+      content="Harbour &amp; Vale Thorne Solid Wood 6-Drawer Dresser &amp; Reviews | Wayfair"
+    />
+    <meta
+      property="og:image"
+      content="https://assets.example.com/im/55667788/compr-r85/2040/204050607/Thorne+Solid+Wood+6-Drawer+Dresser.jpg"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Example",
+        "url": "https://www.wayfair.com"
+      }
+    </script>
+  </head>
+
+  <body>
+    <h1 data-hb-id="Heading" data-rtl-id="listingHeaderNameHeading" class="_6o3atz18y hapmhk7">
+      Thorne Solid Wood 6-Drawer Dresser
+    </h1>
+
+    <img
+      data-hb-id="FixedImage"
+      alt="Thorne Solid Wood 6-Drawer Dresser"
+      src="https://assets.example.com/im/55667788/compr-r85/2040/204050607/Thorne+Solid+Wood+6-Drawer+Dresser.jpg"
+    />
+
+    <div data-node-id="ListingPricing::44902__R_9zkablblfiuliv7llb_" data-name="Pricing">
+      <div data-hb-id="BoxV3" class="_6o3atz13e _6o3atz14x _6o3atzhp _6o3atz1bd">
+        <div data-hb-id="BoxV3" class="_6o3atzc7 _6o3atz1bd">
+          <div data-hb-id="BoxV3" class="_6o3atz13e _6o3atzml _6o3atzhp _6o3atz9r _6o3atz1bd">
+            <span data-test-id="StandardPricingPrice-PRIMARY" style="align-self: end">
+              <span data-hb-id="BoxV3" class="_6o3atz18y _6o3atz1bd">
+                <span
+                  data-hb-id="BoxV3"
+                  data-test-id="PriceDisplay"
+                  data-name-id="PriceDisplay"
+                  class="_6o3atzbl _6o3atzc7 _6o3atz1d9 _6o3atz1bd"
+                  >$429.99</span
+                >
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      data-node-id="DetailedInventoryWidget::undefined__R_7bqblb"
+      data-tracking-metadata='{"metadata":{"inventoryStatus":"IN_STOCK"}}'
+      data-name="DetailedInventoryWidget"
+      data-hb-id="BoxV3"
+      data-test-id="detailedInventoryWidget"
+    >
+      <div data-hb-id="BoxV3">
+        <span
+          data-hb-id="Badge"
+          data-test-id="InventoryWidgetDisplay-Text"
+          data-name-id="InventoryWidgetDisplay"
+          ><span>In Stock</span></span
+        >
+      </div>
+    </div>
+    <button data-hb-id="Button" data-test-id="AddToCartButton">Add to Cart</button>
+
+    <div class="" data-test-id="pdp-ch-categoryComponent">
+      <div tabindex="0" data-hb-id="BoxV3" class="_6o3atzbl _6o3atz1de _6o3atzc7 _6o3atz1bd">
+        <p data-hb-id="Text" class="_6o3atz5h _6o3atzbl _6o3atz18y _6o3atz1cl _1lxwj2q1">
+          Finish<!-- -->:
+        </p>
+        <p data-hb-id="Text" class="_6o3atzbl _6o3atz18y _6o3atz1dh _1lxwj2q1">Warm Walnut</p>
+      </div>
+      <div data-hb-id="BoxV3" class="_6o3atz17 _6o3atz1bd">
+        <div
+          class="_1eqhru12"
+          data-clio-id="MarketplaceListingChoice::_R_c2kablblfiuliv7llb_"
+          data-clio-context='{"interactionType":"option_selected","optionCategory":"Finish","optionName":"Pale Oak","optionCategoryId":"12","optionId":"771002911","isOutOfStock":false,"listingUrl":"https://www.wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html?piid=771002911","isOpenBox":false}'
+        >
+          <button
+            type="button"
+            data-test-id="pdp-ch-selectableComponent"
+            data-optionid-id="771002911"
+            class="_6o3atz1bf _1onsdpbt"
+          >
+            <div></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

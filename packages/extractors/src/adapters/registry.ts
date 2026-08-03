@@ -1,10 +1,12 @@
 import type { ExtractionContext, ProductExtractor } from '../core/types';
 
+import { amazonAdapter } from './amazon';
 import { bigCommerceAdapter } from './bigcommerce';
 import { magentoAdapter } from './magento';
 import { salesforceCommerceCloudAdapter } from './salesforce-commerce-cloud';
 import { shopifyAdapter } from './shopify';
 import { stockxAdapter } from './stockx';
+import { wayfairAdapter } from './wayfair';
 import { wooCommerceAdapter } from './woocommerce';
 
 /**
@@ -15,11 +17,12 @@ import { wooCommerceAdapter } from './woocommerce';
  * real pages than one adapter per shop — and it can be written and regression-tested
  * without ever fetching a live retailer page.
  *
- * `stockx` is the deliberate exception, and the bar it had to clear is written in its own
- * file: the site runs its own front end, hashed CSS-module classes leave no generic selector
- * anything to match, and its `data-testid` hooks are load-bearing for its engineers. A brand
- * adapter needs that much justification, or the registry turns into a list of every shop
- * anyone has ever visited.
+ * `stockx`, `wayfair`, and `amazon` are the deliberate exceptions, and each clears the same
+ * bar, written in its own file: the site runs its own front end where hashed classes leave no
+ * generic selector anything to match, it publishes no Product structured data for the JSON-LD
+ * tier to read, and it exposes stable `data-test-id` / `id` hooks that are load-bearing for
+ * its own engineers. Without the adapter the page yields no price at all. A brand adapter needs
+ * that much justification, or the registry turns into a list of every shop anyone has visited.
  *
  * Every adapter is versioned and bundled. Nothing here is downloaded at runtime and nothing
  * is evaluated from a string (BUILD_PLAN.md §10.7, §17.4).
@@ -32,6 +35,8 @@ import { wooCommerceAdapter } from './woocommerce';
  */
 export const RETAILER_ADAPTERS: readonly ProductExtractor[] = [
   stockxAdapter,
+  wayfairAdapter,
+  amazonAdapter,
   shopifyAdapter,
   wooCommerceAdapter,
   magentoAdapter,

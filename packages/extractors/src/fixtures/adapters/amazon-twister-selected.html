@@ -1,0 +1,337 @@
+<!doctype html>
+<!--
+  Amazon — the price belongs to the SELECTED colour swatch, not to the first one on the page.
+
+  Sanitized and reduced from the structure of a real product page: the `a-*` class vocabulary,
+  the `#color_name_N` twister buttons, the `apex-pricetopay-accessibility-label` with its
+  `data-pricetopay-savings-label` template, the `apex-basisprice-value[data-a-strike]`, the
+  `data-csa-c-asin` widget attribute and the duplicated `#productTitle` are all reproduced as
+  the real page emits them. Product, prices, colours and images are invented. No account data,
+  no order history, no cookies, no tokens, no real ASIN.
+
+  ## Why this fixture exists
+
+  The page carries NO JSON-LD whatsoever — not a Product, not even a BreadcrumbList. That is
+  why Amazon currently extracts no price: there is nothing for the structured-data tier to read
+  and the generic DOM heuristics do not recognise this markup. Do not add JSON-LD here; its
+  absence IS the case under test.
+
+  ## The traps this fixture sets
+
+  1. **Every price on the page lives in the colour twister.** The real capture has 28
+     `apex-pricetopay-accessibility-label` spans and 84 `.a-price` nodes, one set per colour
+     swatch, and `#apex_desktop` is EMPTY because the buy box renders client-side. So "find the
+     most prominent price" has no correct answer here. Only one swatch is selected —
+     `.a-button-selected` — and only its price describes the thing being bought. The unselected
+     swatches below carry deliberately different figures ($71.20, $63.40); returning either is
+     a failure.
+
+  2. **`#productTitle` appears twice.** Duplicate ids are invalid HTML and Amazon ships them
+     anyway. `querySelector` takes the first, which is correct here, but an adapter that
+     concatenates all matches produces a doubled title.
+
+  3. **`link[rel=canonical]` points at the PARENT listing**, a different ASIN from the page
+     being viewed. The page is child ASIN B0EXAMPLE1 (see `data-csa-c-asin` on
+     `#corePrice_feature_div`, and the `/dp/` segment of the fixture URL); canonical says
+     B0PARENT99. Normalizing to the canonical URL would fingerprint every colour of this
+     garment as one item and collapse them into a single row. Keep both, as the capture
+     contract requires.
+
+  4. **`#corePrice_feature_div` agrees with the selected swatch** — $56.80 in both — and its
+     `data-csa-c-asin` matches the URL. That agreement is the cheapest available corroboration
+     and is worth asserting.
+
+  ## The numbers
+
+  Selected swatch "Washed Indigo": $56.80, struck basis $71.00, stated as "20 percent savings".
+  56.80 / 71.00 = 0.80 exactly, so the saving the page states and the two figures agree — the
+  same arithmetic check the truth sidecars use.
+-->
+<html lang="en">
+  <head>
+    <title>Northwind Men's Standard Fit Jeans | Example</title>
+    <link
+      rel="canonical"
+      href="https://www.amazon.com/Northwind-Mens-Standard-Fit-Jeans/dp/B0PARENT99"
+    />
+  </head>
+
+  <body>
+    <!-- Trap 2: the real page emits this id twice. -->
+    <span id="productTitle" class="a-size-large product-title-word-break">
+      Northwind Men's Standard Fit Jeans (Also Available in Big &amp; Tall)
+    </span>
+
+    <a id="bylineInfo" class="a-link-normal" href="/stores/Northwind/page/EXAMPLE"
+      >Visit the Northwind Store</a
+    >
+
+    <div id="imgTagWrapperId" class="imgTagWrapper">
+      <img
+        id="landingImage"
+        alt="Northwind Men's Standard Fit Jeans (Also Available in Big &amp; Tall)"
+        src="https://m.media-example.com/images/I/41NgDv59BaL._AC_SX679_.jpg"
+      />
+    </div>
+
+    <!--
+      The buy-box slot. On the real page this is present but EMPTY — the price is injected
+      client-side — so an adapter that waits for it finds nothing. Preserved empty on purpose.
+    -->
+    <div
+      id="apex_desktop"
+      class="celwidget"
+      data-feature-name="apex_desktop"
+      data-csa-c-type="widget"
+      data-csa-c-content-id="apex_desktop"
+      data-csa-c-asin=""
+    ></div>
+
+    <!--
+      Trap 4: the server-rendered core price. Agrees with the selected swatch, and its
+      `data-csa-c-asin` is the ASIN in the page URL — not the canonical's parent ASIN.
+    -->
+    <div
+      id="corePrice_feature_div"
+      class="celwidget"
+      data-feature-name="corePrice"
+      data-csa-c-type="widget"
+      data-csa-c-content-id="corePrice"
+      data-csa-c-asin="B0EXAMPLE1"
+    >
+      <div class="a-section a-spacing-micro">
+        <span class="a-price a-text-price a-size-medium" data-a-size="b" data-a-color="price"
+          ><span class="a-offscreen">$56.80</span><span aria-hidden="true">$56.80</span></span
+        >
+      </div>
+    </div>
+
+    <div id="twister-plus-inline-twister">
+      <div id="inline-twister-row-color_name">
+        <div id="inline-twister-expander-header-color_name">
+          <div id="inline-twister-dim-title-color_name">
+            Color:
+            <span id="inline-twister-expanded-dimension-text-color_name">Washed Indigo</span>
+          </div>
+        </div>
+
+        <div id="inline-twister-expander-content-color_name">
+          <div id="tp-inline-twister-dim-values-container">
+            <div class="swatch-bridge-twister-plus">
+              <!-- Swatch 0 — NOT selected. Trap 1: first in document order, different price. -->
+              <span
+                id="color_name_0"
+                class="a-button a-button-toggle image-swatch-button-with-slots"
+              >
+                <span class="a-button-inner">
+                  <span id="color_name_0-announce" class="a-button-text">
+                    <div class="a-section swatch-text">
+                      <div
+                        id="dimension-slot-info-0"
+                        class="a-section dimension-slot-info show-image-slots"
+                      >
+                        <div data-csa-c-content-id="apex">
+                          <div data-csa-c-content-id="apex_with_rio_cx">
+                            <div
+                              id="apex_price"
+                              class="a-section a-spacing-none apex_on_twister_price"
+                            >
+                              <div class="a-section a-spacing-none apex-core-price-identifier">
+                                <div class="a-section a-spacing-none aok-align-center aok-relative">
+                                  <span
+                                    data-pricetopay-label="{priceToPay}"
+                                    data-pricetopay-savings-label="{priceToPay} with {savings} percent savings"
+                                    class="aok-offscreen apex-pricetopay-accessibility-label"
+                                  >
+                                    $71.20 with 11 percent savings</span
+                                  >
+                                  <span
+                                    class="a-price a-text-price aok-align-center centralizedApexPricePriceToPayMargin apex-pricetopay-value"
+                                    data-a-size="s"
+                                    data-a-color="base"
+                                    ><span class="a-offscreen"></span
+                                    ><span aria-hidden="true">$71.20</span></span
+                                  >
+                                </div>
+                                <div
+                                  class="a-section a-spacing-small aok-align-center centralizedApexBasisPriceCSS"
+                                >
+                                  <span class="apex-basisprice-feature"
+                                    ><span
+                                      class="a-price a-text-price apex-basisprice-value"
+                                      data-a-size="mini"
+                                      data-a-strike="true"
+                                      data-a-color="secondary"
+                                      ><span class="a-offscreen">$80.00</span
+                                      ><span aria-hidden="true">$80.00</span></span
+                                    ></span
+                                  >
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <img
+                      id="inline-twister-image-0"
+                      alt="Faded Black"
+                      src="https://m.media-example.com/images/I/31swatch0._AC_US40_.jpg"
+                    />
+                  </span>
+                </span>
+              </span>
+
+              <!-- Swatch 1 — NOT selected. -->
+              <span
+                id="color_name_1"
+                class="a-button a-button-toggle image-swatch-button-with-slots"
+              >
+                <span class="a-button-inner">
+                  <span id="color_name_1-announce" class="a-button-text">
+                    <div class="a-section swatch-text">
+                      <div
+                        id="dimension-slot-info-1"
+                        class="a-section dimension-slot-info show-image-slots"
+                      >
+                        <div data-csa-c-content-id="apex">
+                          <div data-csa-c-content-id="apex_with_rio_cx">
+                            <div
+                              id="apex_price"
+                              class="a-section a-spacing-none apex_on_twister_price"
+                            >
+                              <div class="a-section a-spacing-none apex-core-price-identifier">
+                                <div class="a-section a-spacing-none aok-align-center aok-relative">
+                                  <span
+                                    data-pricetopay-label="{priceToPay}"
+                                    data-pricetopay-savings-label="{priceToPay} with {savings} percent savings"
+                                    class="aok-offscreen apex-pricetopay-accessibility-label"
+                                  >
+                                    $63.40</span
+                                  >
+                                  <span
+                                    class="a-price a-text-price aok-align-center centralizedApexPricePriceToPayMargin apex-pricetopay-value"
+                                    data-a-size="s"
+                                    data-a-color="base"
+                                    ><span class="a-offscreen"></span
+                                    ><span aria-hidden="true">$63.40</span></span
+                                  >
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <img
+                      id="inline-twister-image-1"
+                      alt="Rigid Ecru"
+                      src="https://m.media-example.com/images/I/31swatch1._AC_US40_.jpg"
+                    />
+                  </span>
+                </span>
+              </span>
+
+              <!--
+                Swatch 2 — THE SELECTED ONE. `a-button-selected` is the only marker; there is no
+                aria-pressed, no aria-checked, no `[selected]`. Its price is the answer.
+              -->
+              <span
+                id="color_name_2"
+                class="a-button a-button-toggle a-button-selected image-swatch-button-with-slots"
+              >
+                <span class="a-button-inner">
+                  <span id="color_name_2-announce" class="a-button-text">
+                    <div class="a-section swatch-text">
+                      <div
+                        id="dimension-slot-info-2"
+                        class="a-section dimension-slot-info show-image-slots"
+                      >
+                        <div data-csa-c-content-id="apex">
+                          <div data-csa-c-content-id="apex_with_rio_cx">
+                            <div
+                              id="apex_price"
+                              class="a-section a-spacing-none apex_on_twister_price"
+                            >
+                              <div class="a-section a-spacing-none apex-core-price-identifier">
+                                <div class="a-section a-spacing-none aok-align-center aok-relative">
+                                  <span
+                                    data-pricetopay-label="{priceToPay}"
+                                    data-pricetopay-savings-label="{priceToPay} with {savings} percent savings"
+                                    class="aok-offscreen apex-pricetopay-accessibility-label"
+                                  >
+                                    $56.80 with 20 percent savings</span
+                                  >
+                                  <span
+                                    class="a-price a-text-price aok-align-center centralizedApexPricePriceToPayMargin apex-pricetopay-value"
+                                    data-a-size="s"
+                                    data-a-color="base"
+                                    ><span class="a-offscreen"></span
+                                    ><span aria-hidden="true">$56.80</span></span
+                                  >
+                                </div>
+                                <div
+                                  class="a-section a-spacing-small aok-align-center centralizedApexBasisPriceCSS"
+                                >
+                                  <span class="apex-basisprice-feature"
+                                    ><span
+                                      class="a-price a-text-price apex-basisprice-value"
+                                      data-a-size="mini"
+                                      data-a-strike="true"
+                                      data-a-color="secondary"
+                                      ><span class="a-offscreen">$71.00</span
+                                      ><span aria-hidden="true">$71.00</span></span
+                                    ></span
+                                  >
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <img
+                      id="inline-twister-image-2"
+                      alt="Washed Indigo"
+                      src="https://m.media-example.com/images/I/31swatch2._AC_US40_.jpg"
+                    />
+                  </span>
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A second dimension, selected the same way, to prove the variant map holds more than one key. -->
+      <div id="inline-twister-row-special_size_type">
+        <div id="inline-twister-dim-title-special_size_type">
+          Special Size:
+          <span id="inline-twister-expanded-dimension-text-special_size_type">Standard</span>
+        </div>
+      </div>
+    </div>
+
+    <!--
+      Size is offered but NOT chosen — the real page's `#variation_size_name` opens with
+      "Select". A variant map must therefore omit Size entirely rather than recording "Select"
+      as if it were a choice.
+    -->
+    <div id="variation_size_name" class="a-section">
+      <span class="a-dropdown-prompt">Size: Select</span>
+      <span>30W x 32L</span>
+      <span>32W x 32L</span>
+      <span>34W x 34L</span>
+    </div>
+
+    <div id="availability" class="a-section a-spacing-none">
+      <span class="a-size-medium a-color-success">In Stock</span>
+    </div>
+    <span id="twisterAvailability">In Stock</span>
+
+    <!-- Trap 2, second half: the duplicate. -->
+    <span id="productTitle" class="a-size-large product-title-word-break aok-hidden">
+      Northwind Men's Standard Fit Jeans (Also Available in Big &amp; Tall)
+    </span>
+  </body>
+</html>
