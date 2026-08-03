@@ -52,13 +52,27 @@ characters. Redirect targets are built from the client-visible `Host` rather tha
 ## Authorization
 
 Every exposed table has RLS enabled and `anon` holds no grants. The policy matrix and its
-test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 107
-pgTAP assertions across seven files, covering the cases listed in BUILD_PLAN.md §8.2: user
+test coverage are documented in [DATA_MODEL.md](DATA_MODEL.md). `pnpm test:db` runs 132
+pgTAP assertions across nine files, covering the cases listed in BUILD_PLAN.md §8.2: user
 bootstrap (9), cart and membership RLS (18), atomic ingestion (29), item field ownership
-(14), revisit refresh (20), the two-fact availability pair (11), and composition (6).
+(14), revisit refresh (20), the two-fact availability pair (11), composition (6), the
+`cart_invitations` table and RLS (12), and the invitation create/accept flow (13).
 
 The dashboard checks the user a second time in the page itself, so a middleware
 misconfiguration alone cannot expose it.
+
+### Shared-cart invitations are bearer tokens, stored hashed
+
+An invitation is a capability: a 256-bit token minted by `create_cart_invitation` and handed
+to the invitee as a link. The database stores **only its SHA-256 hash**, so a dump of
+`cart_invitations` cannot be replayed into cart access — the raw token exists only between the
+create RPC returning it and the accept RPC hashing it. Acceptance runs entirely through
+`accept_cart_invitation` (SECURITY DEFINER): the invitee never has RLS read on the table, the
+token is single-use (`accepted_at`, enforced under a row lock) and expiry-checked, and no
+client can write `accepted_*` because the table has no update grant. `email` on the row is
+display only — it is never an access check, so a link works for whoever holds it, which is why
+single-use and expiry carry the weight. An invitation can only ever grant `editor` or
+`viewer`; `owner` is blocked by a CHECK constraint, the create RPC, and the contract schema.
 
 ## Extension permissions
 
