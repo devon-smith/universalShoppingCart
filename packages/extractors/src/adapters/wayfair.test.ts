@@ -99,3 +99,21 @@ describe('wayfairAdapter — availability and the selected options', () => {
     expect(extract(PRIMARY).selectedVariant).toEqual({ Finish: 'Warm Walnut' });
   });
 });
+
+describe('wayfairAdapter — the image is the hero, not the trust badge', () => {
+  it('reads og:image and never the first FixedImage, which is a 36x36 verified badge', () => {
+    const capture = extract(SALE);
+    expect(capture.product?.selectedImageUrl).toBe(
+      'https://assets.example.com/im/11223344/compr-r85/1020/102030405/Calder+3-Piece+Boucle+Modular+Sectional+with+Loose+Back.jpg',
+    );
+    // The badge ships ahead of the hero as `default_name.jpg`; a broad FixedImage selector would
+    // grab it. It must appear nowhere in the capture.
+    expect(JSON.stringify(capture.product?.imageUrls)).not.toContain('default_name.jpg');
+  });
+
+  it('lands the hero on the primary page too', () => {
+    expect(extract(PRIMARY).product?.selectedImageUrl).toBe(
+      'https://assets.example.com/im/55667788/compr-r85/2040/204050607/Thorne+Solid+Wood+6-Drawer+Dresser.jpg',
+    );
+  });
+});
