@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(20);
+select plan(21);
 
 insert into auth.users (id, email, raw_user_meta_data)
 values ('a0000000-0000-4000-8000-000000000001', 'owner@example.com', '{}'::jsonb);
@@ -129,6 +129,13 @@ update public.refresh_jobs set next_run_at = now() - interval '1 hour' where ite
 select is(
   jsonb_array_length(public.select_due_refresh_jobs(50)), 1,
   'once past its next run, the job is due'
+);
+
+-- The selector carries the item fields the worker needs, so the worker never reads items itself.
+select is(
+  public.select_due_refresh_jobs(50) -> 0 ->> 'source_url',
+  'https://shop.northwind.example/p/1',
+  'a due job carries its item source URL'
 );
 
 -- A browser_required job is never selected for a public fetch, even when due.

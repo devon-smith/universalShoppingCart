@@ -99,7 +99,7 @@ export function assertSafeUrl(input: string | URL): URL {
 export interface SafeFetchOptions {
   /** Cap on redirects followed. Default 3. */
   maxRedirects?: number;
-  /** Cap on response bytes read before aborting. Default 512 KiB. */
+  /** Cap on response bytes read before aborting. Default 3 MiB. */
   maxBytes?: number;
   /** Overall deadline in milliseconds. Default 10 000. */
   timeoutMs?: number;
@@ -123,7 +123,10 @@ export interface SafeFetchResult {
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const DEFAULT_MAX_REDIRECTS = 3;
-const DEFAULT_MAX_BYTES = 512 * 1024;
+// 3 MiB. Modern commerce pages routinely run 1–3 MB of HTML; a smaller cap turns "large page"
+// into a fetch failure, and repeated failures back a domain off and eventually disable it — so a
+// too-tight cap would mark big-but-fine retailers dead.
+const DEFAULT_MAX_BYTES = 3 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 async function defaultResolveHost(hostname: string): Promise<string[]> {
