@@ -340,6 +340,28 @@ test.describe('the compare route', () => {
     await expect(groups.nth(1)).toContainText('Open 1 at Fieldcraft');
   });
 
+  /**
+   * The AI summary is offered on every comparison. With no provider key configured — the CI
+   * default — asking for one degrades to a plain message rather than erroring, and no tokens are
+   * spent. The grounded content is unit-tested; this checks the surface and the graceful fallback.
+   */
+  test('offers an AI summary and reports when it is not configured', async ({ page }) => {
+    test.skip(
+      Boolean(process.env.AI_PROVIDER_API_KEY),
+      'AI is configured here, so the not-configured path does not apply',
+    );
+
+    await openDashboard(page, 'aisummary');
+    await choose(page, 'Meridian Wool Runner', 'Kestrel Rain Shell');
+    await page.getByTestId('compare-open').click();
+
+    const panel = page.getByTestId('ai-summary');
+    await expect(panel).toBeVisible();
+
+    await panel.getByRole('button', { name: 'Summarize with AI' }).click();
+    await expect(panel).toContainText("AI summaries aren't enabled for this deployment yet.");
+  });
+
   /** The link is user-controlled input, and RLS is the gate that makes that safe. */
   test('shows nothing for another account’s item id', async ({ page, browser }) => {
     const strangerEmail = uniqueEmail('stranger');

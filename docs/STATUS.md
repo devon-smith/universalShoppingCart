@@ -3,18 +3,18 @@
 Updated after every phase. See [BUILD_PLAN.md §22](../BUILD_PLAN.md) for phase definitions
 and acceptance criteria.
 
-| Phase                                  | State                                                               |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| 0 — Repository foundation              | Complete                                                            |
-| 1 — Authentication and authorization   | Complete                                                            |
-| 2 — Generic capture vertical slice     | Complete                                                            |
-| 3 — Cart dashboard and core UX         | Complete                                                            |
-| 4 — Observations and revisit refresh   | Complete                                                            |
-| 5 — Real retailer adapters             | Complete                                                            |
-| 6 — Sharing and comparison             | Complete — compare view + sharing backend + web surface landed      |
-| 7 — Background refresh and alerts      | In progress — cloud core landed (rolling PR); worker + Cron pending |
-| 8 — Product matching and AI comparison | Not started                                                         |
-| 9 — Release hardening                  | Not started                                                         |
+| Phase                                | State                                                                               |
+| ------------------------------------ | ----------------------------------------------------------------------------------- |
+| 0 — Repository foundation            | Complete                                                                            |
+| 1 — Authentication and authorization | Complete                                                                            |
+| 2 — Generic capture vertical slice   | Complete                                                                            |
+| 3 — Cart dashboard and core UX       | Complete                                                                            |
+| 4 — Observations and revisit refresh | Complete                                                                            |
+| 5 — Real retailer adapters           | Complete                                                                            |
+| 6 — Sharing and comparison           | Complete — compare view + sharing backend + web surface landed                      |
+| 7 — Background refresh and alerts    | Complete — worker + Cron landed; live schedule gated on human Vault/Cron setup      |
+| 8 — AI comparison summary            | In progress — grounded summary + provenance/cache landed; live call gated on AI key |
+| 9 — Release hardening                | Not started                                                                         |
 
 ## Roadmap from here
 
@@ -319,6 +319,40 @@ so lululemon's `?color=76616` recovers "Rumble Crumble" from the survivors' agre
 narrowed subset can state a price the whole family disagrees on, and a no-match or
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
+
+## Phase 8 — AI comparison summary (cloud slice, rolling PR)
+
+**A fact-grounded natural-language summary of a comparison, generated server-side by the Claude
+API — present and inert until a human sets the AI key.** Cross-retailer identifier matching, §22's
+other Phase 8 half, stays cut (clothing compares distinct candidates, not one product at two
+sellers; DECISIONS.md, 2026-07-26). New dependency `@anthropic-ai/sdk`; ADR in DECISIONS.md,
+2026-08-03.
+
+- **Pure module** (`features/compare/summary.ts`) — `buildComparisonFacts` reduces the already-
+  grounded `Comparison` to per-item facts and, crucially, an explicit list of _missing_ fields, so
+  the model reports gaps rather than inventing values. `buildSummaryMessages` renders them with a
+  system prompt that forbids invention and forbids claiming agreement on descriptive rows (a
+  retailer's "M" is not another's). A Zod `summarySchema` constrains the answer. Model pinned to
+  `claude-opus-5`; `SUMMARY_PROMPT_VERSION` is stored and folded into the cache key.
+- **Orchestrator** (`summarize.ts`) — injected model call, so every guardrail is unit-tested
+  without a key: refusal handled before content is read, schema-validated, and any item reference
+  the model invents rejects the whole summary (fabrication guard). The real Claude call
+  (`claude-call.ts`) uses `messages.parse` + `zodOutputFormat` + adaptive thinking.
+- **Server boundary** — the key is read from `AI_PROVIDER_API_KEY` via a `server-only` module
+  (`lib/ai/anthropic.ts`); an unset key raises a typed `AiNotConfiguredError` the UI shows as a
+  plain "not enabled" state. The whole path is a Server Action behind an explicit button, so a
+  shared link never silently bills the provider.
+- **Provenance + cache** — `comparison_summaries` stores model, prompt version, and the summary
+  with RLS (read/create by anyone who can read the cart; immutable; anon denied). It doubles as a
+  cache keyed on a sha256 of the grounded facts; a cross-cart comparison is summarised but not
+  stored (caching it could leak one cart's facts to a reader of the other). 12 pgTAP.
+
+Verified in cloud: web `typecheck` clean, `lint` clean, `build` clean, **72** compare unit tests
+(15 summary + 22 orchestrator among them), full web build. The Docker tiers are the local host's:
+**pgTAP** for `comparison_summaries` (test 14), a **`pnpm db:types`** regeneration to confirm the
+hand-edited `database.types.ts`, and the **e2e** not-configured flow. The **live model call** is
+gated on a human setting `AI_PROVIDER_API_KEY` in Vercel (server-only, Sensitive) — until then the
+panel renders and reports "not enabled".
 
 ## Phase 7 — Background refresh + alerts (cloud core, rolling PR)
 
