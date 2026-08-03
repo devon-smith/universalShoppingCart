@@ -670,7 +670,13 @@ export const Constants = {
       ],
       item_priority: ["low", "normal", "high"],
       item_status: ["saved", "cart", "purchased", "archived"],
+      notification_type: [
+        "price_below_desired",
+        "back_in_stock",
+        "became_unavailable",
+      ],
       observation_source: ["capture", "revisit", "manual", "background"],
+      refresh_strategy: ["public_fetch", "api", "browser_required", "disabled"],
     },
   },
 } as const
