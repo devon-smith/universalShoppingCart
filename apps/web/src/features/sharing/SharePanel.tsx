@@ -4,8 +4,8 @@ import { INVITABLE_ROLES, type CartRole, type InvitableRole } from '@universal-c
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
-import { createInvitation, revokeInvitation } from './actions';
-import { formatExpiry, roleDescription } from './sharing';
+import { createInvitation, removeMember, revokeInvitation } from './actions';
+import { formatExpiry, roleDescription, roleLabel } from './sharing';
 
 export interface OwnedCart {
   id: string;
@@ -63,6 +63,7 @@ export function SharePanel({
   const [hours, setHours] = useState<number>(168);
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState<PendingInvite[]>(initialPending);
+  const [memberList, setMemberList] = useState<MemberEntry[]>(members);
   const [createdUrl, setCreatedUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +106,18 @@ export function SharePanel({
       if (!result.ok) {
         setError(result.error ?? 'That invitation could not be revoked.');
         setPending(previous);
+      }
+    });
+  }
+
+  function remove(userId: string) {
+    // Optimistic, like revoke. RLS lets only the owner delete, so a failure never had an effect.
+    const previous = memberList;
+    setMemberList((current) => current.filter((member) => member.userId !== userId));
+    void removeMember(cartId, userId).then((result) => {
+      if (!result.ok) {
+        setError(result.error ?? 'That member could not be removed.');
+        setMemberList(previous);
       }
     });
   }
@@ -155,21 +168,32 @@ export function SharePanel({
           <legend className="uc-field__label">Their access</legend>
           <div className="flex flex-col gap-2">
             {INVITABLE_ROLES.map((option) => (
-              <label key={option} className="flex items-start gap-2 text-sm">
+              // The description is a sibling referenced by aria-describedby, not nested inside the
+              // label — otherwise the radio's accessible name becomes "Editor Can add, edit…". The
+              // role word is real capitalised text so the name a screen reader reads matches the
+              // visible label (a CSS `capitalize` would leave the name lowercase).
+              <div key={option} className="flex items-start gap-2 text-sm">
                 <input
                   type="radio"
+                  id={`share-role-${option}`}
                   name="share-role"
                   className="uc-focusable mt-0.5"
                   checked={role === option}
                   onChange={() => setRole(option)}
+                  aria-describedby={`share-role-desc-${option}`}
                 />
                 <span>
-                  <span className="font-medium capitalize">{option}</span>
-                  <span className="block text-xs text-[var(--uc-foreground-muted)]">
+                  <label htmlFor={`share-role-${option}`} className="font-medium">
+                    {roleLabel(option)}
+                  </label>
+                  <span
+                    id={`share-role-desc-${option}`}
+                    className="block text-xs text-[var(--uc-foreground-muted)]"
+                  >
                     {roleDescription(option)}
                   </span>
                 </span>
-              </label>
+              </div>
             ))}
           </div>
         </fieldset>
@@ -257,7 +281,7 @@ export function SharePanel({
                 className="uc-surface flex items-center justify-between gap-3 p-3"
               >
                 <span className="min-w-0">
-                  <span className="text-sm font-medium capitalize">{invite.role}</span>
+                  <span className="text-sm font-medium">{roleLabel(invite.role)}</span>
                   {invite.email ? (
                     <span className="block truncate text-xs text-[var(--uc-foreground-muted)]">
                       {invite.email}
@@ -282,27 +306,40 @@ export function SharePanel({
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">People with access</h2>
-        {members.length === 0 ? (
-          <p className="text-sm text-[var(--uc-foreground-muted)]">
-            Only you, so far. Invited members appear here once they accept.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {members.map((member) => (
+        {/* No empty state: `handle_new_user` writes an owner row into cart_members for every
+            cart, so the owner viewing their own cart always appears here — this list is never
+            empty. */}
+        <ul className="flex flex-col gap-2">
+          {memberList.map((member) => {
+            const isSelf = member.userId === currentUserId;
+            return (
               <li
                 key={member.userId}
                 className="uc-surface flex items-center justify-between gap-3 p-3"
               >
-                <span className="text-sm">
-                  {member.userId === currentUserId ? 'You' : `Member ${member.userId.slice(0, 8)}`}
+                <span className="min-w-0 text-sm">
+                  {isSelf ? 'You' : `Member ${member.userId.slice(0, 8)}`}
                 </span>
-                <span className="text-xs text-[var(--uc-foreground-muted)] capitalize">
-                  {member.role}
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className="text-xs text-[var(--uc-foreground-muted)]">
+                    {roleLabel(member.role)}
+                  </span>
+                  {/* The owner cannot remove themselves — ownership is immutable, so it would
+                      only strip their listing. Everyone else can be removed. */}
+                  {isSelf ? null : (
+                    <button
+                      type="button"
+                      onClick={() => remove(member.userId)}
+                      className="uc-button uc-button--ghost uc-focusable"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </span>
               </li>
-            ))}
-          </ul>
-        )}
+            );
+          })}
+        </ul>
       </section>
     </div>
   );

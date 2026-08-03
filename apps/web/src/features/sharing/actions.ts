@@ -139,3 +139,33 @@ export async function revokeInvitation(invitationId: string): Promise<ActionResu
 
   return { ok: true };
 }
+
+const removeMemberInputSchema = z.object({
+  cartId: z.string().uuid(),
+  userId: z.string().uuid(),
+});
+
+/**
+ * Remove a member from a cart.
+ *
+ * A plain delete on `cart_members`, gated by `cart_members_delete_owner_or_self`: the owner may
+ * remove anyone. Removing the owner's own row is not offered in the UI — ownership is
+ * `carts.owner_id` and immutable, so it would strip their member listing without ceding the
+ * cart. RLS is the real gate; a delete for a cart the caller does not own affects nothing.
+ */
+export async function removeMember(cartId: string, userId: string): Promise<ActionResult> {
+  const parsed = removeMemberInputSchema.safeParse({ cartId, userId });
+  if (!parsed.success) return { ok: false, error: 'Unknown member.' };
+
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'You need to be signed in.' };
+
+  const { error } = await supabase
+    .from('cart_members')
+    .delete()
+    .eq('cart_id', parsed.data.cartId)
+    .eq('user_id', parsed.data.userId);
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
+}
