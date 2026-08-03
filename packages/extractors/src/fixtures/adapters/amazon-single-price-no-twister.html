@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+  Amazon — one price, no colour twister, currently unavailable.
+
+  The other half of the Amazon pair. Same sanitization rules as
+  `amazon-twister-selected.html`: real structural hooks, invented product and prices.
+
+  ## What differs, and why it matters
+
+  1. **There is no twister at all.** Single-variant listings render the price only in
+     `#corePriceDisplay_desktop_feature_div` — note the id differs from the
+     `#corePrice_feature_div` used on the twister page; Amazon ships both, and which one appears
+     depends on the listing. An adapter keyed on just one finds nothing here.
+  2. **`.a-button-selected` does not exist**, so an adapter that requires a selected swatch
+     before it will report a price returns nothing on a perfectly ordinary page. The selected
+     swatch is the right source WHEN a twister is present, not a precondition for reading a
+     price at all.
+  3. **No basis price**, so `originalPriceAmount` must be null. The recommendation carousel
+     below carries `List: $110.00` — a real strikethrough belonging to a different product.
+     Pairing it with this product's price would fabricate a 58% discount, which is exactly what
+     the cue-gated resolver must refuse.
+  4. **Unavailable**, and the only signal is the `#availability` prose. There is no
+     `#twisterAvailability` and no add-to-cart button.
+  5. No JSON-LD, as ever.
+-->
+<html lang="en">
+  <head>
+    <title>Northwind Cotton Chore Jacket | Example</title>
+    <link
+      rel="canonical"
+      href="https://www.amazon.com/Northwind-Cotton-Chore-Jacket/dp/B0EXAMPLE7"
+    />
+  </head>
+
+  <body>
+    <span id="productTitle" class="a-size-large product-title-word-break">
+      Northwind Cotton Chore Jacket, Unlined
+    </span>
+
+    <a id="bylineInfo" class="a-link-normal" href="/stores/Northwind/page/EXAMPLE"
+      >Visit the Northwind Store</a
+    >
+
+    <div id="imgTagWrapperId" class="imgTagWrapper">
+      <img
+        id="landingImage"
+        alt="Northwind Cotton Chore Jacket, Unlined"
+        src="https://m.media-example.com/images/I/61ChoreJacket._AC_SX679_.jpg"
+      />
+    </div>
+
+    <!-- Note the id: `corePriceDisplay_desktop_feature_div`, not `corePrice_feature_div`. -->
+    <div
+      id="corePriceDisplay_desktop_feature_div"
+      class="celwidget"
+      data-feature-name="corePriceDisplay_desktop"
+      data-csa-c-type="widget"
+      data-csa-c-asin="B0EXAMPLE7"
+    >
+      <div class="a-section a-spacing-none aok-align-center aok-relative">
+        <span
+          data-pricetopay-label="{priceToPay}"
+          data-pricetopay-savings-label="{priceToPay} with {savings} percent savings"
+          class="aok-offscreen apex-pricetopay-accessibility-label"
+        >
+          $46.00</span
+        >
+        <span
+          class="a-price aok-align-center reinventPricePriceToPayMargin priceToPay"
+          data-a-size="l"
+          data-a-color="base"
+          ><span class="a-offscreen">$46.00</span
+          ><span aria-hidden="true"
+            ><span class="a-price-symbol">$</span><span class="a-price-whole">46</span
+            ><span class="a-price-fraction">00</span></span
+          ></span
+        >
+      </div>
+    </div>
+
+    <div id="availability" class="a-section a-spacing-none">
+      <span class="a-size-medium a-color-price">Currently unavailable.</span>
+      <span class="a-size-small">We don't know when or if this item will be back in stock.</span>
+    </div>
+
+    <!--
+      A recommendation carousel with a genuine strikethrough that belongs to a DIFFERENT
+      product. Reporting $110.00 as this jacket's former price is the failure under test.
+    -->
+    <div id="sp_detail" class="celwidget" data-csa-c-content-id="sponsored-products">
+      <span>Sponsored</span>
+      <div class="a-section">
+        <a class="a-link-normal" href="/dp/B0EXAMPLE9">Ridgeline Waxed Canvas Field Coat</a>
+        <span class="a-price" data-a-size="l"
+          ><span class="a-offscreen">$96.16</span><span aria-hidden="true">$96.16</span></span
+        >
+        <span class="a-size-base a-color-secondary"
+          >List:
+          <span class="a-price a-text-price" data-a-strike="true" data-a-color="secondary"
+            ><span class="a-offscreen">$110.00</span><span aria-hidden="true">$110.00</span></span
+          ></span
+        >
+      </div>
+    </div>
+  </body>
+</html>

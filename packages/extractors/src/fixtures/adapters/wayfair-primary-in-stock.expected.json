@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html?piid=771002908",
+    "canonicalUrl": "https://wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html",
+    "domain": "wayfair.com",
+    "retailerName": "Wayfair",
+    "pageTitle": "Thorne Solid Wood 6-Drawer Dresser | Example"
+  },
+  "product": {
+    "title": "Thorne Solid Wood 6-Drawer Dresser",
+    "brand": "Harbour & Vale",
+    "description": null,
+    "imageUrls": [
+      "https://assets.example.com/im/55667788/compr-r85/2040/204050607/Thorne+Solid+Wood+6-Drawer+Dresser.jpg"
+    ],
+    "selectedImageUrl": "https://assets.example.com/im/55667788/compr-r85/2040/204050607/Thorne+Solid+Wood+6-Drawer+Dresser.jpg",
+    "identifiers": {},
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "429.99",
+    "originalPriceAmount": null,
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Finish": "Warm Walnut"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": "h1[data-rtl-id=\"listingHeaderNameHeading\"]",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "adapter",
+      "selector": "og:title prefix",
+      "confidence": 0.7
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "[data-node-id^=\"ListingPricing::\"] [data-test-id=\"PriceDisplay\"]",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.currency",
+      "source": "adapter",
+      "selector": "US storefront",
+      "confidence": 0.6
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": "detailedInventoryWidget inventoryStatus",
+      "confidence": 0.85
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "[data-test-id=\"pdp-ch-categoryComponent\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.title",
+      "source": "meta",
+      "selector": "meta[property=\"og:title\"]",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "meta",
+      "selector": "link[rel=\"canonical\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "meta",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "document h1",
+      "confidence": 0.27999999999999997
+    }
+  ],
+  "extraction": {
+    "extractorId": "wayfair",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.894,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}

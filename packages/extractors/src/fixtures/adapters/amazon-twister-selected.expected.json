@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.amazon.com/Northwind-Standard-Washed-Indigo-32x32/dp/B0EXAMPLE1",
+    "canonicalUrl": "https://amazon.com/Northwind-Mens-Standard-Fit-Jeans/dp/B0PARENT99",
+    "domain": "amazon.com",
+    "retailerName": "Amazon",
+    "pageTitle": "Northwind Men's Standard Fit Jeans | Example"
+  },
+  "product": {
+    "title": "Northwind Men's Standard Fit Jeans (Also Available in Big & Tall)",
+    "brand": "Northwind",
+    "description": null,
+    "imageUrls": ["https://m.media-example.com/images/I/41NgDv59BaL._AC_SX679_.jpg"],
+    "selectedImageUrl": "https://m.media-example.com/images/I/41NgDv59BaL._AC_SX679_.jpg",
+    "identifiers": {
+      "productId": "B0EXAMPLE1"
+    },
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "56.80",
+    "originalPriceAmount": "71.00",
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Color": "Washed Indigo",
+    "Special Size": "Standard"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": "#productTitle",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "adapter",
+      "selector": "#bylineInfo",
+      "confidence": 0.85
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "[id^=\"color_name_\"].a-button-selected .apex-pricetopay-value (asin-corroborated)",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.currency",
+      "source": "adapter",
+      "selector": "US storefront",
+      "confidence": 0.6
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "selector": ".apex-basisprice-value[data-a-strike]",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": "#availability",
+      "confidence": 0.8
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "inline-twister expanded dimensions",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.identifiers",
+      "source": "adapter",
+      "selector": "URL /dp/ ASIN",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    }
+  ],
+  "extraction": {
+    "extractorId": "amazon",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.889,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}
