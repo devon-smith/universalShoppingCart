@@ -395,6 +395,19 @@ export type Database = {
       observation_refresh_interval: { Args: never; Returns: string }
       owns_cart: { Args: { p_cart_id: string }; Returns: boolean }
       parse_money: { Args: { p_value: string }; Returns: number }
+      record_background_observation: {
+        Args: {
+          p_availability?: string
+          p_confidence?: number
+          p_currency?: string
+          p_extractor_id?: string
+          p_extractor_version?: string
+          p_item_id: string
+          p_original_price?: string
+          p_price?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       cart_role: "owner" | "editor" | "viewer"
