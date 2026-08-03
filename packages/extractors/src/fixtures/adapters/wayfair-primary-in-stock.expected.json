@@ -1,0 +1,40 @@
+{
+  "_note": "GROUND TRUTH, hand-written from the fixture beside it — not a pipeline snapshot. See wayfair-sale-out-of-stock.expected.json for the full caveat.",
+  "_fixtureUrl": "https://www.wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html?piid=771002908",
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html?piid=771002908",
+    "canonicalUrl": "https://www.wayfair.com/furniture/pdp/harbour-vale-thorne-solid-wood-6-drawer-dresser-w445566778.html",
+    "domain": "www.wayfair.com",
+    "retailerName": "Wayfair",
+    "pageTitle": "Thorne Solid Wood 6-Drawer Dresser | Example"
+  },
+  "product": {
+    "title": "Thorne Solid Wood 6-Drawer Dresser",
+    "brand": "Harbour & Vale",
+    "description": null,
+    "imageUrls": [
+      "https://assets.example.com/im/55667788/compr-r85/2040/204050607/Thorne+Solid+Wood+6-Drawer+Dresser.jpg"
+    ],
+    "selectedImageUrl": "https://assets.example.com/im/55667788/compr-r85/2040/204050607/Thorne+Solid+Wood+6-Drawer+Dresser.jpg",
+    "identifiers": {},
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "429.99",
+    "originalPriceAmount": null,
+    "currency": "USD",
+    "availability": "in_stock"
+  },
+  "selectedVariant": {
+    "Finish": "Warm Walnut"
+  },
+  "_mustNotExtract": {
+    "originalPriceAmount": "anything at all",
+    "why": "There is no -PREVIOUS block on this page. A non-null original here is a fabricated discount."
+  },
+  "_signals": {
+    "price": "[data-node-id^=\"ListingPricing::\"] [data-test-id=\"StandardPricingPrice-PRIMARY\"] [data-test-id=\"PriceDisplay\"] — note PRIMARY, not SALE",
+    "availability": "inventoryStatus == IN_STOCK, agreeing with the badge text and the presence of Add to Cart"
+  }
+}

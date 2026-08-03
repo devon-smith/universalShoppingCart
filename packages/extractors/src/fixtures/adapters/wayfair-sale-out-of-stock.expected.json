@@ -1,0 +1,46 @@
+{
+  "_note": "GROUND TRUTH, hand-written from the fixture beside it — not a pipeline snapshot. The committed adapter fixtures carry a full ProductCaptureV1 including an `evidence` array and `extraction.overallConfidence`, and those can only be generated once the Wayfair adapter exists. Generate them in the M2 PR and keep the source/product/offer/selectedVariant values below unchanged; if the pipeline disagrees with any of them, the pipeline is wrong.",
+  "_fixtureUrl": "https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html?piid=640565351%2C640565355",
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html?piid=640565351%2C640565355",
+    "canonicalUrl": "https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html",
+    "domain": "www.wayfair.com",
+    "retailerName": "Wayfair",
+    "pageTitle": "Calder 3-Piece Boucle Modular Sectional with Loose Back | Example"
+  },
+  "product": {
+    "title": "Calder 3-Piece Boucle Modular Sectional with Loose Back",
+    "brand": "Harbour & Vale",
+    "description": null,
+    "imageUrls": [
+      "https://assets.example.com/im/11223344/compr-r85/1020/102030405/Calder+3-Piece+Boucle+Modular+Sectional+with+Loose+Back.jpg"
+    ],
+    "selectedImageUrl": "https://assets.example.com/im/11223344/compr-r85/1020/102030405/Calder+3-Piece+Boucle+Modular+Sectional+with+Loose+Back.jpg",
+    "identifiers": {},
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "612.50",
+    "originalPriceAmount": "875.00",
+    "currency": "USD",
+    "availability": "out_of_stock"
+  },
+  "selectedVariant": {
+    "Fabric": "Sand Boucle",
+    "Orientation": "Right Hand Facing"
+  },
+  "_mustNotExtract": {
+    "priceAmount": ["940.00", "1610.00"],
+    "why": "Those belong to the sponsored tile under [data-enzyme-id=\"ProductBannerPricingWrapper\"]. The product's own price is the one inside [data-node-id^=\"ListingPricing::\"]."
+  },
+  "_signals": {
+    "title": "h1[data-rtl-id=\"listingHeaderNameHeading\"]",
+    "brand": "og:title prefix before the product name; there is no dedicated brand element",
+    "price": "[data-node-id^=\"ListingPricing::\"] [data-test-id=\"StandardPricingPrice-SALE\"] [data-test-id=\"PriceDisplay\"]",
+    "original": "[data-node-id^=\"ListingPricing::\"] [data-test-id=\"StandardPricingPrice-PREVIOUS\"] s[data-test-id=\"PriceDisplay\"], preceded by a visually-hidden \"was\"",
+    "currency": "the $ glyph on the price text; the page states no ISO code",
+    "availability": "[data-test-id=\"detailedInventoryWidget\"] data-tracking-metadata .metadata.inventoryStatus == OUT_OF_STOCK, agreeing with [data-test-id=\"InventoryWidgetDisplay-Text\"] text \"Out of Stock\"",
+    "variant": "each [data-test-id=\"pdp-ch-categoryComponent\"]: first <p> is the label, second <p> is the SELECTED value"
+  }
+}
