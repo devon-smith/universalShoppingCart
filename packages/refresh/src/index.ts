@@ -17,3 +17,13 @@ export type {
 
 export { compareMoney, evaluateAlerts, isPriceBelowDesired } from './alerts';
 export type { AlertType, ObservedAvailability, ObservedState } from './alerts';
+
+export { processRefreshJob, runRefreshCycle } from './worker';
+export type {
+  JobOutcome,
+  ParsedObservation,
+  RefreshCycleDeps,
+  RefreshCycleSummary,
+  RefreshJob,
+  RefreshWorkerDeps,
+} from './worker';

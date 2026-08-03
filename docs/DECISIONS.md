@@ -1092,3 +1092,26 @@ network — 18 unit tests. The remaining residual risk is DNS rebinding (resolve
 races the address it validated); the fetcher resolves-and-checks rather than pinning the resolved
 IP into the connection, which is documented in the module and left for the live-network hardening
 the local host owns. Real-network behaviour against the private ranges is that live check.
+
+## 2026-08-03 — The background-refresh worker is a Vercel Node route, driven by Supabase Cron
+
+**Decision.** Phase 7's worker (7e) runs as a Next.js Route Handler on the Node runtime
+(`apps/web/src/app/api/refresh`), invoked by Supabase Cron via `pg_net`. It is **not** a Supabase
+Edge (Deno) Function.
+
+**Context.** The worker fetches a page and runs the extractor pipeline over its HTML. Both
+`safeFetch` and the extractors are written and tested for Node: `safeFetch` resolves DNS through
+`node:dns` to reject private addresses, and the pipeline expects a DOM. A Deno Edge Function would
+introduce `node:dns` compatibility gaps and a different DOM — neither of which the code was
+verified against — whereas a Node route reuses exactly the tested runtime, and the service-role
+key already lives in the web app's Vercel environment. The server DOM is `linkedom` (a small, fast
+HTML parser); a new dependency, hence this ADR.
+
+**Consequences.** The worker is authorised only by the `CRON_SECRET` bearer and touches the
+database only through the service-role RPCs (`select_due_refresh_jobs`,
+`record_background_observation`, `record_notification`, `record_refresh_result`). The schedule is
+per-environment config — a worker URL and a secret — so it lives in Supabase Vault plus a
+`cron.schedule` call documented in the RunBook, not in a migration (a URL and a secret do not
+belong in version control). `linkedom`'s fidelity to the extractors' DOM expectations is the local
+host's live check; the orchestration is unit-tested with injected I/O. Enrolling items into
+`refresh_jobs` (`enqueue_refresh_job` from the save path) is a deliberate follow-up.
