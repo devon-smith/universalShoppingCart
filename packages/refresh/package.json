@@ -13,6 +13,9 @@
     "test:watch": "vitest",
     "clean": "rm -rf node_modules .turbo coverage"
   },
+  "dependencies": {
+    "ipaddr.js": "2.2.0"
+  },
   "devDependencies": {
     "@universal-cart/config": "workspace:*",
     "eslint": "9.39.5",
