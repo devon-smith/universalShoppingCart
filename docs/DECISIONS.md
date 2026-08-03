@@ -1053,3 +1053,16 @@ for cross-visit dedup (`normalize-url.ts`, `normalizers/text.ts`), and the hand-
 truth sidecar, because URL normalization is the pipeline's policy, not an adapter-produced fact.
 Reachability on the real pages still wants a live re-run; the offline fixtures prove the selectors
 and the traps, not the client-side rendering.
+
+**Follow-up (2026-08-03, live re-run).** Both adapters landed their price on the real pages, and
+the run caught one regression the fixtures had missed: **Wayfair's image**. `img[data-hb-id=
+"FixedImage"]` is non-unique the same way `PriceDisplay` is — ~62 per page — and the first in
+document order is a 36×36 "Wayfair Verified" trust badge (`default_name.jpg`). A `querySelector`
+returns that badge; it is non-null, so the `?? og:image` fallback never ran and the wrong image
+won silently. `score:live` only checks the image is non-null, so it read green. The fix reads the
+image from `og:image` — Wayfair's declared primary listing image, which is the hero and is what
+the generic pipeline already produces without the adapter — and both fixtures now ship the badge
+ahead of the hero, so a regression to the DOM selector fails. The lesson generalises the price
+trap: **a non-unique selector whose first match is wrong needs a fixture decoy for every field it
+touches, not only the one that first bit.** The image is now the one field this adapter sources
+from a meta tag rather than a DOM hook, because the DOM hook has no unique form.
