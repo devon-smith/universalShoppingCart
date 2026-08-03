@@ -70,6 +70,17 @@ export function AccountMenu({ email, signOut }: { email: string; signOut: () => 
           </p>
 
           <Link
+            href="/app/share"
+            className="uc-focusable rounded-[var(--uc-radius-control)] px-2 py-1.5 text-sm hover:bg-[var(--uc-surface-muted)]"
+            onClick={() => setOpen(false)}
+          >
+            Share a cart
+            <span className="block text-xs text-[var(--uc-foreground-muted)]">
+              Invite someone to see and compare its items
+            </span>
+          </Link>
+
+          <Link
             href="/app/diagnostics"
             className="uc-focusable rounded-[var(--uc-radius-control)] px-2 py-1.5 text-sm hover:bg-[var(--uc-surface-muted)]"
             onClick={() => setOpen(false)}
