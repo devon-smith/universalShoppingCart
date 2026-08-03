@@ -34,6 +34,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      cart_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          cart_id: string
+          created_at: string
+          email: string | null
+          expires_at: string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["cart_role"]
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          cart_id: string
+          created_at?: string
+          email?: string | null
+          expires_at: string
+          id?: string
+          invited_by: string
+          role: Database["public"]["Enums"]["cart_role"]
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          cart_id?: string
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["cart_role"]
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_invitations_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_members: {
         Row: {
           cart_id: string
@@ -320,8 +370,18 @@ export type Database = {
       }
     }
     Functions: {
+      accept_cart_invitation: { Args: { p_token: string }; Returns: Json }
       can_edit_cart: { Args: { p_cart_id: string }; Returns: boolean }
       can_read_cart: { Args: { p_cart_id: string }; Returns: boolean }
+      create_cart_invitation: {
+        Args: {
+          p_cart_id: string
+          p_email?: string
+          p_role: Database["public"]["Enums"]["cart_role"]
+          p_ttl?: string
+        }
+        Returns: Json
+      }
       ingest_product_capture: {
         Args: {
           p_capture: Json
