@@ -16,10 +16,18 @@ import { summarizeComparison, type SummarizeResult } from './summary-action';
 export function ComparisonSummaryPanel({
   itemIds,
   initial = null,
+  configured = true,
 }: {
   itemIds: string[];
   /** A cached summary the server already found, rendered without a request. */
   initial?: SummarizeResult | null;
+  /**
+   * Whether the server has an AI key. Surfaced as `data-ai-configured` so a test reads the
+   * deployment's actual state rather than guessing from its own environment — the two can
+   * disagree (a key in `.env.local` the server loads but the test runner never sees). Defaults
+   * to true so the button never wrongly looks disabled if a caller omits it.
+   */
+  configured?: boolean;
 }) {
   const [result, setResult] = useState<SummarizeResult | null>(initial);
   const [isPending, startTransition] = useTransition();
@@ -37,6 +45,7 @@ export function ComparisonSummaryPanel({
       className="uc-surface uc-surface--raised flex flex-col gap-3 p-4"
       aria-labelledby="ai-summary-heading"
       data-testid="ai-summary"
+      data-ai-configured={configured ? 'true' : 'false'}
     >
       <div className="flex items-center justify-between gap-3">
         <h2 id="ai-summary-heading" className="text-sm font-semibold tracking-tight">
