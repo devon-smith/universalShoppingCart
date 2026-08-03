@@ -185,6 +185,20 @@ The background-refresh worker (Phase 7, `POST /api/refresh`) reads it server-sid
 `createServiceRoleClient`; nothing else does. It must never be given a `NEXT_PUBLIC_` or
 `WXT_PUBLIC_` prefix, which would inline it into a browser bundle.
 
+### The AI provider key
+
+`AI_PROVIDER_API_KEY` powers the Phase 8 comparison summary and lives **only in Vercel**, on
+Production and Preview, marked Sensitive — same discipline as the service-role key: not in the
+repository, not in `.env` beyond its name, never a `NEXT_PUBLIC_`/`WXT_PUBLIC_` prefix (that would
+inline it into a browser bundle, and this is a provider secret, BUILD_PLAN.md §16.2). It is read
+server-side only, through `lib/ai/anthropic.ts` (a `server-only` module), and reached only by the
+`summarizeComparison` Server Action.
+
+Until it is set, the feature is present and inert: the compare view shows an "AI summaries aren't
+enabled" state and never calls the provider. Setting it turns the button live — no migration or
+deploy change is needed, only the Vercel environment variable. The value is a Claude API key from
+the Anthropic Console; the model is pinned to `claude-opus-5` in code.
+
 ### Generated types are built from local, not from staging
 
 `pnpm db:types` regenerates `packages/contracts/src/database.types.ts` from the **local**
