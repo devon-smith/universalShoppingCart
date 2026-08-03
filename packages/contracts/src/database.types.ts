@@ -342,6 +342,50 @@ export type Database = {
         }
         Relationships: []
       }
+      refresh_jobs: {
+        Row: {
+          consecutive_failures: number
+          created_at: string
+          disabled: boolean
+          item_id: string
+          last_ok: boolean | null
+          last_run_at: string | null
+          next_run_at: string
+          strategy: Database["public"]["Enums"]["refresh_strategy"]
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          created_at?: string
+          disabled?: boolean
+          item_id: string
+          last_ok?: boolean | null
+          last_run_at?: string | null
+          next_run_at?: string
+          strategy?: Database["public"]["Enums"]["refresh_strategy"]
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          created_at?: string
+          disabled?: boolean
+          item_id?: string
+          last_ok?: boolean | null
+          last_run_at?: string | null
+          next_run_at?: string
+          strategy?: Database["public"]["Enums"]["refresh_strategy"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refresh_jobs_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       item_price_summary: {
@@ -382,6 +426,13 @@ export type Database = {
         }
         Returns: Json
       }
+      enqueue_refresh_job: {
+        Args: {
+          p_item_id: string
+          p_strategy?: Database["public"]["Enums"]["refresh_strategy"]
+        }
+        Returns: Json
+      }
       ingest_product_capture: {
         Args: {
           p_capture: Json
@@ -408,6 +459,13 @@ export type Database = {
         }
         Returns: Json
       }
+      record_refresh_result: {
+        Args: { p_item_id: string; p_ok: boolean }
+        Returns: Json
+      }
+      refresh_base_interval: { Args: never; Returns: string }
+      refresh_max_failures: { Args: never; Returns: number }
+      select_due_refresh_jobs: { Args: { p_limit?: number }; Returns: Json }
     }
     Enums: {
       cart_role: "owner" | "editor" | "viewer"
@@ -420,6 +478,7 @@ export type Database = {
       item_priority: "low" | "normal" | "high"
       item_status: "saved" | "cart" | "purchased" | "archived"
       observation_source: "capture" | "revisit" | "manual" | "background"
+      refresh_strategy: "public_fetch" | "api" | "browser_required" | "disabled"
     }
     CompositeTypes: {
       [_ in never]: never
