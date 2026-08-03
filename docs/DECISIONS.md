@@ -1021,3 +1021,35 @@ CHECK constraint, the create RPC, and the Zod contract), because ownership is `c
 and immutable. Email-bound acceptance and a `security_events` audit table (§17.5) are recorded as
 deferred, not built — the audit table waits for a second reason to exist rather than being added
 speculatively here.
+
+## 2026-08-03 — Wayfair and Amazon get brand adapters, and win their price back
+
+**Decision.** Add `wayfair` and `amazon` as brand adapters (priority 96, beside `stockx`), each
+scoped to its US `.com` storefront. Both retailers were the standing "extracts no price at all"
+blockers (docs/STATUS.md): they publish **no Product JSON-LD**, so the structured-data tier has
+nothing to read, and the generic DOM heuristics do not recognise their markup.
+
+**Context.** The live-capture pass left Amazon and Wayfair missing a price, and the D1 re-run
+confirmed the Wayfair cue-gated former-price fix was correct but unreachable — no tier handed it
+a current price. A brand adapter is the sanctioned answer (§10.6, §10.7) when a site runs its own
+front end with stable hooks, and the local host's fixtures pinned the two traps that make a naive
+adapter wrong:
+
+- **Wayfair's `[data-test-id="PriceDisplay"]` is not unique** — ~36 per page, most sponsored. The
+  adapter scopes every read to `[data-node-id^="ListingPricing::"]` (1 per listing) and reads
+  SALE/PRIMARY/PREVIOUS inside it; a sponsored decoy at $940/$1,610 in the fixture fails any
+  regression to the broad selector.
+- **Amazon's price is the selected swatch's**, not the first — every price lives in the colour
+  twister and the buy box is empty. The adapter reads `.a-button-selected`, corroborated by a
+  core-price widget whose `data-csa-c-asin` matches the URL's `/dp/` child ASIN, and keeps that
+  child ASIN as `productId` so the parent canonical cannot collapse colours into one item.
+
+**Consequences.** Each adapter asserts **USD** on its US storefront — a bare `$` is ambiguous and
+`normalizePrice` rightly refuses to resolve it, but the adapter knows the retailer — and both
+decline non-`.com` TLDs rather than mis-price them. The committed fixture captures carry the
+pipeline's `www`-stripped `domain`/`canonicalUrl`: `www.` stripping is established normalization
+for cross-visit dedup (`normalize-url.ts`, `normalizers/text.ts`), and the hand-written truth's
+`www.` prefix was corrected to match it — the one place the pipeline is authoritative over the
+truth sidecar, because URL normalization is the pipeline's policy, not an adapter-produced fact.
+Reachability on the real pages still wants a live re-run; the offline fixtures prove the selectors
+and the traps, not the client-side rendering.

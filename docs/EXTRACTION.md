@@ -12,7 +12,7 @@ APIs, no network, no `eval`.
 ```text
 ExtractionContext { document, url }
         │
-        ├── retailer adapters   priority 91–95
+        ├── retailer adapters   priority 91–96
         ├── JSON-LD             priority 70
         ├── Open Graph / meta   priority 50
         └── generic DOM         priority 10
@@ -91,9 +91,9 @@ variant switch updates the DOM before the URL.
 
 ### Retailer adapters (`adapters/`)
 
-Adapters target commerce **platforms**, not brands. A platform's markup is the same across
-every storefront running it, so one adapter covers thousands of shops and can be written
-and regression-tested without ever fetching a live retailer page.
+Adapters mostly target commerce **platforms**, not brands: a platform's markup is the same
+across every storefront running it, so one adapter covers thousands of shops and can be
+written and regression-tested without ever fetching a live retailer page.
 
 | Adapter                     | Priority | Detected by                                               | What it adds over generic extraction                                         |
 | --------------------------- | -------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -102,6 +102,18 @@ and regression-tested without ever fetching a live retailer page.
 | `magento`                   | 93       | `body.catalog-product-view`, `[data-price-amount]`        | The unformatted price, and stock read from the class rather than the words   |
 | `bigcommerce`               | 92       | Stencil `data-product-*` attributes                       | Swatch and dropdown selections, and a disabled add-to-cart as a stock signal |
 | `salesforce-commerce-cloud` | 91       | `.product-detail[data-pid]`, `/on/demandware.*/` paths    | The `content` attribute price, and `data-pid` as the variant identifier      |
+
+Three **brand** adapters are the deliberate exceptions (priority 96). Each clears the same
+bar: the site runs its own front end where hashed classes give generic selectors nothing to
+match, it publishes **no Product structured data**, and without the adapter the page yields no
+price at all. Each exposes stable `data-test-id` / `id` hooks that are load-bearing for its own
+engineers — a better stability bet than the classes beside them.
+
+| Adapter   | Detected by                                         | What it adds over generic extraction                                                                                         |
+| --------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `stockx`  | `stockx.com`, `data-testid="pdp-hero"`              | Buy Now for the selected size, and the retail price as the former price                                                      |
+| `wayfair` | `wayfair.com`, `[data-node-id^="ListingPricing::"]` | The sale/primary price scoped inside the per-listing node, past sponsored decoys with identical markup                       |
+| `amazon`  | `amazon.com`, `#productTitle`                       | The selected colour swatch's price (ASIN-corroborated), the child ASIN kept so the parent canonical cannot collapse variants |
 
 Rules every adapter follows:
 

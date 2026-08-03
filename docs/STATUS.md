@@ -342,6 +342,18 @@ table, both deferred) are in DECISIONS.md, 2026-08-03.
 **Complete.** Five platform adapters, a versioned registry, ten sanitized fixtures, and an
 extractor-health page.
 
+**Brand adapters (M2, 2026-08-03): `wayfair` and `amazon`** join `stockx`, closing the two
+standing "extracts no price at all" blockers — both retailers publish no Product JSON-LD and
+carry markup the generic tier does not read. Wayfair scopes every price to
+`[data-node-id^="ListingPricing::"]` past ~36 mostly-sponsored `PriceDisplay` matches; Amazon
+reads the `.a-button-selected` swatch's price, ASIN-corroborated, keeping the child ASIN so the
+parent canonical cannot collapse colours. Four sanitized fixtures each ship a live decoy (the
+sponsored $940/$1,610 tile; the unselected $71.20/$63.40 swatches and sponsored $96.16/$110)
+that fails any regression to a naive selector. Extractors 373 → 407. With a current price now
+extracted, the cue-gated former-price fix reaches Wayfair's struck $875 end to end. The offline
+fixtures prove the selectors and traps; a live re-run still owes the client-side-rendering
+confirmation (DECISIONS.md, 2026-08-03).
+
 ### What works
 
 - **Adapters target platforms, not brands** — Shopify, WooCommerce, Magento/Adobe
