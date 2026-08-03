@@ -158,6 +158,12 @@ select is(
   'last_observed_at moves to the observation time'
 );
 
+select is(
+  (select extractor_id from public.items where id = pg_temp.item_id()),
+  'refresh',
+  'the observing extractor is recorded on the item'
+);
+
 -- ---------------------------------------------------------------------------
 -- Unchanged re-observations do not become history
 -- ---------------------------------------------------------------------------
