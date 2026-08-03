@@ -23,9 +23,11 @@
     "supabase:status": "node scripts/supabase.mjs status",
     "test:db": "node scripts/supabase.mjs test db",
     "db:types": "node scripts/generate-db-types.mjs",
-    "score:live": "tsx scripts/score-live.mjs"
+    "score:live": "tsx scripts/score-live.mjs",
+    "screenshots:baseline": "node scripts/with-supabase-env.mjs npx tsx scripts/screenshots.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.0",
     "@universal-cart/config": "workspace:*",
     "@universal-cart/extractors": "workspace:*",
     "jsdom": "29.1.1",

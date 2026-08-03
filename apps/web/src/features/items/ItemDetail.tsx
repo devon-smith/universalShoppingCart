@@ -1,17 +1,22 @@
 'use client';
 
+import { Button, Callout, ProductImage } from '@universal-cart/ui';
 import { useEffect, useRef, useState } from 'react';
 
+import { useDismissable, useFocusTrap } from '@/features/shell/useDismissable';
 import { getBrowserSupabase } from '@/lib/supabase/browser';
 
+import { availabilitySplit } from './availability';
 import type { ItemEdit } from './edits';
 import { parseItemEditForm } from './edits';
-import { availabilityLabel, discountPercent, formatMoney, relativeTime } from './format';
+import { decimalForInput, relativeTime } from './format';
 import { freshness } from './freshness';
-import { STATUS_LABELS } from './ItemCard';
-import type { Observation } from './PriceHistory';
+import type { Observation } from './history';
+import { summarizeHistory } from './history';
+import { ItemPrice, ItemSource, STATUS_LABELS } from './ItemFacts';
 import { PriceHistory } from './PriceHistory';
 import type { SavedItem } from './query';
+import { TargetPrice } from './TargetPrice';
 
 export interface ItemDetailProps {
   item: SavedItem;
@@ -23,29 +28,41 @@ export interface ItemDetailProps {
 /**
  * The item detail drawer.
  *
- * Editable fields are exactly the user-authored ones. Everything the retailer said is
- * shown read-only, with its provenance — this is where a user finds out *why* a price
- * looks wrong, rather than being tempted to "fix" it and lose the observation.
+ * A panel from the right on a wide screen, a full-height sheet on a narrow one — the same
+ * content either way, because everything in here is a single column already.
+ *
+ * The **"What the retailer says" / "Yours"** split is the central idea of the product and the
+ * only place it is stated outright: a retailer refresh must never overwrite a note or a target
+ * (BUILD_PLAN.md §13.2). The redesign makes it louder rather than quieter — two headed
+ * sections with different surfaces, each saying in a sentence what it is and why it behaves
+ * the way it does.
  */
 export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [imageUsable, setImageUsable] = useState(true);
   // Keyed by item id so switching items shows "loading" rather than the previous item's
   // history, without an effect that resets state on the way in.
   const [history, setHistory] = useState<{ itemId: string; observations: Observation[] } | null>(
     null,
   );
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  // Set only by a click, so the effect below moves focus when the user asked a question or
+  // withdrew it — never on the drawer's first render, where it would jump straight to the
+  // destructive corner of a panel someone opened to read a price.
+  const deletePrompted = useRef(false);
+
+  useDismissable(true, panel, onClose);
+  useFocusTrap(true, panel);
 
   useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKey);
-    dialogRef.current?.focus();
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+    if (!deletePrompted.current) return;
+    deletePrompted.current = false;
+    (confirmingDelete ? confirmButton : deleteButton).current?.focus();
+  }, [confirmingDelete]);
 
   useEffect(() => {
     let active = true;
@@ -70,104 +87,127 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
 
   const loadingHistory = history?.itemId !== item.id;
   const observations = loadingHistory ? null : (history?.observations ?? null);
+  const summary = summarizeHistory(observations ?? []);
 
-  const price = formatMoney(item.current_price, item.currency);
-  const original = formatMoney(item.original_price, item.currency);
-  const discount = discountPercent(item.current_price, item.original_price);
   const variant = Object.entries(item.selected_variant ?? {});
   const identifiers = Object.entries(item.identifiers ?? {});
+  const age = freshness(item.last_observed_at);
+  const stale = age.level === 'stale' || age.level === 'never';
+  const availability = availabilitySplit(item.availability, item.product_availability);
+  const image = imageUsable ? item.image_url : null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/30"
+      className="fixed inset-0 z-50 flex justify-end bg-black/40"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
-        ref={dialogRef}
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={`Details for ${item.title}`}
-        tabIndex={-1}
-        className="flex h-full w-full max-w-md flex-col gap-5 overflow-y-auto bg-[var(--color-surface)] p-6 shadow-xl outline-none dark:bg-[#0d1015]"
+        className="flex h-full w-full flex-col gap-5 overflow-y-auto bg-[var(--uc-background)] p-5 shadow-[var(--uc-shadow-overlay)] outline-none sm:max-w-lg sm:p-6"
       >
         <header className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold">{item.title}</h2>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <ItemSource item={item} />
+            <h2 className="text-lg font-semibold tracking-tight">{item.title}</h2>
+          </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close details"
-            className="rounded-md border border-[var(--color-line)] px-2 py-1 text-xs hover:bg-[var(--color-surface-muted)]"
+            className="uc-icon-button uc-focusable shrink-0"
           >
-            Close
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
+              <path d="M6 6l12 12M18 6L6 18" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
           </button>
         </header>
 
-        <section aria-labelledby="observed-heading" className="flex flex-col gap-2">
-          <h3 id="observed-heading" className="text-xs font-semibold uppercase tracking-wide">
-            What the retailer says
-          </h3>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-[var(--color-ink-muted)]">Price</dt>
+        {image ? (
+          <ProductImage
+            src={image}
+            alt={item.title}
+            className="w-full"
+            onUnavailable={() => setImageUsable(false)}
+          />
+        ) : null}
+
+        {/* ---------------- What the retailer says ---------------- */}
+        <section
+          aria-labelledby="observed-heading"
+          className="uc-surface uc-surface--raised flex flex-col gap-3 p-4"
+        >
+          <div className="flex flex-col gap-1">
+            <h3
+              id="observed-heading"
+              className="text-[0.6875rem] font-semibold tracking-[0.06em] uppercase"
+            >
+              What the retailer says
+            </h3>
+            <p className="text-xs text-[var(--uc-foreground-muted)]">
+              Observed from the page. Not editable here — a correction would erase what was actually
+              seen, and a refresh would overwrite it again anyway.
+            </p>
+          </div>
+
+          <ItemPrice item={item} size="lg" />
+
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+            <dt className="text-[var(--uc-foreground-muted)]">Availability</dt>
             <dd>
-              {price ?? 'Unknown'}
-              {original && discount !== null ? ` (was ${original}, −${discount}%)` : ''}
+              {availability.variant}
+              {availability.product ? (
+                <span className="text-[var(--uc-foreground-muted)]">
+                  {' '}
+                  (product: {availability.product})
+                </span>
+              ) : null}
             </dd>
-
-            <dt className="text-[var(--color-ink-muted)]">Availability</dt>
-            <dd>{availabilityLabel(item.availability)}</dd>
-
-            <dt className="text-[var(--color-ink-muted)]">Retailer</dt>
-            <dd>{item.retailer_name}</dd>
-
-            {item.brand ? (
-              <>
-                <dt className="text-[var(--color-ink-muted)]">Brand</dt>
-                <dd>{item.brand}</dd>
-              </>
-            ) : null}
 
             {variant.length > 0 ? (
               <>
-                <dt className="text-[var(--color-ink-muted)]">Variant</dt>
+                <dt className="text-[var(--uc-foreground-muted)]">Variant</dt>
                 <dd>{variant.map(([name, value]) => `${name}: ${value}`).join(' · ')}</dd>
               </>
             ) : null}
 
-            <dt className="text-[var(--color-ink-muted)]">Last checked</dt>
-            <dd data-testid="detail-freshness" data-level={freshness(item.last_observed_at).level}>
+            <dt className="text-[var(--uc-foreground-muted)]">Last observed</dt>
+            <dd data-testid="detail-freshness" data-level={age.level}>
               {relativeTime(item.last_observed_at)}
             </dd>
           </dl>
 
-          {freshness(item.last_observed_at).level === 'stale' ||
-          freshness(item.last_observed_at).level === 'never' ? (
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-              {freshness(item.last_observed_at).label}. Open the page with the extension side panel
-              to re-check it.
-            </p>
+          {/* Only when the page made two different claims — which is the only time the column
+              is non-null, so this cannot fire on agreement. */}
+          {availability.sentence ? (
+            <Callout tone="warning" announce={false}>
+              {availability.sentence}
+            </Callout>
           ) : null}
 
-          <p className="text-xs text-[var(--color-ink-muted)]">
-            These come from the page and are refreshed when you capture it again. They cannot be
-            edited here — a correction would erase what was actually observed.
-          </p>
+          {stale ? (
+            <Callout tone="warning" announce={false}>
+              {age.label}. Open the page with the extension side panel to re-check it.
+            </Callout>
+          ) : null}
 
-          <div className="flex flex-wrap gap-2 text-xs">
-            <a
-              href={item.source_url}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-md border border-[var(--color-line)] px-2.5 py-1 hover:bg-[var(--color-surface-muted)]"
-            >
-              Open at retailer
-            </a>
-          </div>
+          <a
+            href={item.source_url}
+            target="_blank"
+            rel="noreferrer"
+            className="uc-button uc-button--secondary uc-focusable self-start"
+          >
+            Open at {item.retailer_name}
+          </a>
         </section>
 
+        {/* ---------------- Yours ---------------- */}
         <form
-          className="flex flex-col gap-3"
+          className="uc-surface uc-surface--raised flex flex-col gap-3 p-4"
           onSubmit={(event) => {
             event.preventDefault();
             const parsed = parseItemEditForm(new FormData(event.currentTarget));
@@ -182,149 +222,233 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
             void onSave(item, parsed.edit).finally(() => setSaving(false));
           }}
         >
-          <h3 className="text-xs font-semibold tracking-wide uppercase">Yours</h3>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-[0.6875rem] font-semibold tracking-[0.06em] uppercase">Yours</h3>
+            <p className="text-xs text-[var(--uc-foreground-muted)]">
+              Yours alone. A price refresh never touches any of these.
+            </p>
+          </div>
 
-          <label className="flex flex-col gap-1 text-sm" htmlFor="detail-status">
-            Status
-            <select
-              id="detail-status"
-              name="status"
-              defaultValue={item.status}
-              className="rounded-md border border-[var(--color-line)] px-3 py-2 text-sm"
-            >
-              {(Object.keys(STATUS_LABELS) as Array<keyof typeof STATUS_LABELS>).map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <TargetPrice item={item} summary={summary} />
 
-          <label className="flex flex-col gap-1 text-sm" htmlFor="detail-quantity">
-            Quantity
-            <input
-              id="detail-quantity"
-              name="quantity"
-              inputMode="numeric"
-              defaultValue={item.quantity}
-              className="rounded-md border border-[var(--color-line)] px-3 py-2 text-sm"
-            />
-            {errors.quantity ? (
-              <span role="alert" className="text-xs text-red-700 dark:text-red-300">
-                {errors.quantity}
-              </span>
-            ) : null}
-          </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="uc-field">
+              <label className="uc-field__label" htmlFor="detail-status">
+                Status
+              </label>
+              <select
+                id="detail-status"
+                name="status"
+                defaultValue={item.status}
+                className="uc-input uc-focusable"
+              >
+                {(Object.keys(STATUS_LABELS) as Array<keyof typeof STATUS_LABELS>).map((status) => (
+                  <option key={status} value={status}>
+                    {STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <label className="flex flex-col gap-1 text-sm" htmlFor="detail-priority">
-            Priority
-            <select
-              id="detail-priority"
-              name="priority"
-              defaultValue={item.priority}
-              className="rounded-md border border-[var(--color-line)] px-3 py-2 text-sm"
-            >
-              <option value="low">Low</option>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-            </select>
-          </label>
+            <div className="uc-field">
+              <label className="uc-field__label" htmlFor="detail-priority">
+                Priority
+              </label>
+              <select
+                id="detail-priority"
+                name="priority"
+                defaultValue={item.priority}
+                className="uc-input uc-focusable"
+              >
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+              </select>
+            </div>
 
-          <label className="flex flex-col gap-1 text-sm" htmlFor="detail-desired">
-            Desired price
-            <input
-              id="detail-desired"
-              name="desiredPrice"
-              inputMode="decimal"
-              placeholder="79.99"
-              defaultValue={item.desired_price === null ? '' : String(item.desired_price)}
-              className="rounded-md border border-[var(--color-line)] px-3 py-2 text-sm"
-            />
-            {errors.desiredPrice ? (
-              <span role="alert" className="text-xs text-red-700 dark:text-red-300">
-                {errors.desiredPrice}
-              </span>
-            ) : null}
-          </label>
+            <div className="uc-field">
+              <label className="uc-field__label" htmlFor="detail-quantity">
+                Quantity
+              </label>
+              <input
+                id="detail-quantity"
+                name="quantity"
+                inputMode="numeric"
+                defaultValue={item.quantity}
+                aria-invalid={errors.quantity ? true : undefined}
+                className="uc-input uc-focusable"
+              />
+              {errors.quantity ? (
+                <span role="alert" className="uc-field__message uc-field__message--error">
+                  {errors.quantity}
+                </span>
+              ) : null}
+            </div>
 
-          <label className="flex flex-col gap-1 text-sm" htmlFor="detail-note">
-            Note
+            <div className="uc-field">
+              <label className="uc-field__label" htmlFor="detail-desired">
+                Desired price
+              </label>
+              <input
+                id="detail-desired"
+                name="desiredPrice"
+                inputMode="decimal"
+                placeholder="79.99"
+                defaultValue={decimalForInput(item.desired_price)}
+                aria-invalid={errors.desiredPrice ? true : undefined}
+                className="uc-input uc-focusable"
+              />
+              {errors.desiredPrice ? (
+                <span role="alert" className="uc-field__message uc-field__message--error">
+                  {errors.desiredPrice}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="uc-field">
+            <label className="uc-field__label" htmlFor="detail-note">
+              Note
+            </label>
             <textarea
               id="detail-note"
               name="note"
               rows={3}
               defaultValue={item.note ?? ''}
-              className="rounded-md border border-[var(--color-line)] px-3 py-2 text-sm"
+              className="uc-input uc-focusable"
             />
             {errors.note ? (
-              <span role="alert" className="text-xs text-red-700 dark:text-red-300">
+              <span role="alert" className="uc-field__message uc-field__message--error">
                 {errors.note}
               </span>
             ) : null}
-          </label>
+          </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
+          <Button type="submit" tone="primary" disabled={saving} className="self-start">
             {saving ? 'Saving…' : 'Save changes'}
-          </button>
+          </Button>
         </form>
 
+        {/* ---------------- Price history ---------------- */}
         <section aria-labelledby="history-heading" className="flex flex-col gap-2">
-          <h3 id="history-heading" className="text-xs font-semibold tracking-wide uppercase">
+          <h3
+            id="history-heading"
+            className="text-[0.6875rem] font-semibold tracking-[0.06em] uppercase"
+          >
             Price history
           </h3>
-          <PriceHistory observations={observations} loading={loadingHistory} />
+          <PriceHistory
+            observations={observations}
+            loading={loadingHistory}
+            currency={item.currency}
+          />
         </section>
 
-        <section aria-labelledby="diagnostics-heading" className="flex flex-col gap-1">
-          <h3
-            id="diagnostics-heading"
-            className="text-xs font-semibold tracking-wide uppercase text-[var(--color-ink-muted)]"
-          >
-            Diagnostics
-          </h3>
-          <p className="text-xs text-[var(--color-ink-muted)]">
-            {identifiers.length > 0
-              ? identifiers.map(([kind, value]) => `${kind}: ${value}`).join(' · ')
-              : 'No product identifiers were found on the page.'}
+        {/* ---------------- Diagnostics ---------------- */}
+        <details className="text-sm">
+          <summary className="uc-focusable w-fit cursor-pointer rounded-[var(--uc-radius-control)] text-[var(--uc-primary)]">
+            Where this came from
+          </summary>
+
+          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
+            {/*
+              Both URLs, labelled as what they are. The canonical one is the address the
+              fingerprint is built from, and seeing it beside the source is the only way a
+              tester can tell that a variant parameter survived canonicalisation — or was
+              dropped. Lululemon's product id is a whole URL carrying `?color=76616`; whether
+              that colour survives is exactly the `canonical` failure code in LIVE_TESTING.md,
+              and it was unobservable while this row did not exist.
+            */}
+            <dt className="text-[var(--uc-foreground-muted)]">Page you saved from</dt>
+            <dd className="break-all">{item.source_url}</dd>
+
+            <dt className="text-[var(--uc-foreground-muted)]">Canonical address</dt>
+            <dd className="break-all">
+              {item.canonical_url ?? (
+                <span className="text-[var(--uc-foreground-muted)]">
+                  The page did not declare one
+                </span>
+              )}
+            </dd>
+
+            <dt className="text-[var(--uc-foreground-muted)]">Product codes</dt>
+            <dd className="break-all">
+              {identifiers.length > 0
+                ? identifiers.map(([kind, value]) => `${kind}: ${value}`).join(' · ')
+                : 'None published on the page'}
+            </dd>
+          </dl>
+
+          <p className="mt-2 text-xs text-[var(--uc-foreground-muted)]">
+            Universal Cart matches a product by its canonical address and the options you picked. If
+            the same item saves twice, these are the values to compare.
           </p>
-        </section>
+        </details>
 
-        <section className="mt-auto flex flex-col gap-2 border-t border-[var(--color-line)] pt-4">
+        {/* ---------------- Destructive ---------------- */}
+        <section
+          aria-labelledby="danger-heading"
+          className="mt-auto flex flex-col gap-2 rounded-[var(--uc-radius-surface)] border border-[var(--uc-danger)] p-4"
+        >
+          <h3
+            id="danger-heading"
+            className="text-[0.6875rem] font-semibold tracking-[0.06em] text-[var(--uc-danger)] uppercase"
+          >
+            Permanent
+          </h3>
+
           {confirmingDelete ? (
             <>
-              <p className="text-sm">
+              <p id="delete-question" className="text-sm">
                 Delete this item and its price history permanently? Archiving keeps both and can be
                 undone.
               </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="rounded-md border border-red-400 px-3 py-1.5 text-sm text-red-700 dark:text-red-300"
+              <div className="flex flex-wrap gap-2">
+                {/*
+                  Focus follows the decision. Confirming replaces the button that was just
+                  pressed, and a replaced button takes the keyboard with it — so without this
+                  the drawer answers a destructive prompt by dropping focus onto <body>.
+
+                  It lands on the confirm button, described by the question, so a screen
+                  reader reads the whole prompt rather than two orphaned words. A stray Enter
+                  cannot carry over: activation needs keydown and keyup on the same element,
+                  and the keydown happened on a button that no longer exists.
+                */}
+                <Button
+                  tone="danger"
+                  ref={confirmButton}
+                  aria-describedby="delete-question"
                   onClick={() => void onDelete(item)}
                 >
                   Yes, delete it
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm"
-                  onClick={() => setConfirmingDelete(false)}
+                </Button>
+                <Button
+                  onClick={() => {
+                    deletePrompted.current = true;
+                    setConfirmingDelete(false);
+                  }}
                 >
                   Keep it
-                </button>
+                </Button>
               </div>
             </>
           ) : (
-            <button
-              type="button"
-              className="self-start text-xs text-[var(--color-ink-muted)] underline"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              Delete permanently
-            </button>
+            <>
+              <p className="text-xs text-[var(--uc-foreground-muted)]">
+                Deleting removes the item and every observation recorded for it. There is no undo.
+              </p>
+              <Button
+                tone="ghost"
+                ref={deleteButton}
+                className="self-start"
+                onClick={() => {
+                  deletePrompted.current = true;
+                  setConfirmingDelete(true);
+                }}
+              >
+                Delete permanently
+              </Button>
+            </>
           )}
         </section>
       </div>

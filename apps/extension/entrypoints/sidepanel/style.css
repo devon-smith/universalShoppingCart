@@ -1,19 +1,26 @@
-:root {
-  color-scheme: light dark;
-  --panel-ink: #10141a;
-  --panel-ink-muted: #5b6472;
-  --panel-line: #e3e6ec;
-  --panel-surface: #ffffff;
-  --panel-accent: #2f6df6;
-}
+/**
+ * Side panel shell.
+ *
+ * The colours, radii, spacing and motion now come from `@universal-cart/ui`, the same set the
+ * dashboard uses, so the two clients are one design at two sizes rather than two designs that
+ * happen to look similar. Both stylesheets are bundled — the extension makes no remote
+ * requests of any kind, fonts included (BUILD_PLAN.md §17.4).
+ *
+ * The `--panel-*` names below are kept as aliases onto the semantic tokens. Every existing
+ * rule in this file keeps working while its colours come from the new system, which is what
+ * makes this a token migration that can be reviewed on its own rather than a rewrite of the
+ * panel's layout. The panel's own components move in phases 2 to 4, and the aliases go with
+ * the last of them.
+ */
+@import '@universal-cart/ui/tokens.css';
+@import '@universal-cart/ui/components.css';
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --panel-ink: #eef1f6;
-    --panel-ink-muted: #9aa4b4;
-    --panel-line: #2a303a;
-    --panel-surface: #0d1015;
-  }
+:root {
+  --panel-ink: var(--uc-foreground);
+  --panel-ink-muted: var(--uc-foreground-muted);
+  --panel-line: var(--uc-border);
+  --panel-surface: var(--uc-surface);
+  --panel-accent: var(--uc-primary);
 }
 
 * {
@@ -22,13 +29,9 @@
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
-  background: var(--panel-surface);
-  color: var(--panel-ink);
+  font-family: var(--uc-font-sans);
+  background: var(--uc-background);
+  color: var(--uc-foreground);
 }
 
 .panel {
@@ -231,4 +234,906 @@ body {
     background: #241f10;
     color: #edd9a3;
   }
+}
+
+/* ==========================================================================================
+   Phase 2A — the capture moment.
+   Everything below is on the shared tokens. The `--panel-*` aliases above still serve the
+   older sections (sign-in, recent list, account), which move in 2B and 2C.
+   ========================================================================================== */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--uc-space-2);
+  /* The panel's one horizontal rhythm. Every section below uses the same figure, so nothing
+     steps in or out as the user scrolls. */
+  padding: var(--uc-space-2) var(--uc-space-3);
+  border-bottom: 1px solid var(--uc-border);
+  background: var(--uc-surface);
+  min-width: 0;
+}
+
+.panel-header__wordmark {
+  font-size: 0.9375rem;
+  color: var(--uc-foreground);
+  white-space: nowrap;
+}
+
+.panel-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--uc-space-1);
+  min-width: 0;
+}
+
+.panel-header__cart {
+  /* Shrinks before the icons do: at 320px a long cart name must not push them off the edge. */
+  min-width: 0;
+  max-width: 11ch;
+  padding: 2px var(--uc-space-1);
+  border: 1px solid var(--uc-border-strong);
+  border-radius: var(--uc-radius-control);
+  background: var(--uc-surface);
+  color: var(--uc-foreground);
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.panel-header__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+/* ---------- the capture section ---------- */
+
+.capture {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  padding: var(--uc-space-3);
+  min-width: 0;
+}
+
+.capture__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--uc-foreground);
+}
+
+.capture__lede {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--uc-foreground-muted);
+}
+
+.capture__idle,
+.capture__blocked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+/* The primary action dominates: full width, taller than a default control, and the only
+   filled thing on the screen. */
+.capture__action {
+  min-height: 44px;
+  margin-top: var(--uc-space-1);
+  font-size: 0.9375rem;
+}
+
+.capture__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--uc-foreground-muted);
+}
+
+.capture__kbd {
+  padding: 1px var(--uc-space-1);
+  border: 1px solid var(--uc-border);
+  border-radius: 5px;
+  background: var(--uc-surface-muted);
+  font-family: var(--uc-font-mono);
+  font-size: 0.6875rem;
+}
+
+.capture__reading {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--uc-foreground-muted);
+}
+
+.capture__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+}
+
+.capture__loading-row {
+  display: flex;
+  gap: var(--uc-space-2);
+}
+
+/* ---------- the preview ---------- */
+
+.capture__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.capture__image {
+  /* Bounded so a tall product photograph cannot push the price below the fold at 320px, which
+     would defeat the whole point of the reordering. */
+  max-height: 180px;
+  aspect-ratio: 4 / 3;
+}
+
+.capture__retailer {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.capture__product-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--uc-foreground);
+  min-width: 0;
+  /* Retailer titles are long and arbitrary. Wrapping is correct; truncating hides the words
+     that distinguish two variants of the same garment. */
+  overflow-wrap: anywhere;
+}
+
+/* With no photograph the title and price take the space the image would have had, rather than
+   sitting under an empty box. */
+.capture__form--no-image .capture__product-title {
+  font-size: 1.1875rem;
+}
+
+.capture__form--no-image .capture__retailer {
+  margin-top: var(--uc-space-1);
+}
+
+.capture__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.capture__row .uc-icon-button {
+  flex: none;
+}
+
+.capture__price-edit {
+  display: flex;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.capture__price-edit .uc-field:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.capture__currency {
+  width: 5.5rem;
+  flex: none;
+}
+
+.capture__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--uc-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capture__destination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--uc-space-1);
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--uc-foreground-muted);
+}
+
+.capture__destination strong {
+  color: var(--uc-foreground);
+  font-weight: 600;
+}
+
+.capture__change {
+  padding: 2px var(--uc-space-1);
+  border: 0;
+  border-radius: var(--uc-radius-control);
+  background: none;
+  color: var(--uc-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.capture__details {
+  border-top: 1px solid var(--uc-border);
+  padding-top: var(--uc-space-2);
+}
+
+.capture__summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  color: var(--uc-primary);
+  border-radius: var(--uc-radius-control);
+  list-style: none;
+}
+
+.capture__summary::-webkit-details-marker {
+  display: none;
+}
+
+.capture__summary::before {
+  content: '+ ';
+}
+
+.capture__details[open] .capture__summary::before {
+  content: '– ';
+}
+
+.capture__details-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  padding-top: var(--uc-space-2);
+}
+
+/* ==========================================================================================
+   Phase 2B — the moments after capture.
+   ========================================================================================== */
+
+.saved-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.saved-state__headline {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--uc-space-1);
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--uc-foreground);
+}
+
+.saved-state__tick {
+  color: var(--uc-success);
+  font-weight: 700;
+}
+
+.saved-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+/* Each action takes an equal share and wraps rather than clipping — at 320px two labels of
+   different lengths must not push the second one off the edge. */
+.saved-state__actions > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.saved-state__view {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.saved-state__move {
+  display: flex;
+  min-width: 0;
+}
+
+/* ---------- the product summary, shared by both states ---------- */
+
+.item-summary {
+  display: flex;
+  gap: var(--uc-space-2);
+  padding: var(--uc-space-2);
+  border-radius: var(--uc-radius-surface);
+  background: var(--uc-surface);
+  box-shadow: var(--uc-shadow-raised);
+  min-width: 0;
+}
+
+.item-summary__image {
+  width: 72px;
+  flex: none;
+}
+
+/* No photograph: the text takes the whole width rather than sitting beside a hole. */
+.item-summary--no-image .item-summary__body {
+  width: 100%;
+}
+
+.item-summary__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  min-width: 0;
+}
+
+.item-summary__retailer {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.item-summary__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--uc-foreground);
+  overflow-wrap: anywhere;
+}
+
+.item-summary__movement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--uc-space-1);
+  margin: 0;
+}
+
+.item-summary__since {
+  font-size: 0.75rem;
+  color: var(--uc-foreground-muted);
+}
+
+.item-summary__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--uc-space-1);
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--uc-foreground-muted);
+}
+
+.item-summary__meta > span + span::before {
+  content: '· ';
+}
+
+/* ---------- recent items ---------- */
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  padding: var(--uc-space-3);
+  border-top: 1px solid var(--uc-border);
+  min-width: 0;
+}
+
+.recent__heading {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.recent__note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--uc-foreground-muted);
+}
+
+.recent__note--error {
+  color: var(--uc-danger);
+}
+
+.recent__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent__link {
+  display: flex;
+  gap: var(--uc-space-2);
+  padding: var(--uc-space-1);
+  border-radius: var(--uc-radius-control);
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.recent__link:hover {
+  background: var(--uc-surface-muted);
+}
+
+.recent__thumb {
+  width: 40px;
+  flex: none;
+}
+
+.recent__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.recent__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--uc-foreground);
+  /* Two lines at most: a long retailer title must not push the price out of the row. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recent__retailer {
+  font-size: 0.6875rem;
+  color: var(--uc-foreground-muted);
+}
+
+.recent__figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--uc-space-1);
+  min-width: 0;
+}
+
+.recent__meta {
+  font-size: 0.6875rem;
+  color: var(--uc-foreground-muted);
+}
+
+.recent__all {
+  align-self: flex-start;
+  padding: 2px var(--uc-space-1);
+  border-radius: var(--uc-radius-control);
+  color: var(--uc-primary);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+/* ==========================================================================================
+   Phase 2C — authentication, settings and privacy.
+   The last of the panel's own surfaces to move onto the shared tokens; the `--panel-*`
+   aliases above now serve nothing but the not-configured notice.
+   ========================================================================================== */
+
+/* ---------- sign-in, as onboarding ---------- */
+
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-4);
+  padding: var(--uc-space-3);
+  min-width: 0;
+}
+
+.onboarding__pitch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.onboarding__promise {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--uc-foreground);
+  /* Balanced wrapping keeps a three-word orphan off the last line at 320px. */
+  text-wrap: balance;
+}
+
+.onboarding__benefits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding__benefit {
+  position: relative;
+  padding-left: var(--uc-space-4);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--uc-foreground-muted);
+}
+
+/* A tick drawn from a border pair: no icon font, no remote request, and it inherits colour. */
+.onboarding__benefit::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--uc-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.onboarding__auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  padding: var(--uc-space-3);
+  border: 1px solid var(--uc-border);
+  border-radius: var(--uc-radius-surface);
+  background: var(--uc-surface);
+  min-width: 0;
+}
+
+.onboarding__auth-heading {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.onboarding__note,
+.onboarding__sent {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__sent strong {
+  color: var(--uc-foreground);
+  /* A long address must wrap rather than widen the panel. */
+  overflow-wrap: anywhere;
+}
+
+.onboarding__failure-body {
+  display: block;
+  margin-top: 2px;
+}
+
+.onboarding__alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--uc-space-1) var(--uc-space-3);
+}
+
+.onboarding__inline-action {
+  padding: 2px;
+  border: 0;
+  border-radius: var(--uc-radius-control);
+  background: none;
+  color: var(--uc-primary);
+  font: inherit;
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.onboarding__inline-action:disabled {
+  color: var(--uc-foreground-muted);
+  cursor: default;
+}
+
+.onboarding__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--uc-space-2);
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__divider::before,
+.onboarding__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--uc-border);
+}
+
+.onboarding__privacy {
+  font-size: 0.75rem;
+  color: var(--uc-foreground-muted);
+}
+
+.onboarding__privacy-summary {
+  border-radius: var(--uc-radius-control);
+  color: var(--uc-primary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.onboarding__privacy-summary::-webkit-details-marker {
+  display: none;
+}
+
+.onboarding__privacy-summary::before {
+  content: '▸ ';
+}
+
+.onboarding__privacy[open] .onboarding__privacy-summary::before {
+  content: '▾ ';
+}
+
+.onboarding__privacy[open] .privacy {
+  margin-top: var(--uc-space-3);
+}
+
+/* ---------- settings and privacy views ---------- */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-4);
+  padding: var(--uc-space-3);
+  min-width: 0;
+}
+
+.settings__bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  min-width: 0;
+}
+
+.settings__back {
+  align-self: flex-start;
+  padding: 2px var(--uc-space-1);
+  margin-left: calc(var(--uc-space-1) * -1);
+  border: 0;
+  border-radius: var(--uc-radius-control);
+  background: none;
+  color: var(--uc-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.settings__heading {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--uc-foreground);
+}
+
+/* The heading takes focus on arrival; it is not an interactive control, so it gets the ring
+   and nothing else. */
+.settings__heading:focus-visible {
+  outline: none;
+  box-shadow: var(--uc-focus-ring);
+  border-radius: var(--uc-radius-control);
+}
+
+.settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  padding-bottom: var(--uc-space-4);
+  border-bottom: 1px solid var(--uc-border);
+  min-width: 0;
+}
+
+.settings__group--last {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.settings__label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.settings__account {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--uc-foreground);
+  overflow-wrap: anywhere;
+}
+
+.settings__body {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--uc-foreground);
+}
+
+.settings__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--uc-foreground-muted);
+}
+
+.settings__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  align-items: flex-start;
+}
+
+.settings__link {
+  padding: 2px;
+  border: 0;
+  border-radius: var(--uc-radius-control);
+  background: none;
+  align-self: flex-start;
+  color: var(--uc-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* A segmented control. The radio itself is screen-reader-only, so keyboard selection and the
+   accessibility tree come from the platform while the face carries the styling. */
+.settings__choices {
+  display: flex;
+  gap: var(--uc-space-1);
+  padding: 3px;
+  border: 1px solid var(--uc-border);
+  border-radius: var(--uc-radius-control);
+  background: var(--uc-surface-muted);
+}
+
+.settings__choice {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings__choice-face {
+  display: block;
+  padding: var(--uc-space-1) var(--uc-space-2);
+  border-radius: 6px;
+  color: var(--uc-foreground-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--uc-duration-standard) var(--uc-ease);
+}
+
+.settings__choice input:checked + .settings__choice-face {
+  background: var(--uc-surface);
+  color: var(--uc-foreground);
+  font-weight: 600;
+  box-shadow: var(--uc-shadow-raised);
+}
+
+.settings__choice input:focus-visible + .settings__choice-face {
+  outline: none;
+  box-shadow: var(--uc-focus-ring);
+}
+
+/* ---------- the privacy explanation ---------- */
+
+.privacy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-4);
+  min-width: 0;
+}
+
+.privacy__lede {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--uc-foreground);
+}
+
+.privacy__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-2);
+  min-width: 0;
+}
+
+.privacy__heading {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--uc-foreground-muted);
+}
+
+.privacy__body {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--uc-foreground-muted);
+}
+
+.privacy__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--uc-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--uc-foreground);
+}
+
+.privacy__list li {
+  position: relative;
+  padding-left: var(--uc-space-3);
+}
+
+.privacy__list li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.5em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--uc-border-strong);
+}
+
+/* A crossed-out marker, so the two lists cannot be mistaken for each other at a glance. */
+.privacy__list--never li::before {
+  top: 0.55em;
+  width: 7px;
+  height: 2px;
+  border-radius: 0;
+  background: var(--uc-danger);
 }

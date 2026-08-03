@@ -59,9 +59,18 @@ const MULTI_PART_PUBLIC_SUFFIXES = new Set([
  * This is a display fallback, not an identity: `shop.example.co.uk` becomes "Example".
  * A retailer adapter that knows the real brand name overrides it (Phase 5).
  */
+/** A bare IP address has no registrable name to derive one from. */
+const IP_HOST = /^\[?[0-9a-f:.]+\]?$/i;
+
 export function retailerNameFromDomain(domain: string): string {
   const labels = domain.split('.').filter(Boolean);
   if (labels.length === 0) return domain;
+
+  // `127.0.0.1` used to become "0": the rule below takes the second-to-last label, and for an
+  // address every label is a number. Show the host instead — a loopback address is honest
+  // about what it is, and "0" looked like a rendering bug in the panel's recent list, which is
+  // where it was found.
+  if (IP_HOST.test(domain) && !/[a-z]/i.test(domain.replace(/^\[|\]$/g, ''))) return domain;
 
   const lastTwo = labels.slice(-2).join('.');
   const nameIndex = MULTI_PART_PUBLIC_SUFFIXES.has(lastTwo) ? labels.length - 3 : labels.length - 2;

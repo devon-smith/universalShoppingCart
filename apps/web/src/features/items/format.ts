@@ -76,3 +76,28 @@ export function relativeTime(iso: string | null, now: Date = new Date()): string
 
   return then.toLocaleDateString();
 }
+
+/**
+ * A stored decimal as a person would type it back in.
+ *
+ * `numeric(20,6)` comes out of Postgres as "85.000000", which is what the desired-price input
+ * was showing somebody about to edit it. Trailing zeros are dropped, keeping two places when
+ * any fraction survives, and genuine extra precision is preserved rather than rounded away.
+ *
+ * The result must still satisfy the edit schema's decimal pattern, since it is the value the
+ * form posts back unchanged when the user does not touch it.
+ */
+export function decimalForInput(value: string | number | null): string {
+  if (value === null || value === undefined) return '';
+
+  const text = String(value).trim();
+  if (!/^\d+(\.\d+)?$/.test(text)) return text;
+
+  if (!text.includes('.')) return text;
+
+  const [whole, fraction = ''] = text.split('.');
+  const trimmed = fraction.replace(/0+$/, '');
+
+  if (trimmed.length === 0) return whole!;
+  return `${whole}.${trimmed.padEnd(2, '0')}`;
+}

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { availabilityLabel, discountPercent, formatMoney, relativeTime } from './format';
+import {
+  availabilityLabel,
+  decimalForInput,
+  discountPercent,
+  formatMoney,
+  relativeTime,
+} from './format';
 
 describe('formatMoney', () => {
   it('formats with a currency', () => {
@@ -71,5 +77,42 @@ describe('relativeTime', () => {
   it('is explicit about never having checked', () => {
     expect(relativeTime(null, now)).toBe('never checked');
     expect(relativeTime('not a date', now)).toBe('never checked');
+  });
+});
+
+describe('decimalForInput', () => {
+  it('drops the trailing zeros Postgres numeric(20,6) brings with it', () => {
+    // What the desired-price field was showing somebody about to edit it.
+    expect(decimalForInput('85.000000')).toBe('85');
+  });
+
+  it('keeps two places when there is a real fraction', () => {
+    expect(decimalForInput('85.500000')).toBe('85.50');
+  });
+
+  it('preserves precision beyond two places rather than rounding it away', () => {
+    expect(decimalForInput('85.123456')).toBe('85.123456');
+  });
+
+  it('leaves an integer alone', () => {
+    expect(decimalForInput('85')).toBe('85');
+  });
+
+  it('is empty for no value, so the placeholder shows', () => {
+    expect(decimalForInput(null)).toBe('');
+  });
+
+  it('accepts a number as well as a string', () => {
+    expect(decimalForInput(85.5)).toBe('85.50');
+  });
+
+  it('passes anything unrecognised through rather than mangling it', () => {
+    expect(decimalForInput('n/a')).toBe('n/a');
+  });
+
+  it('produces a value the edit schema still accepts', () => {
+    for (const stored of ['85.000000', '85.500000', '85.123456', '0.010000']) {
+      expect(decimalForInput(stored)).toMatch(/^\d+(\.\d{1,6})?$/);
+    }
   });
 });
