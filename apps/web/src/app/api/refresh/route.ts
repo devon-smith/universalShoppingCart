@@ -22,12 +22,8 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface DueJobRow {
+interface DueRow {
   item_id: string;
-}
-
-interface ItemRow {
-  id: string;
   source_url: string;
   availability: ObservedAvailability;
   current_price: string | null;
@@ -42,35 +38,22 @@ export async function POST(request: Request): Promise<Response> {
 
   const supabase = createServiceRoleClient();
 
+  // Everything the worker touches goes through a SECURITY DEFINER RPC — service_role has no table
+  // privileges, so the selector returns the item fields inline rather than the worker reading
+  // `items` directly (which it cannot).
   async function selectDueJobs(limit: number): Promise<RefreshJob[]> {
     const { data, error } = await supabase.rpc('select_due_refresh_jobs', { p_limit: limit });
     if (error) throw new Error(error.message);
 
-    const jobRows = (data ?? []) as unknown as DueJobRow[];
-    if (jobRows.length === 0) return [];
-
-    const ids = jobRows.map((row) => row.item_id);
-    const { data: items, error: itemsError } = await supabase
-      .from('items')
-      // Money as text so PostgREST does not round the exact decimal into a JSON double.
-      .select('id, source_url, availability, current_price::text, desired_price::text')
-      .in('id', ids);
-    if (itemsError) throw new Error(itemsError.message);
-
-    const byId = new Map((items as unknown as ItemRow[]).map((item) => [item.id, item]));
-    // Preserve the due order; drop any item that vanished between the two reads.
-    return jobRows
-      .map((row) => byId.get(row.item_id))
-      .filter((item): item is ItemRow => item !== undefined)
-      .map((item) => ({
-        itemId: item.id,
-        url: item.source_url,
-        previous: {
-          availability: item.availability,
-          price: item.current_price,
-          desiredPrice: item.desired_price,
-        },
-      }));
+    return ((data ?? []) as unknown as DueRow[]).map((row) => ({
+      itemId: row.item_id,
+      url: row.source_url,
+      previous: {
+        availability: row.availability,
+        price: row.current_price,
+        desiredPrice: row.desired_price,
+      },
+    }));
   }
 
   const summary = await runRefreshCycle({
