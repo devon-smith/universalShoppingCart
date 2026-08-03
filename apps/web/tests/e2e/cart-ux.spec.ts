@@ -128,6 +128,26 @@ async function openDashboard(page: Page, label: string) {
   return { email, inbox };
 }
 
+/**
+ * The secondary filters live in a popover now.
+ *
+ * They used to be a row of bare selects above the results, which at 375px wrapped taller than
+ * the first product card — the dashboard opened on its own controls. The filters themselves
+ * are unchanged, so these tests still drive the same labelled selects; they just have to open
+ * the thing that holds them, which is what a user does.
+ */
+async function openFilters(page: Page) {
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible();
+}
+
+/** Archive and "open at retailer" sit behind the row's overflow menu. */
+async function overflow(page: Page, title: string) {
+  const card = page.getByTestId('item-card').filter({ hasText: title });
+  await card.getByRole('button', { name: /^More actions/ }).click();
+  return card;
+}
+
 test.describe('dashboard as a daily tool', () => {
   test('searches across title, retailer, and note', async ({ page }) => {
     await openDashboard(page, 'search');
@@ -141,25 +161,38 @@ test.describe('dashboard as a daily tool', () => {
     await expect(page.getByTestId('item-card')).toHaveCount(1);
     await expect(page.getByTestId('item-card')).toContainText('Tidewater');
 
+    // A search miss and a filter miss are different situations and now say so. Telling
+    // somebody who typed a search term to go and check their filters sends them to the wrong
+    // control.
     await page.getByLabel('Search saved products').fill('nothing matches this');
-    await expect(page.getByText('Nothing matches those filters')).toBeVisible();
+    await expect(page.getByText(/No saved product matches/)).toBeVisible();
+    await expect(page.getByText('nothing matches this')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.getByRole('button', { name: 'Clear search' }).click();
     await expect(page.getByTestId('item-card')).toHaveCount(4);
   });
 
   test('filters by retailer, availability, and sale', async ({ page }) => {
     await openDashboard(page, 'filter');
 
+    await openFilters(page);
     await page.getByLabel('Retailer').selectOption('Fieldcraft');
     await expect(page.getByTestId('item-card')).toHaveCount(1);
 
+    // What is filtering the results is visible outside the popover, as a chip.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Filters' })).toBeHidden();
+    await expect(page.getByRole('button', { name: /Fieldcraft/ })).toBeVisible();
+
     await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(page.getByTestId('item-card')).toHaveCount(4);
+
+    await openFilters(page);
     await page.getByLabel('Availability').selectOption('out_of_stock');
     await expect(page.getByTestId('item-card')).toHaveCount(1);
     await expect(page.getByTestId('item-card')).toContainText('Solstice');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.getByRole('button', { name: 'Reset' }).click();
     await page.getByLabel('On sale').check();
     await expect(page.getByTestId('item-card')).toHaveCount(1);
     await expect(page.getByTestId('item-card')).toContainText('Meridian');
@@ -182,7 +215,7 @@ test.describe('dashboard as a daily tool', () => {
   test('switches between list and card views', async ({ page }) => {
     await openDashboard(page, 'view');
 
-    const cards = page.getByRole('button', { name: 'cards' });
+    const cards = page.getByRole('button', { name: 'cards', exact: true });
     await cards.click();
     await expect(cards).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('item-card')).toHaveCount(4);
@@ -265,7 +298,8 @@ test.describe('dashboard as a daily tool', () => {
     await card.getByRole('button', { name: 'Move to cart' }).click();
     await expect(card).toHaveAttribute('data-status', 'cart');
 
-    await card.getByRole('button', { name: 'Archive' }).click();
+    await overflow(page, 'Meridian');
+    await page.getByRole('button', { name: 'Archive', exact: true }).click();
 
     // Gone from the default view, with an undo offered.
     await expect(page.getByTestId('item-card')).toHaveCount(3);
@@ -285,19 +319,77 @@ test.describe('dashboard as a daily tool', () => {
   test('shows archived items only when asked', async ({ page }) => {
     await openDashboard(page, 'archived-filter');
 
-    await page
-      .getByTestId('item-card')
-      .filter({ hasText: 'Meridian' })
-      .getByRole('button', { name: 'Archive' })
-      .click();
+    await overflow(page, 'Meridian');
+    await page.getByRole('button', { name: 'Archive', exact: true }).click();
     await expect(page.getByTestId('item-card')).toHaveCount(3);
 
-    await page.getByLabel('Status').selectOption('archived');
+    // Status is the navigation's job now, not a select competing with it. Two controls
+    // writing one field could disagree — pick "Archived" in one and the other still read
+    // "Any status".
+    await page.getByRole('button', { name: /^Archived/ }).click();
     await expect(page.getByTestId('item-card')).toHaveCount(1);
     await expect(page.getByTestId('item-card')).toContainText('Meridian');
 
     await page.getByTestId('item-card').getByRole('button', { name: 'Restore' }).click();
     await expect(page.getByTestId('item-card')).toHaveCount(0);
+  });
+
+  test('drawer traps focus, closes on Escape, and hands focus back to the opener', async ({
+    page,
+  }) => {
+    await openDashboard(page, 'drawer-keys');
+
+    const card = page.getByTestId('item-card').filter({ hasText: 'Meridian' });
+    const opener = card.getByRole('button', { name: 'Details' });
+    await opener.click();
+
+    const drawer = page.getByRole('dialog');
+    await expect(drawer).toBeVisible();
+
+    // Focus is inside the drawer, not left behind on the row underneath it.
+    await expect(drawer.locator(':focus')).toHaveCount(1);
+
+    // Escape closes, and focus returns to the control that opened it — otherwise a keyboard
+    // user lands at the top of the document and has to tab back to where they were reading.
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+
+  test('confirms a save, and says so without claiming anything was observed', async ({ page }) => {
+    await openDashboard(page, 'save-toast');
+
+    const card = page.getByTestId('item-card').filter({ hasText: 'Meridian' });
+    await card.getByRole('button', { name: 'Details' }).click();
+
+    const drawer = page.getByRole('dialog');
+    await drawer.getByLabel('Note').fill('for the trip');
+    await drawer.getByRole('button', { name: 'Save changes' }).click();
+
+    await expect(drawer).toBeHidden();
+
+    // One live region, one message. Saving used to confirm nothing at all.
+    const toast = page.getByRole('status');
+    await expect(toast).toContainText('Saved your changes');
+    await expect(card).toContainText('for the trip');
+  });
+
+  test('rolls a refused change back and says so, rather than reverting in silence', async ({
+    page,
+  }) => {
+    await openDashboard(page, 'rollback');
+
+    // A note beyond the 2000-character limit is refused by the same schema on both sides.
+    const card = page.getByTestId('item-card').filter({ hasText: 'Meridian' });
+    await card.getByRole('button', { name: 'Details' }).click();
+
+    const drawer = page.getByRole('dialog');
+    await drawer.getByLabel('Note').fill('x'.repeat(2001));
+    await drawer.getByRole('button', { name: 'Save changes' }).click();
+
+    // Rejected before it reaches the database, and the drawer stays open with the reason.
+    await expect(drawer.getByRole('alert')).toContainText('2000');
+    await expect(drawer).toBeVisible();
   });
 
   test('deletes permanently, only after confirming', async ({ page }) => {

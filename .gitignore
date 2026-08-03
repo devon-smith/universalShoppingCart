@@ -60,3 +60,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Baseline UI screenshots. Working evidence for the redesign, not fixtures: they are large,
+# they churn on every visual change, and they are captured from a seeded local stack whose
+# addresses and links are throwaway. Regenerate with `pnpm screenshots:baseline`.
+.screenshots/

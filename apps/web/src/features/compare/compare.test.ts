@@ -25,6 +25,13 @@ function item(overrides: Partial<CompareItem> = {}): CompareItem {
     current_price: '98.00',
     original_price: null,
     availability: 'in_stock',
+    // Required on `SavedItem` since Phase 4, because every dashboard query selects it. It is
+    // non-null only when the page's product-level claim disagreed with the variant's, so the
+    // two agreeing — `null` — is the ordinary case for a fixture.
+    product_availability: null,
+    // Retailer-observed, raw, and required on `SavedItem` since it reaches the compare
+    // view. Null is the ordinary case: most pages publish no fibre content at all.
+    composition: null,
     selected_variant: { Color: 'Navy', Size: 'M' },
     identifiers: {},
     note: null,

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ItemFilters, SavedItem } from './query';
+import type { ItemAvailability, ItemFilters, SavedItem } from './query';
 import {
+  activeFilterChips,
+  activeFilterCount,
   applyQuery,
+  clearFilter,
   EMPTY_FILTERS,
   filterItems,
   hasActiveFilters,
@@ -29,6 +32,10 @@ function item(overrides: Partial<SavedItem> = {}): SavedItem {
     current_price: '98.00',
     original_price: null,
     availability: 'in_stock',
+    product_availability: null,
+    // Retailer-observed, raw, and required on `SavedItem` since it reaches the compare
+    // view. Null is the ordinary case: most pages publish no fibre content at all.
+    composition: null,
     selected_variant: { Size: '10', Color: 'Natural Black' },
     identifiers: null,
     note: null,
@@ -269,5 +276,80 @@ describe('hasActiveFilters', () => {
     expect(hasActiveFilters(filters({ statuses: ['cart'] }))).toBe(true);
     expect(hasActiveFilters(filters({ onSaleOnly: true }))).toBe(true);
     expect(hasActiveFilters(filters({ atOrBelowDesiredOnly: true }))).toBe(true);
+  });
+});
+
+describe('activeFilterCount', () => {
+  it('counts nothing when no secondary filter is set', () => {
+    expect(activeFilterCount(EMPTY_FILTERS)).toBe(0);
+  });
+
+  it('does not count search, which has its own visible input', () => {
+    expect(activeFilterCount({ ...EMPTY_FILTERS, search: 'runner' })).toBe(0);
+  });
+
+  it('counts each distinct narrowing once', () => {
+    expect(
+      activeFilterCount({
+        ...EMPTY_FILTERS,
+        retailers: ['Northwind'],
+        availabilities: ['in_stock'],
+        onSaleOnly: true,
+      }),
+    ).toBe(3);
+  });
+});
+
+describe('activeFilterChips', () => {
+  it('is empty for empty filters', () => {
+    expect(activeFilterChips(EMPTY_FILTERS)).toEqual([]);
+  });
+
+  it('names the retailer it is filtering to', () => {
+    expect(activeFilterChips({ ...EMPTY_FILTERS, retailers: ['Fieldcraft'] })).toEqual([
+      { id: 'retailer', label: 'Fieldcraft' },
+    ]);
+  });
+
+  it('reads an availability as words rather than a database enum', () => {
+    expect(
+      activeFilterChips({ ...EMPTY_FILTERS, availabilities: ['out_of_stock'] })[0]?.label,
+    ).toBe('out of stock');
+  });
+
+  it('produces one chip per active filter', () => {
+    const chips = activeFilterChips({
+      ...EMPTY_FILTERS,
+      retailers: ['Northwind'],
+      onSaleOnly: true,
+      atOrBelowDesiredOnly: true,
+    });
+    expect(chips.map((chip) => chip.id)).toEqual(['retailer', 'on-sale', 'hit-target']);
+  });
+});
+
+describe('clearFilter', () => {
+  it('removes one filter and leaves the others', () => {
+    const filters = {
+      ...EMPTY_FILTERS,
+      retailers: ['Northwind'],
+      availabilities: ['in_stock'] as ItemAvailability[],
+    };
+
+    const next = clearFilter(filters, 'retailer');
+
+    expect(next.retailers).toEqual([]);
+    expect(next.availabilities).toEqual(['in_stock']);
+  });
+
+  it('keeps the search term, which is a separate control', () => {
+    const filters = { ...EMPTY_FILTERS, search: 'runner', onSaleOnly: true };
+    expect(clearFilter(filters, 'on-sale').search).toBe('runner');
+  });
+
+  it('does not mutate the filters it was given', () => {
+    const filters = { ...EMPTY_FILTERS, onSaleOnly: true };
+    clearFilter(filters, 'on-sale');
+    expect(filters.onSaleOnly).toBe(true);
   });
 });

@@ -1,28 +1,47 @@
+/**
+ * Web app shell.
+ *
+ * The design tokens come from `@universal-cart/ui` so the dashboard and the extension side
+ * panel are the same design rather than two that resemble each other. They are imported
+ * before Tailwind so the `@theme` block below can hand the same values to utility classes,
+ * and feature components can migrate from `--color-*` to `--uc-*` one at a time.
+ */
+@import '@universal-cart/ui/tokens.css';
+@import '@universal-cart/ui/components.css';
 @import 'tailwindcss';
 
 @theme {
-  --color-surface: #ffffff;
-  --color-surface-muted: #f6f7f9;
-  --color-ink: #10141a;
-  --color-ink-muted: #5b6472;
-  --color-accent: #2f6df6;
-  --color-line: #e3e6ec;
+  /* Tailwind's colour scale, pointed at the semantic tokens. A utility class and a primitive
+     therefore resolve to the same colour, including in dark mode. */
+  --color-background: var(--uc-background);
+  --color-surface: var(--uc-surface);
+  --color-surface-muted: var(--uc-surface-muted);
+  --color-ink: var(--uc-foreground);
+  --color-ink-muted: var(--uc-foreground-muted);
+  --color-accent: var(--uc-primary);
+  --color-line: var(--uc-border);
+
+  --radius-surface: var(--uc-radius-surface);
+  --radius-control: var(--uc-radius-control);
 }
 
 @layer base {
   html {
-    color-scheme: light dark;
+    font-family: var(--uc-font-sans);
   }
 
   body {
-    background-color: var(--color-surface);
-    color: var(--color-ink);
+    /* `background`, not `surface`: the page is the warm ground and cards sit on top of it.
+       Painting the page the same white as its cards is what made the old dashboard read as
+       a spreadsheet. */
+    background-color: var(--uc-background);
+    color: var(--uc-foreground);
   }
 
-  @media (prefers-color-scheme: dark) {
-    body {
-      background-color: #0d1015;
-      color: #eef1f6;
-    }
+  /* One wordmark, one serif, bundled with the OS. Nothing is fetched. */
+  .uc-wordmark {
+    font-family: var(--uc-font-serif);
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 }

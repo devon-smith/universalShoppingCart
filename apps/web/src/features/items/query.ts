@@ -26,6 +26,24 @@ export interface SavedItem {
   current_price: string | number | null;
   original_price: string | number | null;
   availability: ItemAvailability;
+  /**
+   * The page's *product-level* claim, kept only when it differs from `availability` — which
+   * describes the selected variant. Null means the page made no separate claim, or the two
+   * agree, so a non-null value is by construction the interesting case: the size you chose is
+   * gone while the product is still sold (supabase/migrations/…_product_availability.sql).
+   */
+  product_availability: ItemAvailability | null;
+  /**
+   * Fibre content exactly as the page published it — "100% cotton", or a labelled two-part
+   * string like "Shell: 100% wool; Lining: 52% polyester" — with no normalization
+   * (docs/DECISIONS.md, 2026-08-02).
+   *
+   * Retailer-observed, so the `reject_observed_field_writes` trigger owns it and no client
+   * can write it. The compare view renders it as a *descriptive* row: two garments both
+   * reading "100% cotton" is a real shared fact, but nothing here can assert that
+   * "100% cotton" and "Cotton 100%" mean the same thing until the strings are normalized.
+   */
+  composition: string | null;
   selected_variant: Record<string, string> | null;
   identifiers: Record<string, string> | null;
   note: string | null;
@@ -219,4 +237,66 @@ export function hasActiveFilters(filters: ItemFilters): boolean {
     filters.onSaleOnly ||
     filters.atOrBelowDesiredOnly
   );
+}
+
+/**
+ * Which filter a chip represents.
+ *
+ * Search is not one of them: it has a visible input holding its own value, and a chip for it
+ * would be the same fact in two places.
+ */
+export type FilterChipId = 'retailer' | 'availability' | 'priority' | 'on-sale' | 'hit-target';
+
+export interface FilterChip {
+  id: FilterChipId;
+  label: string;
+}
+
+/**
+ * How many secondary filters are narrowing the results.
+ *
+ * Drives the count on the Filters button. Without it, a filter set inside a closed popover is
+ * invisible, and "why is my cart empty" becomes a puzzle.
+ */
+export function activeFilterCount(filters: ItemFilters): number {
+  return (
+    (filters.retailers.length > 0 ? 1 : 0) +
+    (filters.availabilities.length > 0 ? 1 : 0) +
+    (filters.priorities.length > 0 ? 1 : 0) +
+    (filters.onSaleOnly ? 1 : 0) +
+    (filters.atOrBelowDesiredOnly ? 1 : 0)
+  );
+}
+
+/** The active secondary filters, as chips to render next to the results. */
+export function activeFilterChips(filters: ItemFilters): FilterChip[] {
+  const chips: FilterChip[] = [];
+
+  if (filters.retailers[0]) chips.push({ id: 'retailer', label: filters.retailers[0] });
+  if (filters.availabilities[0]) {
+    chips.push({ id: 'availability', label: filters.availabilities[0].replace(/_/g, ' ') });
+  }
+  if (filters.priorities[0]) {
+    chips.push({ id: 'priority', label: `${filters.priorities[0]} priority` });
+  }
+  if (filters.onSaleOnly) chips.push({ id: 'on-sale', label: 'On sale' });
+  if (filters.atOrBelowDesiredOnly) chips.push({ id: 'hit-target', label: 'Hit my target' });
+
+  return chips;
+}
+
+/** Remove one filter, leaving the rest — and the search term — alone. */
+export function clearFilter(filters: ItemFilters, id: FilterChipId): ItemFilters {
+  switch (id) {
+    case 'retailer':
+      return { ...filters, retailers: [] };
+    case 'availability':
+      return { ...filters, availabilities: [] };
+    case 'priority':
+      return { ...filters, priorities: [] };
+    case 'on-sale':
+      return { ...filters, onSaleOnly: false };
+    case 'hit-target':
+      return { ...filters, atOrBelowDesiredOnly: false };
+  }
 }

@@ -671,6 +671,218 @@ true of _something_, ask which question it answers before fixing the extractor. 
 answer is "a question we have no field for", the extractor is not broken — the contract is
 narrow, and ranking, suppressing, or "fixing" the value hides real data. No new fields are
 added by this entry; it is the diagnostic rule for the next occurrence.
+---
+
+## 2026-07-31 — Comparison is side-by-side candidates; cross-retailer matching is cut
+
+**Decision.** Comparison means putting **two to four different saved items** beside each other
+for one buying decision. It does not mean recognising the same product at two retailers.
+Cross-retailer identifier matching — GTIN/UPC/EAN, brand + MPN, retailer identifier mapping,
+image perceptual hashing, embedding-assisted candidate scoring, the whole of the old Phase 8
+(BUILD_PLAN.md §9.3) — is **cut**, not deferred.
+
+**Context.** An earlier entry deprioritised that machinery. This one removes it, because
+"deferred" keeps inviting the question and something downstream will eventually re-derive it.
+
+Matching answers "is this the same product at another seller". That question has a subject in
+electronics, where one SKU is stocked by many sellers. It has almost no subject in clothing.
+Zara does not sell Gymshark's shorts; each retailer's line is its own. Garments also lack the
+identifiers the plan leans on — GTINs are inconsistently published, MPNs are usually absent,
+and "brand + model" is not how clothing is named. Sixteen live captures bear this out: the
+identifiers we do extract are retailer-local (`sku`, a Shopify variant id, a style code), and
+no two pages describe the same garment.
+
+The question a clothing shopper actually has is "which of these three jackets", where the
+three are different products. Nothing needs matching to answer it — they are already distinct
+saved items, and the work is showing their attributes side by side and marking where they
+differ.
+
+**Consequences.** The comparison tray is the product's core feature, and it is a selection
+model plus a side-by-side view. No identifier graph, no `product_groups`, no
+`match_candidates`, no embeddings, no confirmation UI for medium-confidence matches — none of
+those tables or surfaces get built.
+
+The "never auto-merge uncertain items" rule survives and matters more than before, because
+without a matching system the only way two records merge is the fingerprint, which is exact by
+construction. Two garments must never collapse into one card; the comparison depends on them
+staying separate.
+
+If a resale or marketplace use case later makes true cross-seller matching valuable, this is
+reopened with evidence. The design in §9.3 stays a sound design — for the goods it was written
+for.
+
+## 2026-07-31 — Which sign-in providers exist is asked of the Auth server, not baked into the build
+
+**Context.** The panel offered "Continue with Google" unconditionally. Local Supabase ships
+`[auth.external.google] enabled = false`, so on every developer machine — and on any project
+where the provider was never configured — that button opened an OAuth window that could only
+fail.
+
+A build-time flag (`WXT_PUBLIC_GOOGLE_ENABLED`) would answer the question without a request.
+It was rejected because it is a copy of a fact owned by the Auth server, and the failure mode
+of a stale copy is the exact bug being fixed: a button that cannot work. `GET /auth/v1/settings`
+returns the provider map for the publishable key, which is authoritative and needs no
+maintenance.
+
+**Consequences.** The sign-in screen makes one extra request on mount. Nothing waits for it —
+email sign-in is complete and usable throughout, and Google appears afterwards if it exists.
+Any failure, including offline, resolves to "google: false, email: true": a failed probe must
+never remove the only way in, and must never advertise a method whose availability is unknown.
+
+Adding a provider becomes a Supabase configuration change plus a UI branch, with no build
+variable to keep in step.
+
+## 2026-07-31 — Settings and privacy are views that replace capture, not sections below it
+
+**Context.** The account menu previously expanded a section beneath the capture form and the
+recent list. At 320px — the narrowest panel Chrome allows — that puts three concerns on one
+scrolling column and pushes the primary action off the bottom.
+
+**Consequences.** `SignedInPanel` routes between `capture`, `settings` and `privacy`. Each
+subview replaces the shell, so its heading is the document's `h1` and takes focus on arrival;
+leaving returns focus to the account button that opened it.
+
+One existing assertion changed shape. `auth.spec.ts` asserted that the address and the empty
+recent list were visible _at the same time_ after opening the account menu. Both are still
+asserted, in the places they now occur — the recent list on the capture view, the address in
+settings — plus the trip back, and that capture is hidden while settings is open. The test
+covers more than it did; it no longer encodes a layout the redesign replaced.
+
+## 2026-07-31 — Panel preferences live in extension storage, not in Postgres
+
+**Context.** 2C adds two preferences: appearance, and which cart the panel opens on.
+
+**Consequences.** Both are written to `chrome.storage.local` under one key. Neither is shared
+data — a theme belongs to the machine it is read on, and the starting cart is a property of
+this browser, not of the account. Putting them in Postgres would mean a migration, a round
+trip before first paint, and a row to keep in step with `carts.is_default`.
+
+`carts.is_default` remains the account-wide answer and is untouched by this setting: choosing
+a cart here changes only where this panel starts, which is why the control says so. The stored
+value is validated on read like any other untrusted input — extension storage is versionless
+and writable by any past or future build.
+
+## 2026-07-31 — The navigation owns item status; the filter row does not
+
+**Context.** The dashboard had a Status select in its filter row. Phase 3 adds a left
+navigation whose sections are Cart, Recently changed, Purchased and Archived — which is the
+same field. Two controls writing one value can disagree: choose "Archived" in the nav and the
+select still reads "Any status".
+
+**Consequences.** Status is set only by the navigation. `sections.ts` holds the mapping and is
+unit-tested; the filter popover carries retailer, availability, priority, on-sale and
+hit-target only.
+
+One subtlety, found by a failing test rather than by reading: `filterItems` re-applies the
+status rule, and its default of "no statuses means hide archived" threw away the Archived
+section's own items. The section's statuses are now passed into the query so the two stages
+cannot disagree.
+
+`Cart` deliberately means "everything except archived" rather than partitioning cleanly
+against `Purchased`. Marking something purchased from a card should not make the card vanish
+from under the cursor; the item appears in both places, and that is the less surprising of the
+two behaviours.
+
+## 2026-07-31 — Page-title trimming is a display rule, not an extraction change
+
+**Context.** Stored titles carry page-title furniture — "Alcott 3-Seater Sofa & Reviews |
+Wayfair". The obvious fix is to strip it during extraction.
+
+**Consequences.** It is stripped at render instead, by `displayTitle`. The stored title stays
+exactly what the page said, because that is the record of what was observed and the extractor
+fixtures pin those strings; changing extraction would mean re-capturing fixtures and would put
+a heuristic where the evidence should be.
+
+The rule is conservative in one direction: the first segment is never dropped, whatever it
+says, and a title that the rules would empty is returned unchanged. Losing marketing noise is
+worth having; losing a product name is not. `sourceLine` follows the same principle for the
+"Northwind · Northwind" case — brand and retailer are compared loosely and printed once when
+they are the same fact.
+
+## 2026-07-31 — The discount percentage is computed inside `Price`
+
+**Context.** The old card computed `−18%` itself from `current_price` and `original_price`.
+`Price` exists precisely so a range or a subscription price cannot be rendered as a discount,
+and a percentage derived outside it re-opens that hole in a different place.
+
+**Consequences.** `discountPercent` lives in the primitive and runs only on the pair that
+already passed `compareDecimal`, so there is no arrangement of props that produces a
+percentage without a genuine, strictly-higher list price. It returns nothing for a rounding
+artefact at either end — "−0%" reads as broken and "−100%" as free.
+
+## 2026-07-31 — Overlays are labelled groups, not `role="menu"`
+
+**Context.** The account menu and the card overflow were first built with `role="menu"` and
+`role="menuitem"`.
+
+**Consequences.** Both roles were removed. `role="menu"` promises arrow-key navigation and
+typeahead that these do not implement, and `role="menuitem"` _replaces_ the implicit button
+and link roles — a screen reader stops calling a link a link. The e2e suite noticed before a
+user would have: `getByRole('button', { name: 'Sign out' })` stopped matching.
+
+They are now labelled containers of ordinary buttons and links, with Escape, outside-click and
+— for the filter popover and the mobile drawer — a focus trap that restores focus to the
+control that opened them.
+
+## 2026-08-01 — A sparkline beside the observation list, and no charting library
+
+**Context.** An earlier entry kept the price history as a list rather than a chart, on the
+grounds that with three observations a sparkline would be decoration. Phase 4 has seeded data
+with real shape — 98 → 94 → 92.50 → **96** → 88 → 84 → 79.95 — and that rise in the middle is
+invisible in seven timestamped rows.
+
+**Consequences.** The list stays; a sparkline is added _beside_ it, not instead of it. The
+earlier reasoning was right about what a list is for — "the price dropped when I revisited" is
+a question only the rows answer — and wrong that shape never matters.
+
+It is drawn from three observations up. Two points are a straight line whatever the numbers,
+and a straight line implies a trend two points cannot evidence. Below that threshold nothing
+renders.
+
+No charting library: forty lines of arithmetic in `sparkline.ts` against a dependency measured
+in hundreds of kilobytes. The SVG is `aria-hidden` — every number it encodes is in the four
+figures above it and the list below, so a screen reader gains nothing from the path and would
+have to sit through it.
+
+Points are spaced by index, not by elapsed time. Observations happen when the user revisits, so
+a time axis would render most of the width as the gap between two visits and crush every real
+move against the right edge. Even spacing answers the question actually being asked — how has
+this moved across the times I looked — and does not pretend to be a continuous record of a
+price nobody was watching.
+
+## 2026-08-01 — Green on a target means an observation recorded it
+
+**Context.** The desired price now has a visual treatment: a bar, a badge, and the distance to
+go.
+
+**Consequences.** The badge is green in exactly one case — an observation recorded the price at
+or below the target. Not "close to", not "likely to reach". Green is the strongest signal this
+product has and it stops meaning anything the first time it appears without that having
+happened.
+
+`targetState` describes _now_; `targetEverReached` describes the whole observed run, and they
+are deliberately separate functions. "It has been at or below your target before" is a real and
+useful fact, and folding it into the current state would let a green badge survive a price
+rise.
+
+Everything is arithmetic on two stored numbers. No forecast, no "similar items are cheaper" —
+the product has no evidence for either.
+
+## 2026-08-01 — One live region for everything the dashboard says back
+
+**Context.** Confirmations were scattered: an inline `role="alert"` paragraph for a failed
+write, two near-identical fixed divs for undo and for delete, and nothing at all for a
+successful save.
+
+**Consequences.** One `Announcements` component owns the region. Failures are assertive and
+persist until replaced — a message that vanishes on a timer is one the user may never have
+seen, and "your change did not save" needs attention now. Confirmations are polite and expire.
+An action lives _inside_ the region so "Archived — Undo" is announced as one thing.
+
+`Toast` gains an `announce` flag, the same one `Callout` got in 2B and for the same reason:
+the region is mounted once and toasts are swapped inside it, so a toast that is also its own
+`status` role makes a screen reader say the message twice and makes `getByRole('status')` match
+twice.
 
 ## 2026-08-02 — Composition lands, raw, now that comparison has a consumer for it
 
@@ -732,3 +944,54 @@ appeared — the rule that "matched the right markup and was never called" was r
 Nike but not on Wayfair, one page deeper — and closing it needed a live re-run, not a unit
 pass, to surface. Reachability on the real Wayfair page still needs a live capture to
 confirm; the offline scorer sees the semantic strike but not the class-based one.
+
+## 2026-08-03 — A comparison is a URL, and it renders as a table
+
+**Decision.** The compare view is a route, `/app/compare?items=a,b,c`, and the selected ids
+live in that query string rather than in component state. It renders as an HTML `<table>`.
+
+**Context.** BUILD_PLAN.md §12.1 already listed the route; this records why it is the right
+shape rather than a modal over the dashboard. A comparison is a thing you send someone, come
+back to after a refresh, and expect the back button to undo. All three fall out of the URL
+for free and none of them survive `useState`. The ids are therefore untrusted input:
+`parseSelection` validates uuid shape, collapses duplicates and caps the list before a query
+is built, and RLS is the second gate — a well-formed id belonging to another account returns
+no row, which the page reports as "no longer available to you" rather than an empty table.
+
+A `<table>` because the content is genuinely tabular: every cell means "this item's value for
+this attribute". The element gives row and column header association, so a screen reader
+announces "Price, Meridian Wool Runner, $79.95" without any ARIA at all. Rebuilding that over
+a grid of divs would be more code doing the same job worse. Four columns cannot fit a phone,
+so the table scrolls inside its own box with the label column sticky; the page itself never
+scrolls sideways, which the e2e asserts at four widths.
+
+**Consequences.** The scroll container is `position: relative`, and that is load-bearing:
+`overflow` only clips an absolutely positioned descendant when the scroll box is also its
+containing block, and `.uc-sr-only` is absolutely positioned. Without it every
+screen-reader-only span in the off-screen part of the table resolved against the viewport,
+escaped the clip, and stretched the document to 856px at a 375px viewport — a page that
+scrolled sideways because of text nobody can see.
+
+---
+
+## 2026-08-03 — Selecting items to compare is a checkbox, not an action
+
+**Decision.** The control that adds a product to a comparison is a checkbox at the start of
+the row and card, not a button in the action cluster beside "Details" and "Move to cart".
+
+**Context.** It was a button first, and the dashboard measurably regressed: at 1024px — a
+laptop minus the 240px rail — a fifth control in the actions cluster took enough width from
+the grid to wrap product titles onto two lines and collide the price column with the
+freshness line. That is the same squeeze the 2026-07-31 entry fixed by moving the variant out
+of its own column, reintroduced from the other end.
+
+The deeper reason is that selection is not an action. An action is a thing you do to one item
+now; a selection is a state you set on several items before doing one thing with all of them,
+and a leading checkbox is where people already look for it.
+
+**Consequences.** The list's leading column is 3.5rem, which fits a checkbox but not the word
+"Compare", so the label is visually hidden there and shown on cards, where there is room. The
+accessible name always carries the product title — "Compare" repeated four times down a list
+tells a screen-reader user nothing about which row they are on. The dashboard gains bottom
+padding while the tray is open, so the last product is not permanently underneath the control
+being used to choose products.

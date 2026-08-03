@@ -129,5 +129,58 @@ test.describe('price history and staleness', () => {
     await expect(history.getByRole('listitem').first()).toContainText('revisited');
     await expect(history.getByRole('listitem').last()).toContainText('$98.00');
     await expect(history.getByRole('listitem').last()).toContainText('saved');
+
+    // The figures above the list: the questions a person has, answered without arithmetic.
+    await expect(drawer.getByText('Lowest seen', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('When you saved it', { exact: true })).toBeVisible();
+    await expect(drawer).toContainText('cheaper than when you saved it');
+  });
+
+  test('shows both URLs, so a dropped variant parameter is visible', async ({ page }) => {
+    const email = uniqueEmail('canonical');
+    const inbox = mailbox(email);
+
+    const client = await signedInClient(email, inbox);
+    await ingest(client, capture({ price: '98.00', observedAt: hoursAgo(2) }));
+
+    await signInBrowser(page, client);
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Meridian Wool Runner' })
+      .getByRole('button', { name: 'Details' })
+      .click();
+
+    const drawer = page.getByRole('dialog');
+    // Behind a disclosure: a diagnostic, not something a shopper reads every visit.
+    await drawer.getByRole('group').getByText('Where this came from').click();
+
+    // BUILD_PLAN §12.4 asks for both. The canonical address is what the fingerprint is built
+    // from, so seeing it beside the source is the only way a tester can report the
+    // `canonical` failure code in LIVE_TESTING.md — a variant parameter silently dropped.
+    await expect(drawer.getByText('Page you saved from', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('Canonical address', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('Product codes', { exact: true })).toBeVisible();
+  });
+
+  test('says what will happen when there is only one observation', async ({ page }) => {
+    const email = uniqueEmail('single');
+    const inbox = mailbox(email);
+
+    const client = await signedInClient(email, inbox);
+    await ingest(client, capture({ price: '98.00', observedAt: hoursAgo(2) }));
+
+    await signInBrowser(page, client);
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Meridian Wool Runner' })
+      .getByRole('button', { name: 'Details' })
+      .click();
+
+    const drawer = page.getByRole('dialog');
+
+    // Never a claim that anything is being watched — nothing runs in the background.
+    await expect(drawer).toContainText('Observed once');
+    await expect(drawer).toContainText('nothing is checked in the background');
+    await expect(drawer).not.toContainText('cheaper than when you saved it');
   });
 });
