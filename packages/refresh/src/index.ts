@@ -14,3 +14,6 @@ export type {
   SafeFetchReason,
   SafeFetchResult,
 } from './safe-fetch';
+
+export { compareMoney, evaluateAlerts, isPriceBelowDesired } from './alerts';
+export type { AlertType, ObservedAvailability, ObservedState } from './alerts';
