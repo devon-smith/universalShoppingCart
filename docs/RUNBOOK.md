@@ -77,6 +77,13 @@ pnpm test:db     # pgTAP files in supabase/tests/, run inside a rolled-back tran
 pnpm db:types    # regenerate packages/contracts/src/database.types.ts after a migration
 ```
 
+`test:db` runs a preflight first (`scripts/preflight-db.mjs`): if the running local database is
+missing the newest migration, it stops with `run pnpm supabase:reset` instead of letting pgTAP
+fail deep inside with a cryptic `function … does not exist`. The check is fail-open — no Docker,
+no running stack, or an unexpected result and it simply lets the tests run — so it can only
+clarify a stale-database red, never block a healthy one. After adding a migration that introduces
+a new object, point the probe in that script at it.
+
 ### Google sign-in locally
 
 `[auth.external.google]` is disabled in `supabase/config.toml` because it needs real
