@@ -45,6 +45,11 @@ create policy notification_events_select_readable
     )
   );
 
+-- A policy filters rows; it does not confer the privilege to read them. Every user-facing table
+-- needs the grant as well, and RLS is what makes it safe. Only authenticated: anon sees nothing,
+-- and the worker writes through the SECURITY DEFINER function below, not the table grant.
+grant select on public.notification_events to authenticated;
+
 -- Record a fired alert. service_role only — the worker has already decided (via the transition
 -- rule) that this alert should fire; this just persists it.
 create or replace function public.record_notification(
