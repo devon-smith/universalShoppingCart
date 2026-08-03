@@ -55,7 +55,10 @@ try {
 if (srcMs > buildMs) {
   console.error(
     '\n✗ Stale web build: apps/web/.next is older than apps/web/src.\n' +
-      '  Run `pnpm build` (or use `pnpm test:e2e`, which builds first) before `playwright test`.\n',
+      '  Run `pnpm build` (or use `pnpm test:e2e`, which builds first) before `playwright test`.\n' +
+      '  If `pnpm build` no-ops (turbo cache hit after a content-neutral change — a checkout, a\n' +
+      '  format with no net change, an editor save), the build id never moves. Force it with\n' +
+      '  `pnpm turbo build --filter=@universal-cart/web --force`, or `touch apps/web/.next/BUILD_ID`.\n',
   );
   process.exit(1);
 }
