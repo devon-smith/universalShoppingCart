@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "url": "https://www.wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html?piid=640565351%2C640565355",
+    "canonicalUrl": "https://wayfair.com/furniture/pdp/harbour-vale-calder-3-piece-boucle-modular-sectional-with-loose-back-w998877665.html",
+    "domain": "wayfair.com",
+    "retailerName": "Wayfair",
+    "pageTitle": "Calder 3-Piece Boucle Modular Sectional with Loose Back | Example"
+  },
+  "product": {
+    "title": "Calder 3-Piece Boucle Modular Sectional with Loose Back",
+    "brand": "Harbour & Vale",
+    "description": null,
+    "imageUrls": [
+      "https://assets.example.com/im/11223344/compr-r85/1020/102030405/Calder+3-Piece+Boucle+Modular+Sectional+with+Loose+Back.jpg"
+    ],
+    "selectedImageUrl": "https://assets.example.com/im/11223344/compr-r85/1020/102030405/Calder+3-Piece+Boucle+Modular+Sectional+with+Loose+Back.jpg",
+    "identifiers": {},
+    "composition": null
+  },
+  "offer": {
+    "priceAmount": "612.50",
+    "originalPriceAmount": "875.00",
+    "currency": "USD",
+    "availability": "out_of_stock"
+  },
+  "selectedVariant": {
+    "Fabric": "Sand Boucle",
+    "Orientation": "Right Hand Facing"
+  },
+  "evidence": [
+    {
+      "field": "product.title",
+      "source": "adapter",
+      "selector": "h1[data-rtl-id=\"listingHeaderNameHeading\"]",
+      "confidence": 0.95
+    },
+    {
+      "field": "product.brand",
+      "source": "adapter",
+      "selector": "og:title prefix",
+      "confidence": 0.7
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "adapter",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.priceAmount",
+      "source": "adapter",
+      "selector": "[data-node-id^=\"ListingPricing::\"] [data-test-id=\"PriceDisplay\"]",
+      "confidence": 0.95
+    },
+    {
+      "field": "offer.currency",
+      "source": "adapter",
+      "selector": "US storefront",
+      "confidence": 0.6
+    },
+    {
+      "field": "offer.originalPriceAmount",
+      "source": "adapter",
+      "selector": "[data-test-id=\"StandardPricingPrice-PREVIOUS\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "offer.availability",
+      "source": "adapter",
+      "selector": "detailedInventoryWidget inventoryStatus",
+      "confidence": 0.85
+    },
+    {
+      "field": "selectedVariant",
+      "source": "adapter",
+      "selector": "[data-test-id=\"pdp-ch-categoryComponent\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "product.title",
+      "source": "meta",
+      "selector": "meta[property=\"og:title\"]",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.imageUrls",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "product.selectedImageUrl",
+      "source": "meta",
+      "confidence": 0.75
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "meta",
+      "selector": "link[rel=\"canonical\"]",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "meta",
+      "confidence": 0.9
+    },
+    {
+      "field": "source.pageTitle",
+      "source": "dom",
+      "selector": "title",
+      "confidence": 0.6
+    },
+    {
+      "field": "source.canonicalUrl",
+      "source": "dom",
+      "selector": "link[rel=canonical]",
+      "confidence": 0.6
+    },
+    {
+      "field": "product.title",
+      "source": "dom",
+      "selector": "document h1",
+      "confidence": 0.27999999999999997
+    }
+  ],
+  "extraction": {
+    "extractorId": "wayfair",
+    "extractorVersion": "1.0.0",
+    "overallConfidence": 0.894,
+    "observedAt": "2026-07-26T12:00:00.000Z"
+  }
+}
