@@ -43,11 +43,13 @@
     {
       "field": "product.imageUrls",
       "source": "adapter",
+      "selector": "meta[property=\"og:image\"]",
       "confidence": 0.9
     },
     {
       "field": "product.selectedImageUrl",
       "source": "adapter",
+      "selector": "meta[property=\"og:image\"]",
       "confidence": 0.9
     },
     {

@@ -26,6 +26,16 @@ import { isRecord, readJsonAttribute } from './shared';
  * holds is `[data-node-id^="ListingPricing::"]`: the node id is generated per listing, so it
  * is unique (1 of 1), and every price read here is scoped inside it. The fixture ships a
  * sponsored decoy at $940 / $1,610 precisely so a regression to the broad selector fails.
+ *
+ * ## The image has the same trap, and is read from og:image
+ *
+ * `img[data-hb-id="FixedImage"]` is non-unique the same way — ~62 on a real page, and the first
+ * in document order is a 36×36 "Wayfair Verified" trust badge (`default_name.jpg`), not the
+ * hero. A `querySelector` for it returns that badge, which is non-null, so a DOM-first read
+ * silently wins with the wrong image and never reaches a fallback. So the image is taken from
+ * `og:image` — Wayfair's declared primary listing image, which is the hero — not from the DOM
+ * gallery. The fixtures ship the badge ahead of the hero so a regression to the DOM selector
+ * fails, exactly as the sponsored decoy guards the price.
  */
 
 export const WAYFAIR_ADAPTER_ID = 'wayfair';
@@ -99,20 +109,21 @@ export const wayfairAdapter: ProductExtractor = {
       }
     }
 
-    const image =
-      absoluteHttpUrl(
-        document.querySelector('img[data-hb-id="FixedImage"]')?.getAttribute('src'),
-        url,
-      ) ??
-      absoluteHttpUrl(
-        document.querySelector('meta[property="og:image"]')?.getAttribute('content'),
-        url,
-      );
+    // og:image, not the DOM gallery — see the class docstring: the first FixedImage is a trust
+    // badge, and a non-null wrong match never falls through.
+    const image = absoluteHttpUrl(
+      document.querySelector('meta[property="og:image"]')?.getAttribute('content'),
+      url,
+    );
     if (image) {
       product.imageUrls = [image];
       product.selectedImageUrl = image;
-      capture.evidence.push(evidence('product.imageUrls', 'adapter', 0.9));
-      capture.evidence.push(evidence('product.selectedImageUrl', 'adapter', 0.9));
+      capture.evidence.push(
+        evidence('product.imageUrls', 'adapter', 0.9, 'meta[property="og:image"]'),
+      );
+      capture.evidence.push(
+        evidence('product.selectedImageUrl', 'adapter', 0.9, 'meta[property="og:image"]'),
+      );
     }
 
     // Price — read only inside the listing pricing node, never from the document. SALE is the
