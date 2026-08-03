@@ -3,18 +3,18 @@
 Updated after every phase. See [BUILD_PLAN.md §22](../BUILD_PLAN.md) for phase definitions
 and acceptance criteria.
 
-| Phase                                  | State                                               |
-| -------------------------------------- | --------------------------------------------------- |
-| 0 — Repository foundation              | Complete                                            |
-| 1 — Authentication and authorization   | Complete                                            |
-| 2 — Generic capture vertical slice     | Complete                                            |
-| 3 — Cart dashboard and core UX         | Complete                                            |
-| 4 — Observations and revisit refresh   | Complete                                            |
-| 5 — Real retailer adapters             | Complete                                            |
-| 6 — Sharing and comparison             | In progress — compare view + sharing backend landed |
-| 7 — Background refresh and alerts      | Not started                                         |
-| 8 — Product matching and AI comparison | Not started                                         |
-| 9 — Release hardening                  | Not started                                         |
+| Phase                                  | State                                                          |
+| -------------------------------------- | -------------------------------------------------------------- |
+| 0 — Repository foundation              | Complete                                                       |
+| 1 — Authentication and authorization   | Complete                                                       |
+| 2 — Generic capture vertical slice     | Complete                                                       |
+| 3 — Cart dashboard and core UX         | Complete                                                       |
+| 4 — Observations and revisit refresh   | Complete                                                       |
+| 5 — Real retailer adapters             | Complete                                                       |
+| 6 — Sharing and comparison             | Complete — compare view + sharing backend + web surface landed |
+| 7 — Background refresh and alerts      | Not started                                                    |
+| 8 — Product matching and AI comparison | Not started                                                    |
+| 9 — Release hardening                  | Not started                                                    |
 
 ## Roadmap from here
 
@@ -320,10 +320,33 @@ narrowed subset can state a price the whole family disagrees on, and a no-match 
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
 
+## Phase 6 — Sharing web surface (M3)
+
+**The invitation flow now has a UI, wiring the M1 RPCs to a screen.** The owner opens
+`/app/share` (from the account menu): picks a cart they own, chooses editor/viewer and a
+lifetime, and gets a one-time link shown with a plain "copy it now — it will not be shown again"
+warning, because the raw token comes back from the RPC exactly once. Pending invitations list
+below with a relative expiry and a **Revoke** (a plain `DELETE`, `cart_invitations_delete_owner`
+RLS). The invitee opens `/invite/[token]`: a public route that, signed out, redirects to
+`/login?next=/invite/…` and returns; acceptance is a deliberate button press calling the
+`accept_cart_invitation` action, never an auto-mutating `GET`. Members are shown read-only and
+**without names** — a member's `profiles` row is not readable across accounts, so the panel shows
+an honest short id rather than a fabricated display name.
+
+The `accept` action maps each RPC SQLSTATE to an actionable sentence — `P0002` not-found, `22023`
+told apart into expired vs already-used by message — in a framework-free `sharing.ts` covered by
+Vitest (invite-URL building, ttl→interval, the error map, pending/expiry filtering). Only carts
+the user owns are queried (`owner_id` filter, not a trust of `carts_select_readable`), and RLS is
+the real gate on every read: a cart id in the URL the user does not own returns nothing.
+
+Verified: `typecheck` 7/7, `lint` 7/7, `format:check` clean, `build` 2/2, web tests **284**. The
+Playwright invite→accept e2e is the local host's tier (Docker); member removal is the one
+deliberate follow-up (a `cart_members` delete the RLS already permits).
+
 ## Phase 6 — Sharing backend
 
 **Data and policy layer landed** (the web surface — `/invite/[token]` and the pending-invites
-list — is a separate slice). `cart_invitations` is a bearer-token table storing **only** the
+list — landed in M3, above). `cart_invitations` is a bearer-token table storing **only** the
 SHA-256 hash of the token; `create_cart_invitation` returns the raw token once and
 `accept_cart_invitation` redeems it — single-use under a row lock, expiry-checked, adding the
 `cart_members` row without ever downgrading a stronger existing role (`least()` over the
