@@ -345,9 +345,17 @@ disabled`, conservative and grounded in the live-capture pass (the three client-
 
 Verified in cloud: `typecheck` 8/8, `lint` 8/8, `format:check` clean, `pnpm test` (refresh) **35**.
 The Docker tiers are the local host's: **pgTAP** for 7c/7d/7f, a **`pnpm db:types`** regeneration
-to confirm the hand-updated `database.types.ts`, and the **live SSRF** check for 7b. Still pending
-and human-gated: **7e** — the Edge Function that fetches (7b) → parses → records (7c), and the
-Supabase Cron that fires the due selector (7d), needing `CRON_SECRET` in the dashboard.
+to confirm the hand-updated `database.types.ts`, and the **live SSRF** check for 7b.
+
+**7e — the worker — landed as a Node route, not a Deno Edge function** (DECISIONS.md, 2026-08-03):
+`POST /api/refresh`, authorised by a `CRON_SECRET` bearer, reuses `safeFetch` and the extractor
+pipeline over a `linkedom` server DOM exactly as tested. Its orchestration (`runRefreshCycle` /
+`processRefreshJob`) is injected-and-unit-tested (44 refresh tests). The Supabase Cron that drives
+it is per-environment config (Vault + `cron.schedule`, in the RunBook), not a migration. Still
+human-gated: enabling `pg_cron`/`pg_net`, setting `CRON_SECRET` + `SUPABASE_SERVICE_ROLE_KEY`, and
+scheduling the job. `linkedom`'s DOM fidelity is the local host's live check. **Automatic
+enrollment** of items into `refresh_jobs` (`enqueue_refresh_job` from the save path) is the one
+remaining follow-up — until then, enqueue by hand to test.
 
 ## Phase 6 — Sharing web surface (M3)
 
