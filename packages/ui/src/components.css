@@ -293,6 +293,12 @@
   display: block;
 }
 
+/* Garment photography is portrait. The dashboard's visual grid uses this taller frame so a
+   jacket fills the box instead of floating in a square letterbox. */
+.uc-product-image--portrait {
+  aspect-ratio: 4 / 5;
+}
+
 .uc-product-image__fallback {
   display: flex;
   align-items: center;
@@ -322,6 +328,13 @@
 .uc-surface--overlay {
   background: var(--uc-surface-elevated);
   box-shadow: var(--uc-shadow-overlay);
+}
+
+/* A surface whose content runs edge to edge — a card led by a photograph. Declared after
+   `.uc-surface` so it wins on source order; a Tailwind `p-0` cannot, because utilities live
+   in a cascade layer and this file's rules do not. */
+.uc-surface--media {
+  padding: 0;
 }
 
 /* ---------- Skeleton / Spinner ---------- */
