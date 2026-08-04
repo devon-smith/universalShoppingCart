@@ -45,3 +45,55 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* The dashboard's visual card — the photograph is the card, everything else annotates it.
+   Unlayered on purpose: these rules must outrank the ui package's surface rules (also
+   unlayered), which Tailwind utilities cannot do from inside their cascade layer. */
+
+.uc-card {
+  transition:
+    opacity var(--uc-duration-standard) var(--uc-ease),
+    box-shadow var(--uc-duration-standard) var(--uc-ease);
+}
+
+.uc-card:hover {
+  box-shadow: var(--uc-shadow-overlay);
+}
+
+/* The photograph as a button: press it and the details drawer opens. The card clips its own
+   corners, so the focus ring draws inside the frame — the shared ring is a box-shadow outside
+   the element and would be cut off on three sides. */
+.uc-card-media {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+}
+
+.uc-card-media:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 2px var(--uc-background),
+    inset 0 0 0 4px var(--uc-primary);
+}
+
+.uc-card-media .uc-product-image__img {
+  transition: transform var(--uc-duration-standard) var(--uc-ease);
+}
+
+.uc-card-media:hover .uc-product-image__img,
+.uc-card-media:focus-visible .uc-product-image__img {
+  transform: scale(1.03);
+}
+
+/* A control floating over the photograph. Translucent surface, so it reads on any garment
+   without hiding what is behind it. */
+.uc-card-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--uc-radius-pill);
+  background: color-mix(in srgb, var(--uc-surface) 92%, transparent);
+  box-shadow: var(--uc-shadow-raised);
+  backdrop-filter: blur(4px);
+}
