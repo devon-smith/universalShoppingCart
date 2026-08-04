@@ -21,7 +21,7 @@ test.describe('side panel sign-in', () => {
     await page.getByRole('button', { name: 'Email me a code' }).click();
 
     const code = signInCodeFrom(await waitForEmail(email));
-    await page.getByLabel(/6-digit code sent to/).fill(code);
+    await page.getByLabel(/code sent to/).fill(code);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
     // Signed in: the capture surface appears, with the recent list empty beneath it.
@@ -81,7 +81,7 @@ test.describe('side panel sign-in', () => {
     await page.getByRole('button', { name: 'Email me a code' }).click();
     await waitForEmail(email);
 
-    await page.getByLabel(/6-digit code sent to/).fill('000000');
+    await page.getByLabel(/code sent to/).fill('000000');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
     await expect(page.getByRole('alert')).toBeVisible();
