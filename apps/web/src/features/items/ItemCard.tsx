@@ -1,8 +1,8 @@
 'use client';
 
 import { ProductImage, StatusBadge } from '@universal-cart/ui';
-import { useState } from 'react';
 
+import { displayTitle } from './display';
 import {
   CompareCheckbox,
   ItemActions,
@@ -32,15 +32,18 @@ export interface ItemCardProps {
 }
 
 /**
- * One saved product, as a card.
+ * One saved product, as a card in the visual grid.
  *
- * Image-forward: the photograph is the largest thing, because a person choosing between three
- * jackets recognises them by sight long before they read a title. Price is the second-largest.
- * Everything the retailer said sits above the divider; the actions below it.
+ * The photograph *is* the card: edge to edge, portrait like garment photography, and pressable
+ * — it opens the details drawer, because the picture is what you recognise a jacket by and
+ * therefore what you reach for. Selection and status float over the image as chips instead of
+ * spending rows beneath it; the text under the photo is only what changes a decision: who
+ * sells it, what it is, what it costs now, and how fresh that observation is.
  *
- * When there is no usable image the card drops the frame entirely rather than reserving a grey
- * rectangle. `ProductImage` reports that through `onUnavailable`, including the case where a
- * URL was stored and then 404'd, which is common once a listing rotates.
+ * The frame renders even without a usable image. The earlier card dropped it, which read fine
+ * in a list but breaks a grid: a card that is suddenly all text sits like a hole among the
+ * photographs, and the neutral fallback frame keeps the rhythm instead. `ProductImage` handles
+ * the failed-load case internally, so a 404'd CDN URL costs a placeholder, not a layout shift.
  */
 export function ItemCard({
   item,
@@ -53,8 +56,7 @@ export function ItemCard({
   onToggleCompare,
   comparisonFull,
 }: ItemCardProps) {
-  const [imageUsable, setImageUsable] = useState(true);
-  const image = imageUsable ? item.image_url : null;
+  const name = displayTitle(item.title, item.retailer_name, item.domain);
 
   return (
     <li
@@ -63,35 +65,51 @@ export function ItemCard({
       data-status={item.status}
       data-comparing={comparing}
       className={[
-        'uc-surface uc-surface--raised flex flex-col overflow-hidden transition-opacity',
+        'uc-surface uc-surface--raised uc-surface--media uc-card flex flex-col overflow-hidden',
         busy ? 'opacity-60' : '',
       ].join(' ')}
     >
-      {image ? (
-        <ProductImage
-          src={image}
-          alt=""
-          className="w-full rounded-none border-0 border-b border-[var(--uc-border)]"
-          onUnavailable={() => setImageUsable(false)}
-        />
-      ) : null}
+      <div className="relative">
+        <button
+          type="button"
+          className="uc-card-media"
+          // "View", not "Details" — the caption's Details button is the accessible route with
+          // a visible name, and two buttons answering to "Details" would be ambiguous to
+          // anything (or anyone) addressing them by name.
+          aria-label={`View ${name}`}
+          onClick={() => onOpen(item)}
+        >
+          <ProductImage
+            src={item.image_url}
+            alt=""
+            className="uc-product-image--portrait rounded-none"
+          />
+        </button>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <ItemSource item={item} />
-            <ItemTitle item={item} className="line-clamp-2 font-medium" />
-          </div>
-          <StatusBadge tone="neutral">{STATUS_LABELS[item.status]}</StatusBadge>
+        <div className="uc-card-chip top-2 left-2">
+          <CompareCheckbox
+            item={item}
+            comparing={comparing}
+            onToggleCompare={onToggleCompare}
+            comparisonFull={comparisonFull}
+            showLabel
+          />
         </div>
 
-        <CompareCheckbox
-          item={item}
-          comparing={comparing}
-          onToggleCompare={onToggleCompare}
-          comparisonFull={comparisonFull}
-          showLabel
-        />
+        {/* "Saved" is the resting state of everything here; a chip saying so on every card
+            would be noise. Only a state the user chose gets announced on the photograph. */}
+        {item.status !== 'saved' ? (
+          <div className="uc-card-chip top-2 right-2">
+            <StatusBadge tone="neutral">{STATUS_LABELS[item.status]}</StatusBadge>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <ItemSource item={item} />
+          <ItemTitle item={item} className="line-clamp-2 text-sm font-medium" />
+        </div>
 
         <ItemPrice item={item} size="lg" />
         <ItemPriceChange item={item} summary={summary} />

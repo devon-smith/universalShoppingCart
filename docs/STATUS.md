@@ -320,6 +320,24 @@ narrowed subset can state a price the whole family disagrees on, and a no-match 
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
 
+## UX iteration — image-forward dashboard (slice A)
+
+**The dashboard leads with photographs.** Cards are now the default view (the list stays one
+press away, and the choice persists in `localStorage` via a `useSyncExternalStore` hook with a
+server snapshot, so hydration never mismatches). The card itself was rebuilt around the image:
+a portrait 4:5 frame edge to edge, pressable to open the details drawer, with the compare
+checkbox and status floating over the photograph as translucent chips. The frame renders even
+with no usable image so a text-only card no longer punches a hole in the grid. Grid density
+rose to two columns from 480px, three from `lg`, four from `2xl`. New UI primitives:
+`uc-product-image--portrait`, `uc-surface--media`; web-only `.uc-card*` rules in
+`globals.css` (unlayered on purpose — they must outrank the ui package's unlayered surface
+rules, which Tailwind's layered utilities cannot).
+
+Verified by 316 web unit tests (three new for the stored-layout parser), lint, typecheck,
+build, and a mock-data visual pass at 375/768/1440 in both themes. Behavioural e2e coverage
+rides the existing suite: both layouts share `data-testid="item-card"` and every fact
+component moved unmodified.
+
 ## Phase 8 — AI comparison summary (cloud slice, rolling PR)
 
 **A fact-grounded natural-language summary of a comparison, generated server-side by the Claude

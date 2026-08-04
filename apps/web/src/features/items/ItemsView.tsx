@@ -10,12 +10,13 @@ import { AppShell, type ShellCart } from '@/features/shell/AppShell';
 import { archiveItem, deleteItem, setItemStatus, updateItem } from './actions';
 import type { Announcement } from './Announcements';
 import { Announcements } from './Announcements';
-import { CartHeader, type ItemsLayout } from './CartHeader';
+import { CartHeader } from './CartHeader';
 import type { ItemEdit } from './edits';
 import { emptyReason, ItemsEmptyState } from './EmptyStates';
 import { ItemCard } from './ItemCard';
 import { ItemDetail } from './ItemDetail';
 import { ItemRow } from './ItemRow';
+import { useItemsLayout } from './layout-preference';
 import type { ItemFilters, ItemStatus, PriceSummary, SavedItem, SortKey } from './query';
 import { activeFilterCount, applyQuery, EMPTY_FILTERS, retailerOptions } from './query';
 import { applyRealtimeUpsert, removeItem, replaceItem, withEdit } from './reduce';
@@ -53,7 +54,7 @@ export function ItemsView({
   const [items, setItems] = useState(initialItems);
   const [filters, setFilters] = useState<ItemFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortKey>('recently-updated');
-  const [layout, setLayout] = useState<ItemsLayout>('list');
+  const [layout, changeLayout] = useItemsLayout();
   const [section, setSection] = useState<SectionId>('cart');
   const [cartId, setCartId] = useState(
     carts.find((cart) => cart.is_default)?.id ?? carts[0]?.id ?? '',
@@ -325,7 +326,7 @@ export function ItemsView({
           sort={sort}
           onSortChange={setSort}
           layout={layout}
-          onLayoutChange={setLayout}
+          onLayoutChange={changeLayout}
         />
 
         {visible.length === 0 ? (
@@ -344,7 +345,10 @@ export function ItemsView({
           <ul
             className={
               layout === 'cards'
-                ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3'
+                ? // Denser than the old grid: photographs carry more per pixel than prose, so
+                  // two columns fit a large phone and four fit a wide desktop without any
+                  // card starving. 480px is where two 4:5 frames stop being postage stamps.
+                  'grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'
                 : 'flex flex-col gap-2'
             }
           >
