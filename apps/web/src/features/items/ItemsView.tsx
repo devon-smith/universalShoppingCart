@@ -1,16 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { MAX_COMPARE_ITEMS } from '@/features/compare/compare';
 import { CompareTray } from '@/features/compare/CompareTray';
-import { toggleSelection } from '@/features/compare/selection';
+import { compareHref, toggleSelection } from '@/features/compare/selection';
 import { AppShell, type ShellCart } from '@/features/shell/AppShell';
 
 import { archiveItem, deleteItem, setItemStatus, updateItem } from './actions';
 import type { Announcement } from './Announcements';
 import { Announcements } from './Announcements';
 import { CartHeader } from './CartHeader';
+import { boardCompareIds, groupByDecision, hasDecisions } from './decisions';
 import type { ItemEdit } from './edits';
 import { emptyReason, ItemsEmptyState } from './EmptyStates';
 import { ItemCard } from './ItemCard';
@@ -292,6 +294,46 @@ export function ItemsView({
     comparisonFull: comparingItems.length >= MAX_COMPARE_ITEMS,
   };
 
+  const boards = useMemo(() => groupByDecision(visible), [visible]);
+
+  /** One list of products, in whichever of the two layouts is active. */
+  function renderItemList(list: readonly SavedItem[]) {
+    return (
+      <ul
+        className={
+          layout === 'cards'
+            ? // Denser than the old grid: photographs carry more per pixel than prose, so
+              // two columns fit a large phone and four fit a wide desktop without any
+              // card starving. 480px is where two 4:5 frames stop being postage stamps.
+              'grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'
+            : 'flex flex-col gap-2'
+        }
+      >
+        {list.map((item) =>
+          layout === 'cards' ? (
+            <ItemCard
+              key={item.id}
+              item={item}
+              summary={summaries.get(item.id)}
+              busy={busyIds.has(item.id)}
+              comparing={comparing.includes(item.id)}
+              {...cardProps}
+            />
+          ) : (
+            <ItemRow
+              key={item.id}
+              item={item}
+              summary={summaries.get(item.id)}
+              busy={busyIds.has(item.id)}
+              comparing={comparing.includes(item.id)}
+              {...cardProps}
+            />
+          ),
+        )}
+      </ul>
+    );
+  }
+
   return (
     <AppShell
       carts={carts}
@@ -341,39 +383,45 @@ export function ItemsView({
             onClearSearch={() => setFilters({ ...filters, search: '' })}
             onClearFilters={() => setFilters({ ...EMPTY_FILTERS, search: filters.search })}
           />
+        ) : hasDecisions(boards) ? (
+          // Boards: one per open purchase decision, unassigned candidates last. Rendered only
+          // when at least one item names a decision, so a user who never touches the field
+          // keeps today's flat view with zero added chrome.
+          boards.map((board) => {
+            const compareIds = boardCompareIds(board);
+            const compare = compareIds ? compareHref(compareIds) : null;
+
+            return (
+              <section
+                key={board.name ?? ''}
+                data-testid="decision-board"
+                data-decision={board.name ?? ''}
+                className="flex flex-col gap-2"
+              >
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h2 className="text-base font-semibold tracking-tight">
+                    {board.name ?? 'Not yet part of a decision'}
+                  </h2>
+                  <span className="text-xs text-[var(--uc-foreground-muted)]">
+                    {board.items.length === 1
+                      ? '1 candidate'
+                      : `${board.items.length} candidates`}
+                  </span>
+                  {compare ? (
+                    <Link
+                      href={compare}
+                      className="uc-focusable rounded-[var(--uc-radius-control)] text-sm text-[var(--uc-primary)]"
+                    >
+                      Compare these {compareIds!.length} side by side
+                    </Link>
+                  ) : null}
+                </div>
+                {renderItemList(board.items)}
+              </section>
+            );
+          })
         ) : (
-          <ul
-            className={
-              layout === 'cards'
-                ? // Denser than the old grid: photographs carry more per pixel than prose, so
-                  // two columns fit a large phone and four fit a wide desktop without any
-                  // card starving. 480px is where two 4:5 frames stop being postage stamps.
-                  'grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'
-                : 'flex flex-col gap-2'
-            }
-          >
-            {visible.map((item) =>
-              layout === 'cards' ? (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  summary={summaries.get(item.id)}
-                  busy={busyIds.has(item.id)}
-                  comparing={comparing.includes(item.id)}
-                  {...cardProps}
-                />
-              ) : (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  summary={summaries.get(item.id)}
-                  busy={busyIds.has(item.id)}
-                  comparing={comparing.includes(item.id)}
-                  {...cardProps}
-                />
-              ),
-            )}
-          </ul>
+          renderItemList(visible)
         )}
       </section>
 

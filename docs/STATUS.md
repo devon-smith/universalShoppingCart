@@ -320,6 +320,21 @@ narrowed subset can state a price the whole family disagrees on, and a no-match 
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
 
+## UX iteration — decision groups (slice C)
+
+**The dashboard groups candidates by the purchase they are for.** A new user-authored
+`items.decision` text column ("winter jacket") renders as a board per open decision — named
+boards A–Z, unassigned candidates last, and a board holding two to four candidates carries a
+one-click "Compare these N side by side" link. No board chrome appears until the first
+decision is named, so the flat view is unchanged for anyone who never touches the field.
+Assignment lives in the item drawer ("Shopping for"). A column, not a `decision_groups`
+table — ADR in DECISIONS.md, 2026-08-04. The ingest function never writes the column and the
+observed-fields trigger pins only observed columns, so refreshes cannot erase an assignment;
+the edit schema accepts a missing field as null so pre-deploy tabs still save. Verified by
+322 web unit tests (six new: grouping, board-compare eligibility), root lint/typecheck/
+test/build, a new e2e (assign two → board appears → one click lands on a two-column
+compare), and a mock-data visual pass.
+
 ## UX iteration — image-dominant compare columns (slice B)
 
 **Each compare column now leads with a large portrait photograph.** The column header is the

@@ -307,6 +307,30 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
           </div>
 
           <div className="uc-field">
+            <label className="uc-field__label" htmlFor="detail-decision">
+              Shopping for
+            </label>
+            <input
+              id="detail-decision"
+              name="decision"
+              placeholder="winter jacket"
+              defaultValue={item.decision ?? ''}
+              aria-invalid={errors.decision ? true : undefined}
+              aria-describedby="detail-decision-hint"
+              className="uc-input uc-focusable"
+            />
+            <span id="detail-decision-hint" className="uc-field__message">
+              Items with the same answer group into one board, so candidates for one purchase
+              stay side by side.
+            </span>
+            {errors.decision ? (
+              <span role="alert" className="uc-field__message uc-field__message--error">
+                {errors.decision}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="uc-field">
             <label className="uc-field__label" htmlFor="detail-note">
               Note
             </label>

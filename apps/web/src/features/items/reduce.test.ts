@@ -26,6 +26,7 @@ function item(overrides: Partial<SavedItem> = {}): SavedItem {
     selected_variant: null,
     identifiers: null,
     note: null,
+    decision: null,
     quantity: 1,
     priority: 'normal',
     desired_price: null,
@@ -41,6 +42,7 @@ describe('withEdit', () => {
   it('applies every user-authored field', () => {
     const result = withEdit(item(), {
       note: 'for the trip',
+      decision: null,
       quantity: 2,
       priority: 'high',
       desiredPrice: '75.00',
@@ -49,6 +51,7 @@ describe('withEdit', () => {
 
     expect(result).toMatchObject({
       note: 'for the trip',
+      decision: null,
       quantity: 2,
       priority: 'high',
       desired_price: '75.00',
@@ -64,6 +67,7 @@ describe('withEdit', () => {
     });
     const after = withEdit(before, {
       note: null,
+      decision: null,
       quantity: 5,
       priority: 'low',
       desiredPrice: null,
@@ -79,6 +83,7 @@ describe('withEdit', () => {
   it('advances updated_at so recency sorting stays honest', () => {
     const after = withEdit(item(), {
       note: null,
+      decision: null,
       quantity: 1,
       priority: 'normal',
       desiredPrice: null,

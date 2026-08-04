@@ -26,6 +26,17 @@ export const itemEditSchema = z.object({
     .transform((value) => value.trim())
     .transform((value) => (value.length > 0 ? value : null))
     .nullable(),
+  // The purchase this candidate is for ("winter jacket"). Empty means unassigned — null,
+  // not '', so the database's length check and the dashboard's grouping agree on absence.
+  // `nullish`, not `nullable`: a tab loaded before this field shipped submits edits without
+  // it, and rejecting those saves until a reload would be a worse failure than the field.
+  decision: z
+    .string()
+    .max(120, { error: 'A decision name can be at most 120 characters' })
+    .transform((value) => value.trim())
+    .transform((value) => (value.length > 0 ? value : null))
+    .nullish()
+    .transform((value) => value ?? null),
   quantity: z
     .number()
     .int({ error: 'Quantity must be a whole number' })
@@ -60,6 +71,7 @@ export function parseItemEditForm(form: {
 
   const result = itemEditSchema.safeParse({
     note: form.get('note')?.toString() ?? null,
+    decision: form.get('decision')?.toString() ?? null,
     quantity: Number.parseInt(rawQuantity, 10),
     priority: form.get('priority')?.toString() ?? 'normal',
     desiredPrice: rawDesired.length > 0 ? rawDesired : null,
@@ -84,6 +96,7 @@ export function parseItemEditForm(form: {
 /** The database column names for an edit. */
 export function toColumns(edit: ItemEdit): {
   note: string | null;
+  decision: string | null;
   quantity: number;
   priority: ItemEdit['priority'];
   desired_price: string | null;
@@ -91,6 +104,7 @@ export function toColumns(edit: ItemEdit): {
 } {
   return {
     note: edit.note,
+    decision: edit.decision,
     quantity: edit.quantity,
     priority: edit.priority,
     desired_price: edit.desiredPrice,

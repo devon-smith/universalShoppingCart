@@ -10,6 +10,7 @@ describe('itemEditSchema', () => {
   it('accepts a complete edit', () => {
     const result = itemEditSchema.parse({
       note: 'for the trip',
+      decision: null,
       quantity: 2,
       priority: 'high',
       desiredPrice: '79.99',
@@ -18,6 +19,7 @@ describe('itemEditSchema', () => {
 
     expect(result).toEqual({
       note: 'for the trip',
+      decision: null,
       quantity: 2,
       priority: 'high',
       desiredPrice: '79.99',
@@ -29,6 +31,7 @@ describe('itemEditSchema', () => {
     expect(
       itemEditSchema.parse({
         note: '   ',
+        decision: null,
         quantity: 1,
         priority: 'normal',
         desiredPrice: null,
@@ -41,6 +44,7 @@ describe('itemEditSchema', () => {
     expect(
       itemEditSchema.safeParse({
         note: null,
+        decision: null,
         quantity: 0,
         priority: 'normal',
         desiredPrice: null,
@@ -53,6 +57,7 @@ describe('itemEditSchema', () => {
     expect(
       itemEditSchema.safeParse({
         note: null,
+        decision: null,
         quantity: 1.5,
         priority: 'normal',
         desiredPrice: null,
@@ -66,6 +71,7 @@ describe('itemEditSchema', () => {
       expect(
         itemEditSchema.safeParse({
           note: null,
+          decision: null,
           quantity: 1,
           priority: 'normal',
           desiredPrice,
@@ -80,6 +86,7 @@ describe('itemEditSchema', () => {
     expect(
       itemEditSchema.safeParse({
         note: null,
+        decision: null,
         quantity: 1,
         priority: 'urgent',
         desiredPrice: null,
@@ -89,6 +96,7 @@ describe('itemEditSchema', () => {
     expect(
       itemEditSchema.safeParse({
         note: null,
+        decision: null,
         quantity: 1,
         priority: 'normal',
         desiredPrice: null,
@@ -101,6 +109,7 @@ describe('itemEditSchema', () => {
     expect(
       itemEditSchema.safeParse({
         note: 'x'.repeat(2001),
+        decision: null,
         quantity: 1,
         priority: 'normal',
         desiredPrice: null,
@@ -125,6 +134,7 @@ describe('parseItemEditForm', () => {
     expect(parsed.ok).toBe(true);
     expect(parsed.edit).toEqual({
       note: 'for the trip',
+      decision: null,
       quantity: 3,
       priority: 'high',
       desiredPrice: '75.00',
@@ -160,6 +170,7 @@ describe('toColumns', () => {
     expect(
       toColumns({
         note: 'hi',
+        decision: null,
         quantity: 2,
         priority: 'low',
         desiredPrice: '10.00',
@@ -167,6 +178,7 @@ describe('toColumns', () => {
       }),
     ).toEqual({
       note: 'hi',
+      decision: null,
       quantity: 2,
       priority: 'low',
       desired_price: '10.00',
@@ -178,6 +190,7 @@ describe('toColumns', () => {
     expect(
       toColumns({
         note: null,
+        decision: null,
         quantity: 1,
         priority: 'normal',
         desiredPrice: null,

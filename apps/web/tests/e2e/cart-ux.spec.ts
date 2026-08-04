@@ -252,6 +252,47 @@ test.describe('dashboard as a daily tool', () => {
     await expect(reloaded).toContainText('$98.00');
   });
 
+  test('groups candidates into decision boards and compares a board in one click', async ({
+    page,
+  }) => {
+    await openDashboard(page, 'boards');
+
+    // Nobody has named a decision, so there is no board chrome at all.
+    await expect(page.getByTestId('decision-board')).toHaveCount(0);
+
+    const assign = async (title: string, decision: string) => {
+      await page
+        .getByTestId('item-card')
+        .filter({ hasText: title })
+        .getByRole('button', { name: 'Details' })
+        .click();
+      const drawer = page.getByRole('dialog');
+      await drawer.getByLabel('Shopping for').fill(decision);
+      await drawer.getByRole('button', { name: 'Save changes' }).click();
+      await expect(drawer).toBeHidden();
+    };
+
+    await assign('Meridian', 'trail shoes');
+    await assign('Kestrel', 'trail shoes');
+
+    // Two boards now: the named decision, and everything not yet assigned.
+    const board = page.getByTestId('decision-board').filter({ hasText: 'trail shoes' });
+    await expect(board.getByTestId('item-card')).toHaveCount(2);
+    await expect(
+      page
+        .getByTestId('decision-board')
+        .filter({ hasText: 'Not yet part of a decision' })
+        .getByTestId('item-card'),
+    ).toHaveCount(2);
+
+    // The board is a comparison waiting to happen: one click, side by side.
+    await board.getByRole('link', { name: 'Compare these 2 side by side' }).click();
+    await expect(page).toHaveURL(/\/app\/compare/);
+    await expect(page.getByTestId('compare-column')).toHaveCount(2);
+    await expect(page.getByTestId('compare-table')).toContainText('Meridian Wool Runner');
+    await expect(page.getByTestId('compare-table')).toContainText('Kestrel Rain Shell');
+  });
+
   test('rejects an invalid edit before it reaches the database', async ({ page }) => {
     await openDashboard(page, 'invalid');
 
