@@ -1191,3 +1191,28 @@ gap is invisible to the local pgTAP suite (local never has the default-privilege
 cannot catch it without running against hosted; this ADR is the record instead. New service_role-only
 functions must revoke from `anon, authenticated` (or `public, anon, authenticated`), not PUBLIC alone.
 Hosted staging was patched in place via MCP as this migration was authored, so the two are in sync.
+
+## 2026-08-04 — Decision groups are a text column on items, not a table
+
+**Decision.** "Which purchase is this candidate for?" is stored as `items.decision text`
+(1–120 chars or null), free text authored by the user. The dashboard groups items sharing a
+name into a board per open purchase, with a one-click compare when a board holds two to four
+candidates. There is no `decision_groups` table.
+
+**Why.** Long-horizon clothing shopping runs several open decisions at once — three jacket
+candidates, two pairs of trail runners — and a flat list interleaves them. The group's whole
+identity is its name: it has no metadata, no sharing of its own, no membership beyond the
+items that carry it. A table would add a foreign key, RLS policies, a second write path, and
+rename/merge plumbing for a concept the user experiences as typing the same words twice.
+Grouping is by the exact trimmed string — merging "winter jacket" with "winter jackets"
+would invent an equivalence the user did not state, the same rule the compare view applies
+to variant labels.
+
+**User-authored, by construction.** The ingest function never writes the column and
+`reject_observed_field_writes` pins only the observed columns, so a retailer refresh cannot
+erase an assignment (BUILD_PLAN.md §13.2). The edit schema accepts a missing field as null
+so tabs loaded before this shipped can still save.
+
+**Revisit when** a decision needs a life of its own — status ("decided", with a winner),
+notes about the decision rather than a candidate, or sharing a single board. That is the
+point at which a table earns its keep, and the migration is a backfill from the strings.
