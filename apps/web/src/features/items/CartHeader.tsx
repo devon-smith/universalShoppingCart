@@ -130,7 +130,8 @@ export function CartHeader({
           role="group"
           aria-label="View"
         >
-          {(['list', 'cards'] as ItemsLayout[]).map((option) => (
+          {/* Cards lead: they are the default view, so they take the first slot. */}
+          {(['cards', 'list'] as ItemsLayout[]).map((option) => (
             <button
               key={option}
               type="button"
