@@ -65,11 +65,15 @@ export function ItemCard({
       data-status={item.status}
       data-comparing={comparing}
       className={[
-        'uc-surface uc-surface--raised uc-surface--media uc-card flex flex-col overflow-hidden',
+        // No `overflow-hidden` here: the "⋯" actions menu is an absolutely positioned child,
+        // and a card that clips it leaves the menu's buttons under whatever sits beside the
+        // card — the e2e Archive click landed on the navigation rail. Only the image wrapper
+        // clips, which is all the clipping the rounded corners ever needed.
+        'uc-surface uc-surface--raised uc-surface--media uc-card flex flex-col',
         busy ? 'opacity-60' : '',
       ].join(' ')}
     >
-      <div className="relative">
+      <div className="relative overflow-hidden rounded-t-[var(--uc-radius-surface)]">
         <button
           type="button"
           className="uc-card-media"
