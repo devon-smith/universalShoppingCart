@@ -11,6 +11,10 @@ out/
 .output/
 .wxt/
 *.tsbuildinfo
+# Next regenerates this on `next typegen` and `next build`, and rewrites its routes.d.ts
+# import between dev (`.next/dev/types`) and build (`.next/types`) — so a committed copy
+# churns against every CI build. Left untracked; typecheck runs `next typegen` first.
+next-env.d.ts
 
 # Extension release artifacts
 *.crx
