@@ -42,7 +42,7 @@ function messageFor(error: unknown): string {
  * installed; nothing about it is obvious yet.
  *
  * So: what this is, three things it does, then the form. The form is unchanged in mechanism —
- * a six-digit code, verified inside the panel, because the panel cannot follow an emailed link
+ * a one-time code, verified inside the panel, because the panel cannot follow an emailed link
  * into a browser tab whose cookies are not its session storage (lib/auth/email-otp.ts).
  *
  * Google appears only where the Auth server says the provider is configured. A button that can
@@ -163,7 +163,7 @@ export function SignInPanel() {
               {busy ? 'Sending…' : 'Email me a code'}
             </Button>
             <p className="onboarding__note">
-              We will email you a six-digit code. No password to invent or forget.
+              We will email you a one-time code. No password to invent or forget.
             </p>
           </form>
         ) : (
@@ -181,7 +181,7 @@ export function SignInPanel() {
             </p>
             <TextInput
               ref={codeInput}
-              label={`6-digit code sent to ${stage.email}`}
+              label={`One-time code sent to ${stage.email}`}
               labelHidden
               inputMode="numeric"
               autoComplete="one-time-code"

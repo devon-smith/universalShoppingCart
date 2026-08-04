@@ -36,10 +36,17 @@ describe('normalizeCode', () => {
     expect(normalizeCode(' 123456 ')).toBe('123456');
   });
 
-  it('rejects anything that is not six digits', () => {
-    expect(() => normalizeCode('12345')).toThrow(/6-digit/);
-    expect(() => normalizeCode('1234567')).toThrow(/6-digit/);
-    expect(() => normalizeCode('abcdef')).toThrow(/6-digit/);
+  it('accepts the whole 6–10 digit range Supabase can issue', () => {
+    // A project may be configured for eight; a real eight-digit code must not be rejected here.
+    expect(normalizeCode('123456')).toBe('123456');
+    expect(normalizeCode('7972 6904')).toBe('79726904');
+    expect(normalizeCode('1234567890')).toBe('1234567890');
+  });
+
+  it('rejects a code that is too short, too long, or not numeric', () => {
+    expect(() => normalizeCode('12345')).toThrow(/numeric/);
+    expect(() => normalizeCode('12345678901')).toThrow(/numeric/);
+    expect(() => normalizeCode('abcdef')).toThrow(/numeric/);
   });
 });
 

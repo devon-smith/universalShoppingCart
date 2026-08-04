@@ -44,8 +44,11 @@ export function normalizeEmail(raw: string): string {
 export function normalizeCode(raw: string): string {
   // Users paste codes with stray spaces and dashes; strip them before comparing.
   const code = raw.replace(/[\s-]/g, '');
-  if (!/^\d{6}$/.test(code)) {
-    throw new EmailSignInError('Enter the 6-digit code from the email.');
+  // Supabase's email OTP length is a project setting (6–10 digits), so don't hardcode six:
+  // a project configured for eight would have every real code rejected here before it was ever
+  // sent to verifyOtp. Accept the whole valid range and let Supabase decide if the code is right.
+  if (!/^\d{6,10}$/.test(code)) {
+    throw new EmailSignInError('Enter the numeric code from the email.');
   }
   return code;
 }

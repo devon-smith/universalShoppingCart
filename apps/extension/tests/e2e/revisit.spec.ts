@@ -31,7 +31,7 @@ async function signIn(panel: Page, email: string) {
   await panel.getByRole('button', { name: 'Email me a code' }).click();
 
   const code = signInCodeFrom(await waitForEmail(email));
-  await panel.getByLabel(/6-digit code sent to/).fill(code);
+  await panel.getByLabel(/code sent to/).fill(code);
   await panel.getByRole('button', { name: 'Sign in', exact: true }).click();
 
   await expect(panel.getByRole('heading', { name: 'Save this product' })).toBeVisible();
