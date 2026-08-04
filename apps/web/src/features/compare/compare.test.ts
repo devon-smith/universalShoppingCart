@@ -35,6 +35,7 @@ function item(overrides: Partial<CompareItem> = {}): CompareItem {
     selected_variant: { Color: 'Navy', Size: 'M' },
     identifiers: {},
     note: null,
+    decision: null,
     quantity: 1,
     priority: 'normal',
     desired_price: null,

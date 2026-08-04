@@ -47,6 +47,12 @@ export interface SavedItem {
   selected_variant: Record<string, string> | null;
   identifiers: Record<string, string> | null;
   note: string | null;
+  /**
+   * Which purchase this candidate is for — "winter jacket", "trail runners". Free text,
+   * user-authored, so a retailer refresh never touches it. Items sharing a decision render
+   * together as a board on the dashboard; null means not yet assigned.
+   */
+  decision: string | null;
   quantity: number;
   priority: ItemPriority;
   desired_price: string | number | null;

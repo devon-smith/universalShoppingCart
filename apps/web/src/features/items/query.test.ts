@@ -39,6 +39,7 @@ function item(overrides: Partial<SavedItem> = {}): SavedItem {
     selected_variant: { Size: '10', Color: 'Natural Black' },
     identifiers: null,
     note: null,
+    decision: null,
     quantity: 1,
     priority: 'normal',
     desired_price: null,
