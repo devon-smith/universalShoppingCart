@@ -34,9 +34,13 @@ export function CompareTable({ comparison }: { comparison: Comparison }) {
 
   // The image and title rows read as a column header, not as attributes to compare — so they
   // are lifted out of the body. `compare.ts` still returns them as rows; which of them is
-  // chrome and which is content is a view decision, and this is the view.
+  // chrome and which is content is a view decision, and this is the view. The retailer stays
+  // a body row — "differs" across sellers is a real verdict — but its value is *also* part of
+  // each column's identity, the way a person holds the candidates in mind ("the Zara one,
+  // the Uniqlo one"), so the header repeats it beside the photograph.
   const imageRow = rows.find((row) => row.key === 'image');
   const titleRow = rows.find((row) => row.key === 'title');
+  const retailerRow = rows.find((row) => row.key === 'retailer');
   const bodyRows = rows.filter((row) => row.key !== 'image' && row.key !== 'title');
 
   const differing = bodyRows.filter((row) => row.comparable && row.allAgree === false).length;
@@ -89,23 +93,41 @@ export function CompareTable({ comparison }: { comparison: Comparison }) {
               <th scope="col" className="w-44 min-w-36 p-0">
                 <span className="sr-only">Attribute</span>
               </th>
-              {items.map((item, index) => (
-                <th
-                  key={item.id}
-                  scope="col"
-                  data-testid="compare-column"
-                  className="min-w-56 border-b border-[var(--uc-border)] p-3 text-left align-top font-normal"
-                >
-                  <div className="flex flex-col gap-2">
-                    {imageRow?.cells[index]?.present ? (
-                      <ProductImage src={imageRow.cells[index]!.text} alt="" className="w-full" />
-                    ) : null}
-                    <span className="font-semibold">
-                      {titleRow?.cells[index]?.text ?? item.title}
-                    </span>
-                  </div>
-                </th>
-              ))}
+              {items.map((item, index) => {
+                const imageCell = imageRow?.cells[index];
+                const retailerCell = retailerRow?.cells[index];
+
+                return (
+                  <th
+                    key={item.id}
+                    scope="col"
+                    data-testid="compare-column"
+                    className="w-72 min-w-64 border-b border-[var(--uc-border)] p-3 text-left align-top font-normal"
+                  >
+                    {/* The column is the candidate, so it leads with the photograph — large,
+                        portrait like garment photography, and framed even when the page gave
+                        no image, because one column without a frame would unseat every row
+                        beneath it. Choosing between these images *is* using this page. */}
+                    <div className="flex flex-col gap-2">
+                      <ProductImage
+                        src={imageCell?.present ? imageCell.text : null}
+                        alt=""
+                        className="uc-product-image--portrait w-full"
+                      />
+                      <span className="flex flex-col gap-0.5">
+                        {retailerCell?.present ? (
+                          <span className="text-xs font-normal text-[var(--uc-foreground-muted)]">
+                            {retailerCell.text}
+                          </span>
+                        ) : null}
+                        <span className="font-semibold">
+                          {titleRow?.cells[index]?.text ?? item.title}
+                        </span>
+                      </span>
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
 

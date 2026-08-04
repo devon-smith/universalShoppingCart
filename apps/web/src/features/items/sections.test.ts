@@ -25,6 +25,7 @@ function item(overrides: Partial<SavedItem> & { id: string }): SavedItem {
     selected_variant: null,
     identifiers: null,
     note: null,
+    decision: null,
     quantity: 1,
     priority: 'normal',
     desired_price: null,

@@ -13,6 +13,7 @@ export function withEdit(item: SavedItem, edit: ItemEdit): SavedItem {
   return {
     ...item,
     note: edit.note,
+    decision: edit.decision,
     quantity: edit.quantity,
     priority: edit.priority,
     desired_price: edit.desiredPrice,

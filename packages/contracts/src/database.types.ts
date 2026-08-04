@@ -254,6 +254,7 @@ export type Database = {
           created_by: string
           currency: string | null
           current_price: number | null
+          decision: string | null
           description: string | null
           desired_price: number | null
           domain: string
@@ -289,6 +290,7 @@ export type Database = {
           created_by: string
           currency?: string | null
           current_price?: number | null
+          decision?: string | null
           description?: string | null
           desired_price?: number | null
           domain: string
@@ -324,6 +326,7 @@ export type Database = {
           created_by?: string
           currency?: string | null
           current_price?: number | null
+          decision?: string | null
           description?: string | null
           desired_price?: number | null
           domain?: string

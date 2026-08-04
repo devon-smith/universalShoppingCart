@@ -11,7 +11,7 @@ import type { CompareItem } from './compare';
  * (BUILD_PLAN.md §6.2).
  */
 export const COMPARE_COLUMNS =
-  'id, cart_id, title, brand, description, retailer_name, domain, source_url, canonical_url, image_url, currency, current_price::text, original_price::text, availability, product_availability, composition, selected_variant, identifiers, note, quantity, priority, desired_price::text, status, last_observed_at, created_at, updated_at';
+  'id, cart_id, title, brand, description, retailer_name, domain, source_url, canonical_url, image_url, currency, current_price::text, original_price::text, availability, product_availability, composition, selected_variant, identifiers, note, decision, quantity, priority, desired_price::text, status, last_observed_at, created_at, updated_at';
 
 /**
  * Load the requested items, back in the order they were asked for.
