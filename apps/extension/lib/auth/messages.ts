@@ -29,7 +29,7 @@ const NETWORK = /fetch|network|failed to fetch/i;
  * Our own validation, from `normalizeEmail` and `normalizeCode`. These are already one
  * actionable sentence, so wrapping them in "Sign-in failed" would only add a scarier word.
  */
-const OUR_VALIDATION = /^Enter (a valid email address|the 6-digit code)/;
+const OUR_VALIDATION = /^Enter (a valid email address|the numeric code)/;
 
 export function describeSignInFailure(message: string): SignInFailure {
   if (OUR_VALIDATION.test(message)) {
