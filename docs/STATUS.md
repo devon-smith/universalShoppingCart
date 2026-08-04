@@ -320,6 +320,17 @@ narrowed subset can state a price the whole family disagrees on, and a no-match 
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
 
+## UX iteration — image-dominant compare columns (slice B)
+
+**Each compare column now leads with a large portrait photograph.** The column header is the
+candidate's identity — photo, retailer, title — the way a person holds the choice in mind
+("the Zara one, the Uniqlo one"); the retailer stays a body row too, where its differs
+verdict lives. Columns widened to `min-w-64`, and the frame renders even when a page gave no
+image so one imageless column cannot unseat the rows beneath it. The table element, every
+testid, and the comparable/descriptive honesty rules are untouched; `compare.ts` was not
+modified. Verified by lint, typecheck, 316 unit tests, build, and a mock-data visual pass at
+768/1440 in both themes through the real `compareItems` pipeline.
+
 ## UX iteration — image-forward dashboard (slice A)
 
 **The dashboard leads with photographs.** Cards are now the default view (the list stays one
