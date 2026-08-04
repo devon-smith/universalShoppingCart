@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { normalizeCode } from './email-otp';
 import { describeSignInFailure } from './messages';
+
+/** The exact message the panel would throw for a malformed code, not a hand-copied guess. */
+function codeValidationMessage(): string {
+  try {
+    normalizeCode('12345'); // too short — triggers the real validation error
+    throw new Error('normalizeCode did not reject a malformed code');
+  } catch (error) {
+    return (error as Error).message;
+  }
+}
 
 describe('describeSignInFailure', () => {
   it('offers a resend for the message Supabase sends on a bad or expired code', () => {
@@ -47,9 +58,16 @@ describe('describeSignInFailure', () => {
     expect(failure.body).toBe('');
   });
 
-  it('leaves the code-format message alone too', () => {
-    expect(describeSignInFailure('Enter the 6-digit code from the email.').title).toBe(
-      'Enter the 6-digit code from the email.',
-    );
+  // The seam: the classifier keys off normalizeCode's wording. When that wording changed
+  // (6-digit → numeric), the regex silently stopped matching and a mistyped code fell through to
+  // "Sign-in failed". Drive the *real* error through the classifier so the two cannot drift apart
+  // unnoticed again — a hand-copied literal would not have caught it.
+  it('routes the real code-validation error to the calm inline prompt, not "Sign-in failed"', () => {
+    const message = codeValidationMessage();
+    const failure = describeSignInFailure(message);
+
+    expect(failure.title).toBe(message); // shown as-is, unwrapped
+    expect(failure.title).not.toBe('Sign-in failed');
+    expect(failure.body).toBe('');
   });
 });
