@@ -1165,3 +1165,29 @@ a human setting `AI_PROVIDER_API_KEY` in Vercel (server-only, Sensitive); until 
 present and inert. `packages/contracts/src/database.types.ts` was hand-edited to add the new table
 because this environment has no Docker to run `pnpm db:types`; CI's `database-check` regenerates and
 diffs it, so that job is the authority if the hand-edit is imperfect.
+
+## 2026-08-04 — service_role-only functions revoke from anon+authenticated, not just PUBLIC
+
+**Decision.** A corrective migration (`20260804060000_lock_service_role_functions`) revokes EXECUTE
+from `anon` and `authenticated` on the five service_role-only Phase 7 functions
+(`record_background_observation`, `record_notification`, `enqueue_refresh_job`,
+`select_due_refresh_jobs`, `record_refresh_result`). The original Phase 7 migrations only
+`revoke ... from public`.
+
+**Context.** `revoke ... from public` is sufficient on a local `supabase start` stack — its pgTAP
+grant assertions (`not has_function_privilege('authenticated', ...)`) pass there. It is **not**
+sufficient on hosted Supabase, which runs `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE
+ON FUNCTIONS TO anon, authenticated, service_role`. Every new public function is therefore granted
+to anon/authenticated _directly_, and revoking PUBLIC does not remove a direct grant. Verified on
+the staging project while bringing it to schema parity (2026-08-04): all five were callable by anon
+and authenticated via PostgREST `/rpc`. These functions have no in-body auth check — they are
+SECURITY DEFINER and rely solely on being service_role-only — so the exposure was real: any signed-in
+user could rewrite an item's observed price/availability, inject alerts, or manipulate the refresh
+schedule. The invitation RPCs share the direct-grant quirk but are safe, because their bodies reject
+a null `auth.uid()`.
+
+**Consequences.** The revoke is explicit and idempotent, so it is correct on both environments. The
+gap is invisible to the local pgTAP suite (local never has the default-privilege grant), so a test
+cannot catch it without running against hosted; this ADR is the record instead. New service_role-only
+functions must revoke from `anon, authenticated` (or `public, anon, authenticated`), not PUBLIC alone.
+Hosted staging was patched in place via MCP as this migration was authored, so the two are in sync.

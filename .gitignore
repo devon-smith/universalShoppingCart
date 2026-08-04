@@ -69,3 +69,6 @@ pnpm-debug.log*
 # they churn on every visual change, and they are captured from a seeded local stack whose
 # addresses and links are throwaway. Regenerate with `pnpm screenshots:baseline`.
 .screenshots/
+
+# Vercel CLI local link metadata (.vercel/project.json). Never committed.
+.vercel/
