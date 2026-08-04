@@ -403,9 +403,7 @@ export function ItemsView({
                     {board.name ?? 'Not yet part of a decision'}
                   </h2>
                   <span className="text-xs text-[var(--uc-foreground-muted)]">
-                    {board.items.length === 1
-                      ? '1 candidate'
-                      : `${board.items.length} candidates`}
+                    {board.items.length === 1 ? '1 candidate' : `${board.items.length} candidates`}
                   </span>
                   {compare ? (
                     <Link

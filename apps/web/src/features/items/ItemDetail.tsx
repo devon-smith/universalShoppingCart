@@ -320,8 +320,8 @@ export function ItemDetail({ item, onClose, onSave, onDelete }: ItemDetailProps)
               className="uc-input uc-focusable"
             />
             <span id="detail-decision-hint" className="uc-field__message">
-              Items with the same answer group into one board, so candidates for one purchase
-              stay side by side.
+              Items with the same answer group into one board, so candidates for one purchase stay
+              side by side.
             </span>
             {errors.decision ? (
               <span role="alert" className="uc-field__message uc-field__message--error">
