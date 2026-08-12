@@ -29,8 +29,9 @@ message, the build was made without the variables above.
 ### 2. Send your friend two things
 
 - the zip file (any channel you both use), and
-- an invitation link: dashboard → **Share** → invite their email with the role you want
-  them to have. Editors can save and edit items; viewers can only look.
+- an invitation link: dashboard → **Share** → **Create invitation link**. The link is shown
+  once — copy it there and then, and send it yourself; the app does not email it. Editors
+  can save and edit items; viewers can only look.
 
 ### 3. When they ask, delete on request
 
@@ -45,8 +46,8 @@ and points deletion requests at you.
    unpacked**, and pick the unzipped folder.
 3. Pin Universal Cart from the puzzle-piece menu, click it, and sign in: enter an email
    address, then type in the code from the email. There is no password.
-4. Open the invitation link from their email and accept it — the shared cart appears on the
-   dashboard at the same address.
+4. Open the invitation link you sent them and accept it (it asks them to sign in first if
+   they have not yet) — the shared cart appears on their dashboard.
 5. Go to any product page, click the Universal Cart icon, press **Capture this page**,
    check the preview, save. The item is in the cart on both of your dashboards without a
    reload.
