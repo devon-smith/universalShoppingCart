@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import { fetchEnabledProviders } from '@/lib/auth/providers';
 import { safeRedirectPath } from '@/lib/auth/redirect';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { getSupabaseConfig, isSupabaseConfigured } from '@/lib/supabase/config';
 
 import { sendMagicLink, signInWithGoogle } from './actions';
 
@@ -49,6 +50,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
     );
   }
 
+  // Google renders only when the Auth server says the provider is configured. A button that
+  // can only fail teaches the person their Google account is broken; the extension panel
+  // applies the same rule (apps/extension/entrypoints/sidepanel/SignInPanel.tsx).
+  const { url, publishableKey } = getSupabaseConfig();
+  const providers = await fetchEnabledProviders({ url, publishableKey, fetch: globalThis.fetch });
+
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 px-6 py-16">
       <header className="flex flex-col gap-3">
@@ -74,21 +81,25 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         </p>
       ) : null}
 
-      <form action={signInWithGoogle}>
-        <input type="hidden" name="next" value={next} />
-        <button
-          type="submit"
-          className="uc-button uc-button--secondary uc-button--full uc-focusable"
-        >
-          Continue with Google
-        </button>
-      </form>
+      {providers.google ? (
+        <>
+          <form action={signInWithGoogle}>
+            <input type="hidden" name="next" value={next} />
+            <button
+              type="submit"
+              className="uc-button uc-button--secondary uc-button--full uc-focusable"
+            >
+              Continue with Google
+            </button>
+          </form>
 
-      <div className="flex items-center gap-3 text-xs text-[var(--uc-foreground-muted)]">
-        <span className="h-px flex-1 bg-[var(--uc-border)]" />
-        or
-        <span className="h-px flex-1 bg-[var(--uc-border)]" />
-      </div>
+          <div className="flex items-center gap-3 text-xs text-[var(--uc-foreground-muted)]">
+            <span className="h-px flex-1 bg-[var(--uc-border)]" />
+            or
+            <span className="h-px flex-1 bg-[var(--uc-border)]" />
+          </div>
+        </>
+      ) : null}
 
       <form action={sendMagicLink} className="flex flex-col gap-3">
         <input type="hidden" name="next" value={next} />
@@ -115,7 +126,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
       </form>
 
       <p className="border-t border-[var(--uc-border)] pt-6 text-xs leading-relaxed text-[var(--uc-foreground-muted)]">
-        Universal Cart never stores retailer passwords, cookies, or payment details.
+        Universal Cart never stores retailer passwords, cookies, or payment details.{' '}
+        <Link href="/privacy" className="uc-focusable underline">
+          What it can see
+        </Link>
       </p>
     </main>
   );

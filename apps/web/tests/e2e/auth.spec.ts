@@ -18,12 +18,14 @@ test.describe('route protection', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
   });
 
-  test('offers both Google and email sign-in', async ({ page }) => {
+  test('offers email sign-in, and hides Google while the provider is off', async ({ page }) => {
     await page.goto('/login');
 
-    await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
     await expect(page.getByLabel('Email address')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Email me a sign-in link' })).toBeVisible();
+    // Local Supabase ships with the Google provider disabled, so the button must not render:
+    // a button that can only fail teaches the person their Google account is broken.
+    await expect(page.getByRole('button', { name: 'Continue with Google' })).toHaveCount(0);
   });
 
   test('rejects an off-origin next parameter', async ({ page }) => {
@@ -129,7 +131,10 @@ test.describe('magic-link sign-in', () => {
     await page.getByLabel('Email address').fill(email);
     await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
 
-    await expect(page.locator('p[role="alert"]')).toContainText(/only request this after/i);
+    // The raw server message names a countdown that is stale the moment it renders; the page
+    // shows the instruction instead, and reminds that the email already sent still works.
+    await expect(page.locator('p[role="alert"]')).toContainText(/wait a minute/i);
+    await expect(page.locator('p[role="alert"]')).toContainText(/still works/i);
   });
 
   test('rejects an email address that is not one', async ({ page }) => {
