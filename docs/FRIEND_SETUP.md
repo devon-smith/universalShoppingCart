@@ -56,7 +56,7 @@ and points deletion requests at you.
 4. Go to any product page, click the Universal Cart icon, press **Capture this page**,
    check the preview, save. The item appears in their cart on the dashboard without a
    reload — their items, their account, visible to nobody else.
-5. *(Only if you sent an invitation link:)* open it and accept — the shared cart then
+5. _(Only if you sent an invitation link:)_ open it and accept — the shared cart then
    appears on their dashboard alongside their own.
 
 What the extension can and cannot read is listed in the side panel under **"What Universal
