@@ -320,6 +320,22 @@ narrowed subset can state a price the whole family disagrees on, and a no-match 
 no-signal page falls back to family behaviour exactly as before. Needs the same
 `pnpm score:live` confirmation pass as the strikethrough work.
 
+## Friend-ready release pass
+
+**Everything a second person meets in their first five minutes, made honest and smooth.**
+The web login now asks the Auth server which providers exist and hides "Continue with
+Google" until the provider is real (same rule the extension panel already applied); the
+send-throttle and dead-magic-link errors say what to do instead of quoting the server log;
+`/privacy` exists (BUILD_PLAN §12.1/§17.1) and the login page links it. The extension's
+resend buttons carry a live 60-second countdown mirroring the server's per-address
+throttle, and its privacy copy no longer claims self-serve account deletion — that flow
+does not exist yet, so both surfaces now say deletion is a request during the private
+beta. `docs/FRIEND_SETUP.md` walks both people through the hosted-config zip build
+(verified: hosted URL baked in, no secret material in the bundle), unpacked install,
+sign-in, invitation, and first capture. New tests: web provider probe, send-failure copy,
+resend-cooldown arithmetic; the two e2e expectations coupled to old behaviour now pin the
+new (Google hidden when off, friendly throttle copy).
+
 ## UX iteration — decision groups (slice C)
 
 **The dashboard groups candidates by the purchase they are for.** A new user-authored

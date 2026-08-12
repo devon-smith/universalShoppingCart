@@ -79,8 +79,11 @@ export function PrivacyContent() {
           Your saved items
         </h2>
         <p className="privacy__body">
+          {/* No claim of self-serve account deletion: that flow does not exist yet, and this
+              copy must not promise a button before the button is real. */}
           They belong to your account and are visible only to you, unless you share a cart with
-          someone. You can delete any item, or your whole account, from the dashboard.
+          someone. You can delete any item from the dashboard, permanently. While Universal Cart is
+          in private testing, deleting a whole account is a request to the person who invited you.
         </p>
       </section>
     </div>

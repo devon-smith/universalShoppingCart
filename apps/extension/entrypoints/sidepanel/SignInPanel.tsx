@@ -1,6 +1,7 @@
 import { Button, Callout, TextInput } from '@universal-cart/ui';
 import { useEffect, useRef, useState } from 'react';
 
+import { resendRemainingSeconds } from '@/lib/auth/cooldown';
 import { EmailSignInError, requestEmailCode, verifyEmailCode } from '@/lib/auth/email-otp';
 import { GoogleSignInError, signInWithGoogle } from '@/lib/auth/google';
 import { describeSignInFailure } from '@/lib/auth/messages';
@@ -55,7 +56,23 @@ export function SignInPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [providers, setProviders] = useState<EnabledProviders | null>(null);
+  /**
+   * When the last code was sent, and a once-a-second tick while a cooldown is running.
+   * The server throttles sends to one a minute per address; counting down on the button
+   * makes that rule visible before it is broken instead of explained after.
+   */
+  const [sentAt, setSentAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const codeInput = useRef<HTMLInputElement>(null);
+
+  const resendWait = resendRemainingSeconds(sentAt, now);
+  const cooling = resendWait > 0;
+
+  useEffect(() => {
+    if (!cooling) return;
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [cooling]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -100,6 +117,9 @@ export function SignInPanel() {
       });
       setCode('');
       setStage({ name: 'code-sent', email: sent });
+      const stamp = Date.now();
+      setSentAt(stamp);
+      setNow(stamp);
     });
   }
 
@@ -133,10 +153,10 @@ export function SignInPanel() {
               <button
                 type="button"
                 className="onboarding__inline-action uc-focusable"
-                disabled={busy}
+                disabled={busy || cooling}
                 onClick={() => void sendCode(stage.email)}
               >
-                Send a new code
+                {cooling ? `Send a new code (${resendWait}s)` : 'Send a new code'}
               </button>
             ) : null}
           </Callout>
@@ -194,13 +214,15 @@ export function SignInPanel() {
               {busy ? 'Checking…' : 'Sign in'}
             </Button>
             <div className="onboarding__alternatives">
+              {/* Disabled while the server would refuse anyway; the countdown says why and
+                  for how long, which beats explaining the refusal after the press. */}
               <button
                 type="button"
                 className="onboarding__inline-action uc-focusable"
-                disabled={busy}
+                disabled={busy || cooling}
                 onClick={() => void sendCode(stage.email)}
               >
-                Send another code
+                {cooling ? `Send another code (${resendWait}s)` : 'Send another code'}
               </button>
               <button
                 type="button"
@@ -209,6 +231,9 @@ export function SignInPanel() {
                   setStage({ name: 'idle' });
                   setCode('');
                   setError(null);
+                  // A different address is a different throttle bucket; the countdown
+                  // belongs to the address it was earned on.
+                  setSentAt(null);
                 }}
               >
                 Use a different address
