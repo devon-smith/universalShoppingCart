@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { safeRedirectPath } from '@/lib/auth/redirect';
+import { describeSendFailure } from '@/lib/auth/sign-in-copy';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 const emailSchema = z.email({ error: 'Enter a valid email address' });
@@ -83,7 +84,7 @@ export async function sendMagicLink(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    loginRedirect({ next, error: error.message });
+    loginRedirect({ next, error: describeSendFailure(error.message) });
   }
 
   loginRedirect({ next, sent: parsedEmail.data });

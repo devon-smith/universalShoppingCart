@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { absoluteUrl, loginUrl } from '@/lib/auth/absolute-url';
+import { DEAD_LINK_MESSAGE } from '@/lib/auth/sign-in-copy';
 import { safeRedirectPath } from '@/lib/auth/redirect';
 import { createServerSupabase } from '@/lib/supabase/server';
 
@@ -39,7 +40,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
 
   if (error) {
-    return NextResponse.redirect(loginUrl(request, { error: error.message, next }));
+    // Supabase answers an expired link and an already-used one identically, and its message
+    // reads like a log line. Name both possibilities and the fix (the form is right there).
+    return NextResponse.redirect(loginUrl(request, { error: DEAD_LINK_MESSAGE, next }));
   }
 
   return NextResponse.redirect(absoluteUrl(next, request));
